@@ -475,6 +475,325 @@ function findSwings(candles) {
   return { high, low };
 }
 
+// ---------------- v4: Extended confluence (sirf display — signal ki direction/gates nahi badalte) ----------------
+// Sab kuch asal 1H candles se hisaab hota hai. Jo cheez data me nahi milti, wo null / available:false hoti hai — kabhi banayi nahi jati.
+function macdLineArr(closes) {
+  const e12 = emaArr(closes, 12), e26 = emaArr(closes, 26);
+  return closes.map((_, i) => (e12[i] != null && e26[i] != null) ? e12[i] - e26[i] : null);
+}
+function localExtrema(candles, fromIdx) {
+  const lows = [], highs = [];
+  for (let i = Math.max(2, fromIdx); i < candles.length - 2; i++) {
+    const c = candles[i];
+    if (c.l < candles[i - 1].l && c.l < candles[i - 2].l && c.l <= candles[i + 1].l && c.l <= candles[i + 2].l) lows.push(i);
+    if (c.h > candles[i - 1].h && c.h > candles[i - 2].h && c.h >= candles[i + 1].h && c.h >= candles[i + 2].h) highs.push(i);
+  }
+  return { lows, highs };
+}
+function pearson(xs, ys) {
+  const n = xs.length;
+  if (n < 2) return null;
+  const mx = xs.reduce((a, b) => a + b, 0) / n, my = ys.reduce((a, b) => a + b, 0) / n;
+  let sxy = 0, sxx = 0, syy = 0;
+  for (let i = 0; i < n; i++) { const dx = xs[i] - mx, dy = ys[i] - my; sxy += dx * dy; sxx += dx * dx; syy += dy * dy; }
+  if (!sxx || !syy) return null;
+  return sxy / Math.sqrt(sxx * syy);
+}
+function correlation20(closesA, timesA, closesB, timesB) {
+  // Aakhri 20 matched pairs (timestamp 30 min ke andar) par Pearson correlation.
+  const pairs = [];
+  const tol = 30 * 60 * 1000;
+  for (let i = timesA.length - 1; i >= 0 && pairs.length < 20; i--) {
+    let best = null, bestDiff = tol;
+    for (let j = 0; j < timesB.length; j++) {
+      const d = Math.abs(timesB[j] - timesA[i]);
+      if (d < bestDiff) { bestDiff = d; best = closesB[j]; }
+    }
+    if (best != null) pairs.push([closesA[i], best]);
+  }
+  if (pairs.length < 10) return null;
+  return pearson(pairs.map(p => p[0]), pairs.map(p => p[1]));
+}
+function killzoneInfo(now) {
+  const d = now || new Date();
+  const utcH = d.getUTCHours() + d.getUTCMinutes() / 60;
+  const zones = [
+    { code: 'asian', start: 0, end: 3 },
+    { code: 'london', start: 7, end: 10 },
+    { code: 'newyork', start: 12, end: 15 },
+  ];
+  let active = null;
+  for (const z of zones) if (utcH >= z.start && utcH < z.end) active = z;
+  let next = null, nextIn = Infinity;
+  for (const z of zones) {
+    let diff = (z.start - utcH + 24) % 24;
+    if (diff === 0) diff = 24;
+    if (diff < nextIn) { nextIn = diff; next = z; }
+  }
+  return { active: active ? active.code : null, activeStart: active ? active.start : null, activeEnd: active ? active.end : null, next: next.code, nextStart: next.start, nextInMin: Math.round(nextIn * 60) };
+}
+// Candlestick patterns: aakhri band (closed) 1H candle + us se pehle ki 2 candles.
+function detectCandlePattern(last3) {
+  if (!last3 || last3.length < 3) return null;
+  const a = last3[0], b = last3[1], c = last3[2];
+  const body = (x) => Math.abs(x.c - x.o);
+  const range = (x) => x.h - x.l;
+  // Morning / Evening star (3 candles)
+  if (a.c < a.o && body(b) <= 0.35 * range(b) && b.c < a.c && c.c > c.o && c.c > (a.o + a.c) / 2) return { code: 'morningStar', direction: 'BUY' };
+  if (a.c > a.o && body(b) <= 0.35 * range(b) && b.c > a.c && c.c < c.o && c.c < (a.o + a.c) / 2) return { code: 'eveningStar', direction: 'SELL' };
+  // Engulfing (2 candles)
+  if (b.c < b.o && c.c > c.o && c.o <= b.c && c.c >= b.o) return { code: 'bullEngulf', direction: 'BUY' };
+  if (b.c > b.o && c.c < c.o && c.o >= b.c && c.c <= b.o) return { code: 'bearEngulf', direction: 'SELL' };
+  // Pin bar / doji (1 candle)
+  const cb = body(c), cr = range(c);
+  if (cr > 0 && cb <= 0.1 * cr) return { code: 'doji', direction: 'NEUTRAL' };
+  if (cb > 0) {
+    const upper = c.h - Math.max(c.o, c.c), lower = Math.min(c.o, c.c) - c.l;
+    if (lower >= 2 * cb && upper <= cb) return { code: 'hammer', direction: 'BUY' };
+    if (upper >= 2 * cb && lower <= cb) return { code: 'shootingStar', direction: 'SELL' };
+  }
+  return null;
+}
+function computeFibLevels(high, low) {
+  if (high == null || low == null || !(high > low)) return null;
+  const r = high - low;
+  const levels = [
+    { label: '23.6%', price: high - 0.236 * r },
+    { label: '38.2%', price: high - 0.382 * r },
+    { label: '50%', price: high - 0.5 * r },
+    { label: '61.8%', price: high - 0.618 * r },
+    { label: '78.6%', price: high - 0.786 * r },
+    { label: '127.2%↑', price: high + 0.272 * r },
+    { label: '161.8%↑', price: high + 0.618 * r },
+    { label: '127.2%↓', price: low - 0.272 * r },
+    { label: '161.8%↓', price: low - 0.618 * r },
+  ];
+  return { high, low, levels };
+}
+function nearestLevel(levels, price) {
+  let best = null;
+  for (const l of levels) if (!best || Math.abs(l.price - price) < Math.abs(best.price - price)) best = l;
+  return best;
+}
+function findAllOBs(candles, dir, lookback) {
+  const out = [];
+  const start = Math.max(0, candles.length - lookback);
+  for (let i = candles.length - 3; i >= start; i--) {
+    const c = candles[i], nxt = candles[i + 1], nxt2 = candles[i + 2];
+    if (!nxt || !nxt2) continue;
+    if (dir === 'bullish' && c.c < c.o && nxt.c > nxt.o && nxt2.c > nxt2.o) out.push({ low: Math.min(c.l, nxt.l), high: Math.max(c.h, nxt.h), idx: i, dir: 'bullish' });
+    if (dir === 'bearish' && c.c > c.o && nxt.c < nxt.o && nxt2.c < nxt2.o) out.push({ low: Math.min(c.l, nxt.l), high: Math.max(c.h, nxt.h), idx: i, dir: 'bearish' });
+  }
+  return out;
+}
+function classifyBlocks(candles, lookback) {
+  const blocks = [];
+  for (const dir of ['bullish', 'bearish']) {
+    for (const ob of findAllOBs(candles, dir, lookback)) {
+      let touched = false, broken = false;
+      for (let j = ob.idx + 3; j < candles.length; j++) {
+        const c = candles[j];
+        if (c.l <= ob.high && c.h >= ob.low) touched = true;
+        if (dir === 'bullish' && c.c < ob.low) { broken = true; break; }
+        if (dir === 'bearish' && c.c > ob.high) { broken = true; break; }
+      }
+      if (broken) blocks.push({ type: 'Breaker', dir: dir === 'bullish' ? 'SELL' : 'BUY', low: ob.low, high: ob.high, idx: ob.idx });
+      else if (touched) blocks.push({ type: 'Mitigation', dir: dir === 'bullish' ? 'BUY' : 'SELL', low: ob.low, high: ob.high, idx: ob.idx });
+    }
+  }
+  blocks.sort((a, b) => b.idx - a.idx);
+  // Aas-paas ki same-direction blocks aik hi zone hain — taaza wali rakhein, purani overlap wali hata dein.
+  const kept = [];
+  for (const b of blocks) {
+    const overlaps = kept.some(k => k.dir === b.dir && b.low <= k.high && b.high >= k.low);
+    if (!overlaps) kept.push(b);
+    if (kept.length >= 2) break;
+  }
+  return kept;
+}
+function detectMacdDivergence(candles) {
+  const n = candles.length;
+  if (n < 40) return { found: false, type: null };
+  const closes = candles.map(c => c.c);
+  const macd = macdLineArr(closes);
+  const ex = localExtrema(candles, Math.max(0, n - 32));
+  const lows = ex.lows.filter(i => macd[i] != null);
+  const highs = ex.highs.filter(i => macd[i] != null);
+  let bull = null, bear = null;
+  if (lows.length >= 2) {
+    const i1 = lows[lows.length - 2], i2 = lows[lows.length - 1];
+    if (candles[i2].l < candles[i1].l && macd[i2] > macd[i1]) bull = i2;
+  }
+  if (highs.length >= 2) {
+    const i1 = highs[highs.length - 2], i2 = highs[highs.length - 1];
+    if (candles[i2].h > candles[i1].h && macd[i2] < macd[i1]) bear = i2;
+  }
+  if (bull != null && bear != null) return bull > bear ? { found: true, type: 'bullish' } : { found: true, type: 'bearish' };
+  if (bull != null) return { found: true, type: 'bullish' };
+  if (bear != null) return { found: true, type: 'bearish' };
+  return { found: false, type: null };
+}
+function volumeInfo(candles) {
+  if (!candles || candles.length < 22) return { available: false, ratio: null, trend: null };
+  const done = candles.slice(0, -1); // in-progress candle nahi
+  const prev20 = done.slice(-21, -1);
+  const last = done[done.length - 1];
+  const sum = prev20.reduce((a, c) => a + (c.v || 0), 0) + (last.v || 0);
+  if (sum <= 0) return { available: false, ratio: null, trend: null };
+  const avg = prev20.reduce((a, c) => a + (c.v || 0), 0) / prev20.length;
+  if (!avg) return { available: false, ratio: null, trend: null };
+  const ratio = (last.v || 0) / avg;
+  return { available: true, ratio: +ratio.toFixed(2), trend: ratio >= 1.2 ? 'rising' : ratio <= 0.8 ? 'falling' : 'normal' };
+}
+function asianRange(candles, live) {
+  if (!candles || !candles.length) return null;
+  const now = new Date();
+  let start = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+  if (now.getUTCHours() < 6) start -= 24 * 3600000;
+  const end = start + 6 * 3600000;
+  let high = null, low = null, count = 0;
+  for (const c of candles) {
+    if (c.t >= start && c.t < end) {
+      high = high == null ? c.h : Math.max(high, c.h);
+      low = low == null ? c.l : Math.min(low, c.l);
+      count++;
+    }
+  }
+  if (count < 3 || high == null || low == null) return null;
+  return { high, low, expanded: live > high ? 'above' : live < low ? 'below' : null };
+}
+function vwapBands(candles, live) {
+  if (!candles || !candles.length) return null;
+  const now = new Date();
+  const start = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+  const sess = candles.filter(c => c.t >= start);
+  if (sess.length < 4) return null;
+  const volSum = sess.reduce((a, c) => a + (c.v || 0), 0);
+  if (!volSum) return null; // asal volume nahi hai to VWAP banaya nahi jata
+  let pv = 0, vv = 0;
+  const tps = [];
+  for (const c of sess) {
+    const tp = (c.h + c.l + c.c) / 3, w = c.v || 1;
+    pv += tp * w; vv += w; tps.push({ tp, w });
+  }
+  if (!vv) return null;
+  const vwap = pv / vv;
+  let vs = 0;
+  for (const x of tps) vs += x.w * Math.pow(x.tp - vwap, 2);
+  const sd = Math.sqrt(vs / vv);
+  if (!sd) return null;
+  const bands = [
+    { label: '+2σ', price: vwap + 2 * sd },
+    { label: '+1σ', price: vwap + sd },
+    { label: 'VWAP', price: vwap },
+    { label: '−1σ', price: vwap - sd },
+    { label: '−2σ', price: vwap - 2 * sd },
+  ];
+  return { vwap, plus1: vwap + sd, minus1: vwap - sd, plus2: vwap + 2 * sd, minus2: vwap - 2 * sd, nearest: nearestLevel(bands, live) };
+}
+
+// Extended confluence — sirf display. Pure function: koi fetch/DB nahi, signal direction/gates ko nahi chhoota.
+function computeExtended(c1h, live, ema20, ema50, atr1h, dxy) {
+  const ext = {
+    candle: null,
+    choch: { found: false, dir: null },
+    mss: { found: false, dir: null },
+    trend: 'flat',
+    breakers: [],
+    idm: { found: false, side: null },
+    fib: null,
+    bollinger: null,
+    macdDiv: { found: false, type: null },
+    meanRev: null,
+    killzone: killzoneInfo(),
+    asian: null,
+    dxy: { available: false, value: null, corr20: null },
+    vwapBands: null,
+    volume: { available: false, ratio: null, trend: null },
+  };
+  if (!c1h || c1h.length < 40 || live == null) return ext;
+  try {
+    const n = c1h.length;
+    const closes = c1h.map(c => c.c);
+    // 1) Candlestick pattern — aakhri band (closed) 1H candle
+    ext.candle = detectCandlePattern(c1h.slice(-4, -1));
+    // 2) Trend (1H EMA20/EMA50)
+    if (ema20 != null && ema50 != null) ext.trend = ema20 > ema50 ? 'up' : ema20 < ema50 ? 'down' : 'flat';
+    // 3) BOS events + IDM — aik hi scan (aakhri 60 candles)
+    const events = [];
+    let lastUpLevel = null, lastDownLevel = null;
+    const scanFrom = Math.max(10, n - 60);
+    for (let i = scanFrom; i < n; i++) {
+      const prevSw = findSwings(c1h.slice(0, i));
+      const c = c1h[i];
+      if (prevSw.high != null && c.c > prevSw.high && prevSw.high !== lastUpLevel) { events.push({ dir: 'up', at: c.t, level: prevSw.high }); lastUpLevel = prevSw.high; }
+      if (prevSw.low != null && c.c < prevSw.low && prevSw.low !== lastDownLevel) { events.push({ dir: 'down', at: c.t, level: prevSw.low }); lastDownLevel = prevSw.low; }
+      if (i >= n - 30) {
+        if (prevSw.low != null && c.l < prevSw.low && c.c > prevSw.low) {
+          for (let j = i + 1; j <= Math.min(n - 1, i + 5); j++) {
+            if (c1h[j].c > c.h) { ext.idm = { found: true, side: 'SSL' }; break; }
+          }
+        } else if (prevSw.high != null && c.h > prevSw.high && c.c < prevSw.high) {
+          for (let j = i + 1; j <= Math.min(n - 1, i + 5); j++) {
+            if (c1h[j].c < c.l) { ext.idm = { found: true, side: 'BSL' }; break; }
+          }
+        }
+      }
+    }
+    const lastEv = events.length ? events[events.length - 1] : null;
+    const prevEv = events.length > 1 ? events[events.length - 2] : null;
+    if (lastEv) {
+      if (ext.trend !== 'flat' && lastEv.dir !== ext.trend) ext.choch = { found: true, dir: lastEv.dir };
+      if (prevEv && lastEv.dir === ext.trend && prevEv.dir !== lastEv.dir) ext.mss = { found: true, dir: lastEv.dir };
+    }
+    // 4) Breaker / mitigation blocks (1H, aakhri 60 candles)
+    ext.breakers = classifyBlocks(c1h, 60);
+    // 5) Fibonacci — aakhri 1H swing high/low
+    const sw = findSwings(c1h);
+    const fib = computeFibLevels(sw.high, sw.low);
+    if (fib) ext.fib = { high: fib.high, low: fib.low, levels: fib.levels, nearest: nearestLevel(fib.levels, live) };
+    // 6) Bollinger squeeze + %B
+    const mid = sma(closes, 20), sd = stddev(closes, 20);
+    if (mid[n - 1] != null && sd[n - 1] != null) {
+      const bw = [];
+      for (let i = 19; i < n; i++) if (mid[i] != null && sd[i] != null && mid[i] !== 0) bw.push(4 * sd[i] / mid[i]);
+      const cur = bw[bw.length - 1];
+      if (cur != null && bw.length >= 20) {
+        const last20 = bw.slice(-20);
+        const pct = last20.filter(x => x <= cur).length / last20.length * 100;
+        const upper = mid[n - 1] + 2 * sd[n - 1], lower = mid[n - 1] - 2 * sd[n - 1];
+        const percentB = upper === lower ? 50 : (live - lower) / (upper - lower) * 100;
+        ext.bollinger = { squeeze: pct <= 20, bandwidthPct: +pct.toFixed(0), percentB: +percentB.toFixed(1) };
+      }
+    }
+    // 7) MACD divergence
+    ext.macdDiv = detectMacdDivergence(c1h);
+    // 8) Mean reversion — EMA20 se doori (ATR units) + %B
+    if (ema20 != null && atr1h) {
+      const distATR = (live - ema20) / atr1h;
+      const a = Math.abs(distATR);
+      ext.meanRev = { distATR: +distATR.toFixed(2), percentB: ext.bollinger ? ext.bollinger.percentB : null, label: a <= 0.5 ? 'near' : a <= 1.5 ? 'extended' : 'overextended', side: distATR >= 0 ? 'above' : 'below' };
+    }
+    // 9) Asian range
+    ext.asian = asianRange(c1h, live);
+    // 10) VWAP bands (aaj ka UTC session)
+    ext.vwapBands = vwapBands(c1h, live);
+    // 11) Volume
+    ext.volume = volumeInfo(c1h);
+    // 12) DXY + correlation
+    if (dxy) {
+      if (typeof dxy.value === 'number') { ext.dxy.value = dxy.value; ext.dxy.available = true; }
+      if (dxy.candles && dxy.candles.length) {
+        const corr = correlation20(closes, c1h.map(c => c.t), dxy.candles.map(c => c.c), dxy.candles.map(c => c.t));
+        if (corr != null) { ext.dxy.corr20 = +corr.toFixed(2); ext.dxy.available = true; }
+      }
+    }
+  } catch (e) {
+    // Koi aik item fail ho to baaki items phir bhi dikhte hain (partial ext wapas jata hai).
+  }
+  return ext;
+}
+
 // ---------------- Signal Engine: 6 gates / 100 points, BUY/SELL sirf 85%+ par ----------------
 function gateScore(candles, ind, livePrice, side) {
   // side: 'buy' ya 'sell'. Har gate 0..points.
@@ -541,6 +860,27 @@ function planStatus(score) {
   if (score >= 70) return 'APPROACHING';
   return 'WAIT';
 }
+// Zone check: trade sirf tabhi jab us direction ke peeche koi proper zone ho
+// (fresh order block, directional FVG, ya demand/supply zone jisme price ho ya qareeb ho).
+// Ye gate (85%/80%) ya risk model nahi badalta — sirf final trade/no-trade faisla
+// zone par rukta hai. Jo zone mile, wo trade zone ke tor par wapas milta hai.
+function zoneSupportFor(smc, demandZone, supplyZone, live, atr, dir) {
+  if (!smc) return { ok: false, zone: null };
+  const near = (zone) => zone && Math.min(Math.abs(live - zone[0]), Math.abs(live - zone[1])) <= (atr || 0);
+  const inside = (zone) => zone && live >= zone[0] && live <= zone[1];
+  if (dir === 'BUY') {
+    if (smc.bullOB && !smc.bullOB.mitigated) return { ok: true, zone: { type: 'Order Block', low: smc.bullOB.low, high: smc.bullOB.high } };
+    const bf = (smc.fvgs || []).find(f => f.type === 'Bullish');
+    if (bf) return { ok: true, zone: { type: 'FVG', low: bf.low, high: bf.high } };
+    if (inside(demandZone) || near(demandZone)) return { ok: true, zone: { type: 'Demand Zone', low: demandZone[0], high: demandZone[1] } };
+    return { ok: false, zone: null };
+  }
+  if (smc.bearOB && !smc.bearOB.mitigated) return { ok: true, zone: { type: 'Order Block', low: smc.bearOB.low, high: smc.bearOB.high } };
+  const sf = (smc.fvgs || []).find(f => f.type === 'Bearish');
+  if (sf) return { ok: true, zone: { type: 'FVG', low: sf.low, high: sf.high } };
+  if (inside(supplyZone) || near(supplyZone)) return { ok: true, zone: { type: 'Supply Zone', low: supplyZone[0], high: supplyZone[1] } };
+  return { ok: false, zone: null };
+}
 let signalCache = new Map(); // pair -> {at, data}
 async function computeSignal(pairId, lang) {
   const cacheKey = pairId + '|' + (lang === 'en' ? 'en' : 'ur');
@@ -556,7 +896,11 @@ async function computeSignal(pairId, lang) {
   const live = quote.price;
   const buy = gateScore(candles, ind, live, 'buy');
   const sell = gateScore(candles, ind, live, 'sell');
-  const direction = buy.total >= 85 ? 'BUY' : sell.total >= 85 ? 'SELL' : 'WAIT';
+  // SMC facts (asal 15M + 5M candles se) — Terminal par single-direction signal ke saath checklist dikhane ke liye
+  // 1H candles bhi ek saath (parallel) — v4 extended confluence ke liye
+  const [candles5, candles1h] = await Promise.all([getCandles(pairId, '5m'), getCandles(pairId, '1H')]);
+  const smc = computeSmc(candles, candles5);
+  let direction = buy.total >= 85 ? 'BUY' : sell.total >= 85 ? 'SELL' : 'WAIT';
   const confluence = Math.max(buy.total, sell.total);
   const buyPlan = buildPlan(live, ind.atr14, 'buy');
   const sellPlan = buildPlan(live, ind.atr14, 'sell');
@@ -574,9 +918,25 @@ async function computeSignal(pairId, lang) {
     supplyZone: sw.high != null ? [sw.high - atr, sw.high] : null,
     label: bullPct >= 60 ? 'BULLISH' : bullPct <= 40 ? 'BEARISH' : 'NEUTRAL',
   };
+  // Zone requirement: gate paar karne ke baad bhi trade sirf tabhi jab us direction
+  // ke peeche koi proper zone ho. Zone na ho to direction WAIT ho jata hai —
+  // signal record bhi nahi hota, banner/alert bhi WAIT dikhate hain.
+  let direction2 = direction, tradeZone = null, zoneBlocked = false, blockedDirection = null, zoneNote = null;
+  if (direction !== 'WAIT') {
+    const zs = zoneSupportFor(smc, sentiment.demandZone, sentiment.supplyZone, live, ind.atr14, direction);
+    if (zs.ok) tradeZone = zs.zone;
+    else {
+      zoneBlocked = true; blockedDirection = direction; direction2 = 'WAIT';
+      zoneNote = lang === 'en'
+        ? 'No zone behind ' + blockedDirection + ' — no fresh order block, no directional FVG, and price is not in or near the zone. Showing WAIT instead.'
+        : blockedDirection + ' ke peeche koi proper zone nahi — na fresh order block, na directional FVG, price zone me ya qareeb nahi. Is liye WAIT dikhaya ja raha hai.';
+    }
+  }
+  direction = direction2;
   const comments = [];
   const en = lang === 'en';
-  if (direction === 'WAIT') comments.push(en ? 'WAIT — no trade. The 85% gate is not met (' + confluence + '%).' : 'WAIT — koi trade nahi. 85% gate poora nahi hua (' + confluence + '%).');
+  if (zoneBlocked && zoneNote) comments.push(zoneNote);
+  if (direction === 'WAIT' && !zoneBlocked) comments.push(en ? 'WAIT — no trade. The 85% gate is not met (' + confluence + '%).' : 'WAIT — koi trade nahi. 85% gate poora nahi hua (' + confluence + '%).');
   if (buy.total >= sell.total) comments.push(en ? 'BUY side confluence is ' + buy.total + '%.' : 'BUY taraf ' + buy.total + '% confluence hai.');
   else comments.push(en ? 'SELL side confluence is ' + sell.total + '%.' : 'SELL taraf ' + sell.total + '% confluence hai.');
   if (ind.rsi14 != null) comments.push('RSI 14: ' + ind.rsi14.toFixed(1) + (ind.rsi14 > 70 ? ' (Overbought)' : ind.rsi14 < 30 ? ' (Oversold)' : ''));
@@ -584,11 +944,31 @@ async function computeSignal(pairId, lang) {
   else if (ind.ema200) comments.push(en ? 'Price is below EMA 200 — the big trend is down.' : 'Price EMA 200 ke neeche hai — bara trend neeche.');
   const pdh = Math.max(...candles.slice(-96).map(c => c.h));
   const pdl = Math.min(...candles.slice(-96).map(c => c.l));
+  // v4 extended confluence — sirf display; direction/gates ko nahi chhoota.
+  let extended = null;
+  try {
+    const dxy = await fetchDxy();
+    const closes1h = candles1h.map(c => c.c);
+    extended = computeExtended(candles1h, live, lastVal(emaArr(closes1h, 20)), lastVal(emaArr(closes1h, 50)), lastVal(atrArr(candles1h, 14)), dxy);
+  } catch (e) { extended = null; }
   const data = {
     pair: pairId, price: live, bid: quote.bid, ask: quote.ask, spread: quote.spread,
     direction, confluence, threshold: 85,
     buyGates: buy.gates, sellGates: sell.gates,
+    buyScore: buy.total, sellScore: sell.total,
     buyPlan, sellPlan,
+    tradeZone, zoneBlocked, blockedDirection, zoneNote,
+    // SMC confluence (asal data — checklist ke liye; signal logic nahi badalti)
+    smc: smc.error ? null : {
+      score: smc.score, gate: 80, parts: smc.parts,
+      sweep: smc.sweep, sweepFound: smc.sweepFound, sweepCode: smc.sweepCode,
+      bos: smc.bos, mss: smc.mss, bosDir: smc.bosDir,
+      bullOB: smc.bullOB, bearOB: smc.bearOB, fvgs: smc.fvgs, sslSweeps: smc.sslSweeps,
+      swingHigh: smc.swingHigh, swingLow: smc.swingLow,
+      demandZone: sentiment.demandZone, supplyZone: sentiment.supplyZone,
+    },
+    // v4 extended confluence (display only)
+    extended,
     sentiment, range: { pdh, pdl },
     rsi14: ind.rsi14, atr14: ind.atr14, ema20: ind.ema20, ema50: ind.ema50, ema200: ind.ema200,
     comments, nextCheckInSec: 30, updatedAt: Date.now(),
@@ -614,17 +994,17 @@ function computeSmc(candles15, candles5) {
   const sw = findSwings(candles15);
   const last = candles15[candles15.length - 1];
   // Liquidity sweeps: aakhri 15 candles me swing ke neeche/upar wick phir wapas
-  let sweep = false, sweepSide = null;
+  let sweep = false, sweepSide = null, sweepCode = null;
   for (let i = Math.max(0, candles15.length - 15); i < candles15.length; i++) {
     const c = candles15[i];
-    if (sw.low != null && c.l < sw.low && c.c > sw.low) { sweep = true; sweepSide = 'SSL (neeche sweep)'; }
-    if (sw.high != null && c.h > sw.high && c.c < sw.high) { sweep = true; sweepSide = 'BSL (upar sweep)'; }
+    if (sw.low != null && c.l < sw.low && c.c > sw.low) { sweep = true; sweepSide = 'SSL (neeche sweep)'; sweepCode = 'SSL'; }
+    if (sw.high != null && c.h > sw.high && c.c < sw.high) { sweep = true; sweepSide = 'BSL (upar sweep)'; sweepCode = 'BSL'; }
   }
   // BOS / MSS: aakhri swing toota ya nahi
-  let bos = false, mss = false;
+  let bos = false, mss = false, bosDir = null;
   const prevSw = findSwings(candles15.slice(0, -5));
-  if (prevSw.high != null && last.c > prevSw.high) { bos = true; mss = true; }
-  if (prevSw.low != null && last.c < prevSw.low) { bos = true; mss = true; }
+  if (prevSw.high != null && last.c > prevSw.high) { bos = true; mss = true; bosDir = 'up'; }
+  if (prevSw.low != null && last.c < prevSw.low) { bos = true; mss = true; bosDir = 'down'; }
   // Order blocks: strong move se pehle ki aakhri opposite candle
   function findOB(dir) {
     for (let i = candles15.length - 3; i >= Math.max(0, candles15.length - 40); i--) {
@@ -666,7 +1046,8 @@ function computeSmc(candles15, candles5) {
     score, gate: 80, parts,
     swingHigh: sw.high, swingLow: sw.low,
     sweep: sweep ? sweepSide : 'Aakhri candles me koi sweep nahi hua.',
-    bos, mss, bullOB, bearOB, fvgs, sslSweeps,
+    sweepFound: sweep, sweepCode,
+    bos, mss, bosDir, bullOB, bearOB, fvgs, sslSweeps,
     pools: 15, // liquidity pools ki taadad (swing levels se)
     updatedAt: Date.now(),
   };
@@ -700,6 +1081,18 @@ async function computeScanner() {
   }
   const data = { rows, cycleSec: 45, updatedAt: Date.now(), confirmedSignals: db.signals.filter(s => s.engine === 'smc').length };
   scannerCache = { at: Date.now(), data };
+  return data;
+}
+// Dollar Index (DXY) — Yahoo DX-Y.NYB, 60s cache. Na mile to available:false (koi number banaya nahi jata).
+let dxyCache = { at: 0, data: null };
+async function fetchDxy() {
+  if (dxyCache.data && Date.now() - dxyCache.at < 60000) return dxyCache.data;
+  const [value, candles] = await Promise.all([
+    fetchYahooPrice('DX-Y.NYB'),
+    yahooCandles('DX-Y.NYB', '1h', '3mo'),
+  ]);
+  const data = { value, candles: candles || [] };
+  dxyCache = { at: Date.now(), data };
   return data;
 }
 async function fetchYahooPrice(sym) {
