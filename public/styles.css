@@ -134,3 +134,61 @@ html,body{overflow-x:hidden}
   #helloUser{display:none}
   .table-wrap{margin:8px -10px;padding:0 10px}
 }
+
+/* v7: modals (signal pop-up + share card) — pehle se HTML me, sirf show/hide */
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:200;display:flex;align-items:flex-start;justify-content:center;padding:16px;overflow-y:auto}
+.modal-card{background:#111a30;border:1px solid #f5c542;border-radius:14px;padding:20px;max-width:520px;width:100%;margin:auto}
+.modal-card.wide{max-width:560px}
+/* v7: branded share card (portrait preview) */
+.share-card{border:2px solid #f5c542;border-radius:14px;padding:18px;text-align:center;background:#0a0f1e}
+.share-card-brand{color:#f5c542;font-weight:800;letter-spacing:1px}
+.share-card-pair{font-size:34px;font-weight:800;margin:8px 0}
+.share-card-dir{display:inline-block;padding:6px 22px;border-radius:999px;font-size:22px;font-weight:800}
+.share-card-dir.buy{background:#3ddc84;color:#0a0f1e}
+.share-card-dir.sell{background:#ff6b6b;color:#fff}
+.share-card-code{color:#8ea0c2;font-size:13px;margin:8px 0}
+.share-boxes{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin:12px 0}
+.share-box{border:1px solid #2a3550;border-radius:10px;padding:8px}
+.share-box-label{color:#8ea0c2;font-size:12px}
+.share-box-val{font-size:20px;font-weight:800}
+.share-box-status{font-size:11px;color:#8ea0c2}
+.share-timeline{display:flex;flex-wrap:wrap;gap:6px;justify-content:center}
+.share-timeline span{border:1px solid #2a3550;border-radius:999px;padding:4px 10px;font-size:12px}
+.tl-done{color:#3ddc84;border-color:#3ddc84}
+.tl-pend{color:#8ea0c2}
+.share-text-preview{background:#0a0f1e;border:1px solid #2a3550;border-radius:10px;padding:12px;max-height:180px;overflow-y:auto;white-space:pre-wrap;font-size:13px;line-height:1.6}
+/* v7: sentiment wave bars + zone corridor */
+.sent-bar{display:flex;height:14px;border-radius:999px;overflow:hidden;background:#22304d;margin:6px 0}
+.sent-bull{background:#3ddc84;height:100%}
+.sent-bear{background:#ff6b6b;height:100%}
+.corr-track{position:relative;height:18px;background:#22304d;border-radius:999px;margin:10px 0 4px}
+.corr-zone{position:absolute;top:0;height:100%;border-radius:999px;opacity:.7}
+.corr-zone.demand{background:#3ddc84}
+.corr-zone.supply{background:#ff6b6b}
+.corr-price{position:absolute;top:-4px;width:4px;height:26px;background:#f5c542;border-radius:2px;transform:translateX(-2px)}
+/* v7: monitoring controls in the live bar */
+.mon-ctl{display:inline-flex;gap:6px;align-items:center}
+.mon-ctl select{width:auto;margin:0;min-height:0;padding:4px 8px}
+/* v7: history rows are clickable for details */
+.hist-row{cursor:pointer}
+/* v7: light theme (Preferences se) */
+body.light{background:#eef1f6;color:#1a2333}
+body.light .card,body.light header,body.light .auth-card{background:#fff;border-color:#d5dce8}
+body.light .price-cell,body.light .plan-card,body.light .share-card{background:#f7f9fc;border-color:#d5dce8}
+body.light h1,body.light h2,body.light h3{color:#8a6d00}
+body.light .livebar{background:#e2e8f2}
+body.light input,body.light select{background:#fff;color:#1a2333;border-color:#c4cede}
+body.light .tabs button,body.light .pair-select button,body.light .subtabs button,body.light .chart-tf button{background:#e8edf5;color:#1a2333;border-color:#c4cede}
+body.light .btn{background:#dfe6f2;color:#1a2333}
+body.light #chartCanvas{background:#fff}
+body.light .tagline,body.light .fine,body.light .api-health{color:#5a6b8c}
+body.light .modal-card{background:#fff;border-color:#8a6d00}
+body.light .share-text-preview{background:#f7f9fc;border-color:#d5dce8}
+body.light .share-box{border-color:#d5dce8}
+body.light .sent-bar,body.light .corr-track{background:#dfe6f2}
+@media (max-width:768px){
+  .modal{padding:10px}
+  .modal-card{padding:14px}
+  .share-card-pair{font-size:28px}
+  .share-box-val{font-size:18px}
+}

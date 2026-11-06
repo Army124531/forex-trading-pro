@@ -14,6 +14,7 @@
       <button class="btn small" id="langBtnAuth" onclick="toggleLang()" style="float:right">EN | اردو</button>
       <h1>Forex Trading Pro</h1>
       <p class="tagline" data-i18n="tagline">Gold, Bitcoin aur Forex ke live signals</p>
+      <div id="publicPrices" class="price-grid" style="margin-bottom:12px"></div>
       <div id="setupBox" style="display:none">
         <h2 data-i18n="setupTitle">Pehli Dafa Setup</h2>
         <p data-i18n="setupText">Apna Admin username aur password khud banayein. Password kahin likh kar mat bhejein — sirf aapko pata hona chahiye.</p>
@@ -46,6 +47,14 @@
     <div class="livebar">
       <span id="liveCount">—</span> · <span id="lastUpdate">Last update · —</span>
       <button class="btn small gold" id="refreshBtn" data-i18n="refresh" onclick="refreshPrices(true)">Refresh</button>
+      <button class="btn small gold" id="scanBtn" data-i18n="scanNow" onclick="scanNow()">🔍 Scan Now</button>
+      <label class="mon-ctl"><span data-i18n="monitorEvery">Har</span>
+        <select id="monitorIntervalSel" onchange="setMonitorInterval(this.value)">
+          <option value="5" selected>5s</option><option value="10">10s</option><option value="15">15s</option><option value="30">30s</option>
+        </select>
+      </label>
+      <button class="btn small" id="monitorToggleBtn" data-i18n="stopMonitoring" onclick="toggleMonitoring()">⏸ Stop</button>
+      <span id="monCountdown" class="api-health"></span>
       <span id="apiHealth" class="api-health"></span>
     </div>
     <nav class="tabs">
@@ -154,6 +163,33 @@
   </div>
 </div>
 <div id="toast" class="toast" style="display:none"></div>
+
+<!-- v7: Big signal-arrival pop-up (toast se bara — signal aate hi khulta hai) -->
+<div id="signalPopup" class="modal" style="display:none" onclick="if(event.target===this)closeSignalPopup()">
+  <div class="modal-card">
+    <div id="signalPopupBody"></div>
+    <div class="sig-actions">
+      <button class="btn-sig" data-i18n="copySignal" onclick="copyPopupSignal()">📋 Signal Copy Karein</button>
+      <button class="btn-sig" data-i18n="downloadSignal" onclick="downloadPopupSignal()">⬇️ Picture Download Karein</button>
+      <button class="btn-sig" data-i18n="close" onclick="closeSignalPopup()">Band karein</button>
+    </div>
+  </div>
+</div>
+
+<!-- v7: Branded Share Card modal (portrait card preview + formatted text + download/copy) -->
+<div id="shareModal" class="modal" style="display:none" onclick="if(event.target===this)closeShareModal()">
+  <div class="modal-card wide">
+    <div id="shareCardPreview"></div>
+    <h4 data-i18n="formattedPreview">Formatted Text Preview (Telegram / WhatsApp)</h4>
+    <pre id="shareTextPreview" class="share-text-preview"></pre>
+    <div class="sig-actions">
+      <button class="btn-sig" data-i18n="downloadHighRes" onclick="downloadShareCardPng()">⬇️ Download High-Res PNG</button>
+      <button class="btn-sig" data-i18n="copyImage" onclick="copyShareCardImage()">🖼️ Copy Image</button>
+      <button class="btn-sig" data-i18n="copyFormattedText" onclick="copyShareCardText()">📋 Copy Formatted Text</button>
+      <button class="btn-sig" data-i18n="close" onclick="closeShareModal()">Band karein</button>
+    </div>
+  </div>
+</div>
 <script src="app.js"></script>
 </body>
 </html>

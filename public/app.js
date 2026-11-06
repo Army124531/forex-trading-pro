@@ -1,12 +1,45 @@
 // Forex Trading Pro — frontend (single page app)
 let token = localStorage.getItem('ftp_token') || null;
 let me = null;
-let currentPair = 'XAUUSD';
+let currentPair = localStorage.getItem('ftp_pref_pair') || 'XAUUSD';
 let currentTab = 'terminal';
 let prevPrices = {};
 let lastUpdateAt = 0;
 let priceTimer = null;
 let countdownTimer = null;
+
+// ---------------- v7: monitoring / perf / share state ----------------
+let monitorInterval = [5, 10, 15, 30].includes(parseInt(localStorage.getItem('ftp_monitor_interval') || '5', 10)) ? parseInt(localStorage.getItem('ftp_monitor_interval') || '5', 10) : 5;
+let monitoringOn = localStorage.getItem('ftp_monitoring') !== 'off';
+let lastTerminalSig = null, lastBannerSig = null, lastSignalData = null;
+let priceCells = {}; // pairId -> {price, chg, live} element refs (in-place update ke liye)
+let popupSignal = null, shareSignal = null;
+let histOpenDetails = {};
+let riskProfile = localStorage.getItem('ftp_risk_profile') || 'moderate';
+let theme = localStorage.getItem('ftp_theme') || 'dark';
+function applyTheme() { try { document.body.classList.toggle('light', theme === 'light'); } catch (e) {} }
+applyTheme();
+function riskProfileText() {
+  return riskProfile === 'conservative' ? t('riskConsText') : riskProfile === 'aggressive' ? t('riskAggText') : t('riskModText');
+}
+function fmtPktTimeShort(ms) {
+  try { return new Date(ms).toLocaleTimeString('en-GB', { timeZone: 'Asia/Karachi', hour: '2-digit', minute: '2-digit', hour12: true }); }
+  catch (e) { return new Date(ms).toLocaleTimeString(); }
+}
+// Clipboard helper (Copy Signal / WAIT / Share text sab isi se — ek hi code, fallback ke saath)
+async function copyTextToClipboard(text) {
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) { await navigator.clipboard.writeText(text); return true; }
+  } catch (e) {}
+  try {
+    const ta = document.createElement('textarea');
+    ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    const ok = !!document.execCommand('copy');
+    document.body.removeChild(ta);
+    return ok;
+  } catch (e2) { return false; }
+}
 
 // ---------------- Language (Roman Urdu default, English option) ----------------
 let lang = localStorage.getItem('ftp_lang') || 'ur';
@@ -169,6 +202,51 @@ ur: {
   imgDone: 'Picture download ho gayi', imgDoneBody: 'Signal card picture download ho gayi hai.',
   imgFail: 'Picture download nahi ho saki — dobara try karein.',
   shareDisclaimer: 'Koi signal 100% profitable nahi hota.',
+  // v7 keys
+  close: 'Band karein',
+  scanNow: '🔍 Scan Now', scanning: 'Scanning…',
+  monitorEvery: 'Har', stopMonitoring: '⏸ Stop', startMonitoring: '▶ Start',
+  monitoringOff: 'Monitoring band hai — Start dabayein',
+  scanDone: 'Scan ho gaya', scanDoneBody: 'Saare pairs dobara scan ho gaye.',
+  scanFailBody: 'Scan nahi ho saka — dobara try karein.',
+  bestTimeframe: 'Best timeframe: 1H (4H bhi theek hai) — 15M sirf entry timing ke liye',
+  signalCode: 'Signal Code', validUntil: 'Valid until',
+  newSignalPopup: 'Signal Aa Gaya Hai!',
+  whyWait: 'Why Wait? — WAIT kyun hai?',
+  copyWaitAnalysis: '📋 WAIT Analysis Copy Karein',
+  waitCopyDone: 'WAIT analysis copy ho gaya',
+  waitCopyDoneBody: 'WAIT analysis copy ho gaya hai — WhatsApp ya Telegram par paste karein.',
+  gateNotMet: 'gate poora nahi hua',
+  smcBelowGate: 'SMC gate se kam hai',
+  zoneBlockedReason: 'Direction ke peeche koi proper zone nahi',
+  shareCard: '📤 Share Card',
+  downloadHighRes: '⬇️ Download High-Res PNG', copyImage: '🖼️ Copy Image', copyFormattedText: '📋 Copy Formatted Text',
+  formattedPreview: 'Formatted Text Preview (Telegram / WhatsApp)',
+  imgCopyDone: 'Picture copy ho gayi', imgCopyDoneBody: 'Signal card picture clipboard par copy ho gayi hai.',
+  imgCopyFail: 'Picture copy nahi ho saki', imgCopyFailBody: 'Is browser me picture copy supported nahi — Download use karein.',
+  dcaNote: 'DCA: TP1 par 50% profit lo, baaki ko TP2/TP3 tak chalne do.',
+  breakevenNote: 'Breakeven: TP1 ke baad SL ko entry par le jao.',
+  stepSignal: 'Signal mila', stepEntry: 'Entry zone', stepTp1: 'TP1', stepTp2: 'TP2', stepTp3: 'TP3', stepDone: 'Trade band',
+  progression: 'Progression',
+  confluenceLbl: 'Confluence',
+  pending: 'PENDING', hit: 'HIT',
+  sentimentWave: 'Sentiment Wave — computed (prediction nahi)',
+  sentimentWaveNote: 'Ye sentiment asal RSI, trend aur zones se hisaab hota hai — ye koi prediction nahi hai.',
+  demandIndex: 'Demand Index', supplyIndex: 'Supply Index', zoneCorridor: 'Zone Corridor',
+  histDetails: 'Signal Details (recorded)', gatesNotSaved: 'Gate details is signal ke liye save nahi hui.',
+  detailsBtn: 'Details',
+  pivotTitle: 'Pivot Points (pichla din)',
+  fearGreedTitle: 'Bitcoin Fear & Greed (alternative.me)',
+  fearGreedNa: 'Fear & Greed abhi nahi mil saka.',
+  riskProfile: 'Risk Profile', riskConservative: 'Conservative', riskModerate: 'Moderate', riskAggressive: 'Aggressive',
+  riskConsText: 'Sirf high-confluence signals — har trade par 1% risk',
+  riskModText: 'Standard — har trade par 1% risk',
+  riskAggText: 'Zyada risk — har trade par 2% tak, drawdown zyada ho sakta hai',
+  riskProfileLine: 'Aapka risk profile', timezone: 'Timezone', theme: 'Theme', themeDark: 'Dark', themeLight: 'Light',
+  language: 'Language', prefPair: 'Preferred Pair',
+  engineStatus: 'Engine Status',
+  prefSaved: 'Preferences save ho gayin.',
+  marketCards: 'Live Market',
 },
 en: {
   tagline: 'Live signals for Gold, Bitcoin and Forex',
@@ -328,6 +406,51 @@ en: {
   imgDone: 'Image downloaded', imgDoneBody: 'Signal card image downloaded.',
   imgFail: 'Image download failed — please try again.',
   shareDisclaimer: 'No signal is 100% profitable.',
+  // v7 keys
+  close: 'Close',
+  scanNow: '🔍 Scan Now', scanning: 'Scanning…',
+  monitorEvery: 'Every', stopMonitoring: '⏸ Stop', startMonitoring: '▶ Start',
+  monitoringOff: 'Monitoring is off — press Start',
+  scanDone: 'Scan complete', scanDoneBody: 'All pairs were rescanned.',
+  scanFailBody: 'Scan failed — please try again.',
+  bestTimeframe: 'Best timeframe: 1H (4H also works) — 15M is only for entry timing',
+  signalCode: 'Signal Code', validUntil: 'Valid until',
+  newSignalPopup: 'New Signal!',
+  whyWait: 'Why Wait?',
+  copyWaitAnalysis: '📋 Copy WAIT Analysis',
+  waitCopyDone: 'WAIT analysis copied',
+  waitCopyDoneBody: 'WAIT analysis copied — paste it on WhatsApp or Telegram.',
+  gateNotMet: 'gate not met',
+  smcBelowGate: 'SMC is below its gate',
+  zoneBlockedReason: 'No proper zone behind this direction',
+  shareCard: '📤 Share Card',
+  downloadHighRes: '⬇️ Download High-Res PNG', copyImage: '🖼️ Copy Image', copyFormattedText: '📋 Copy Formatted Text',
+  formattedPreview: 'Formatted Text Preview (Telegram / WhatsApp)',
+  imgCopyDone: 'Image copied', imgCopyDoneBody: 'Signal card image copied to the clipboard.',
+  imgCopyFail: 'Could not copy image', imgCopyFailBody: 'Image copy is not supported in this browser — use Download.',
+  dcaNote: 'DCA: take 50% profit at TP1, let the rest run to TP2/TP3.',
+  breakevenNote: 'Breakeven: after TP1, move SL to entry.',
+  stepSignal: 'Signal', stepEntry: 'Entry zone', stepTp1: 'TP1', stepTp2: 'TP2', stepTp3: 'TP3', stepDone: 'Trade closed',
+  progression: 'Progression',
+  confluenceLbl: 'Confluence',
+  pending: 'PENDING', hit: 'HIT',
+  sentimentWave: 'Sentiment Wave — computed (not a prediction)',
+  sentimentWaveNote: 'This sentiment is calculated from real RSI, trend and zones — it is not a prediction.',
+  demandIndex: 'Demand Index', supplyIndex: 'Supply Index', zoneCorridor: 'Zone Corridor',
+  histDetails: 'Signal Details (recorded)', gatesNotSaved: 'Gate details were not saved for this signal.',
+  detailsBtn: 'Details',
+  pivotTitle: 'Pivot Points (previous day)',
+  fearGreedTitle: 'Bitcoin Fear & Greed (alternative.me)',
+  fearGreedNa: 'Fear & Greed is not available right now.',
+  riskProfile: 'Risk Profile', riskConservative: 'Conservative', riskModerate: 'Moderate', riskAggressive: 'Aggressive',
+  riskConsText: 'Only high-confluence signals — risk 1% per trade',
+  riskModText: 'Standard — risk 1% per trade',
+  riskAggText: 'Higher risk — up to 2% per trade, drawdown can be bigger',
+  riskProfileLine: 'Your risk profile', timezone: 'Timezone', theme: 'Theme', themeDark: 'Dark', themeLight: 'Light',
+  language: 'Language', prefPair: 'Preferred Pair',
+  engineStatus: 'Engine Status',
+  prefSaved: 'Preferences saved.',
+  marketCards: 'Live Market',
 }};
 function t(k) { return (I18N[lang] && I18N[lang][k]) || I18N.ur[k] || k; }
 function setLang(l) { lang = l === 'en' ? 'en' : 'ur'; localStorage.setItem('ftp_lang', lang); applyLang(); }
@@ -339,6 +462,7 @@ function applyLang() {
   const lb = document.getElementById('langBtn'); if (lb) lb.textContent = lang === 'en' ? 'اردو | EN' : 'EN | اردو';
   const lb2 = document.getElementById('langBtnAuth'); if (lb2) lb2.textContent = lang === 'en' ? 'اردو | EN' : 'EN | اردو';
   updateAlertButtons();
+  updateMonitorUI();
   if (me) showTab(currentTab);
 }
 
@@ -378,6 +502,7 @@ function notifySignal(sig) {
   const body = 'Entry ' + fmt(sig.entry, 2) + ' · SL ' + fmt(sig.sl, 2) + ' · TP1 ' + fmt(sig.tp1, 2) + ' · ' + new Date(sig.createdAt).toLocaleTimeString();
   showToast(title, esc(body));
   playAlertSound();
+  showSignalPopup(sig); // v7: bara pop-up (toast ke saath)
   if (notifOn && 'Notification' in window && Notification.permission === 'granted') {
     try { new Notification(title, { body }); } catch (e) {}
   }
@@ -409,6 +534,42 @@ async function toggleNotif() {
   if (notifOn && 'Notification' in window && Notification.permission === 'default') { try { await Notification.requestPermission(); } catch (e) {} }
   updateAlertButtons();
   if (me && currentTab === 'account') loadAcct();
+}
+
+// ---------------- v7: Live monitoring — interval choice + Stop/Start + Scan Now ----------------
+// Ek hi priceTimer hota hai — interval badalne par purana clear karke naya banta hai (duplicate timer nahi).
+function restartPriceTimer() {
+  if (priceTimer) { clearInterval(priceTimer); priceTimer = null; }
+  if (monitoringOn && me) priceTimer = setInterval(() => refreshPrices(false), monitorInterval * 1000);
+}
+function setMonitorInterval(v) {
+  const n = parseInt(v, 10);
+  if (![5, 10, 15, 30].includes(n)) return;
+  monitorInterval = n; localStorage.setItem('ftp_monitor_interval', String(n));
+  restartPriceTimer(); updateMonitorUI();
+}
+function toggleMonitoring() {
+  monitoringOn = !monitoringOn; localStorage.setItem('ftp_monitoring', monitoringOn ? 'on' : 'off');
+  restartPriceTimer(); updateMonitorUI();
+}
+function updateMonitorUI() {
+  const sel = document.getElementById('monitorIntervalSel'); if (sel) sel.value = String(monitorInterval);
+  const btn = document.getElementById('monitorToggleBtn'); if (btn) btn.textContent = monitoringOn ? t('stopMonitoring') : t('startMonitoring');
+}
+let scanning = false;
+async function scanNow() {
+  if (scanning || !me) return;
+  scanning = true;
+  const btn = document.getElementById('scanBtn');
+  if (btn) { btn.disabled = true; btn.textContent = t('scanning'); }
+  try {
+    await refreshPrices(true, true); // fresh prices + fresh signal (server cache bypass)
+    if (currentTab === 'smc') { loadSmc(); loadScanner(); loadSmcFeed(); }
+    if (currentTab === 'session') loadSession();
+    showToast(t('scanDone'), esc(t('scanDoneBody')));
+  } catch (e) { showToast(t('scanDone'), esc(t('scanFailBody'))); }
+  if (btn) { btn.disabled = false; btn.textContent = t('scanNow'); }
+  scanning = false;
 }
 
 // ---------------- Terminal chart (candles + EMA 20/50/200) ----------------
@@ -548,7 +709,19 @@ async function api(path, opts = {}) {
 }
 function showMsg(t) { document.getElementById('authMsg').textContent = t || ''; }
 
+// v7: Login screen par live market cards (public endpoint — login ki zaroorat nahi)
+async function loadPublicPrices() {
+  const el = document.getElementById('publicPrices'); if (!el) return;
+  try {
+    const r = await fetch('/api/public-prices');
+    const d = await r.json();
+    if (!d.pairs || !d.pairs.length) { el.innerHTML = ''; return; }
+    el.innerHTML = '<p class="fine" style="grid-column:1/-1;margin:0">' + esc(t('marketCards')) + '</p>' + d.pairs.map(p => `<div class="price-cell"><div>${esc(p.label)} <span style="color:#8ea0c2;font-size:11px">${p.live ? 'LIVE' : ''}</span></div><b>${fmt(p.price, p.dec)}</b><div style="color:${(p.change24h || 0) >= 0 ? '#3ddc84' : '#ff6b6b'}">${p.change24h == null ? '—' : (p.change24h >= 0 ? '+' : '') + p.change24h.toFixed(2) + '%'}</div></div>`).join('');
+  } catch (e) { el.innerHTML = ''; }
+}
+
 async function init() {
+  loadPublicPrices();
   try {
     const st = await api('/api/auth/state');
     if (st.needsSetup) { document.getElementById('setupBox').style.display = 'block'; }
@@ -578,10 +751,13 @@ async function doLogout() {
   try { await api('/api/auth/logout', { method: 'POST' }); } catch (e) {}
   token = null; me = null; localStorage.removeItem('ftp_token');
   clearInterval(priceTimer); clearInterval(countdownTimer); clearInterval(alertTimer);
+  priceTimer = null; countdownTimer = null; alertTimer = null;
+  lastTerminalSig = null; lastBannerSig = null; lastSignalData = null; priceCells = {};
   document.getElementById('mainScreen').style.display = 'none';
   document.getElementById('authScreen').style.display = 'block';
   document.getElementById('loginBox').style.display = 'block';
   document.getElementById('setupBox').style.display = 'none';
+  loadPublicPrices();
 }
 function enterApp() {
   document.getElementById('authScreen').style.display = 'none';
@@ -590,15 +766,29 @@ function enterApp() {
   document.getElementById('roleBadge').textContent = me.role === 'admin' ? 'ADMIN' : (me.plan || 'BUYER');
   if (me.role === 'admin') document.getElementById('adminTabBtn').style.display = '';
   updateAlertButtons();
+  updateMonitorUI();
+  applyDefaultPair(); // server ka defaultPair (agar local preferred pair nahi hai)
   buildPairSelect();
   buildChartTf();
   showTab('terminal');
   refreshPrices(true);
   loadIndStrip();
-  priceTimer = setInterval(() => refreshPrices(false), 5000);
+  restartPriceTimer();
+  if (countdownTimer) clearInterval(countdownTimer);
   countdownTimer = setInterval(tickLastUpdate, 1000);
   checkNewSignals();
+  if (alertTimer) clearInterval(alertTimer);
   alertTimer = setInterval(checkNewSignals, 30000);
+}
+// Server ka defaultPair load karein (sirf tab jab user ne apna preferred pair save nahi kiya)
+async function applyDefaultPair() {
+  if (localStorage.getItem('ftp_pref_pair')) return;
+  try {
+    const s = await api('/api/settings');
+    if (s.settings && s.settings.defaultPair && s.settings.defaultPair !== currentPair) {
+      currentPair = s.settings.defaultPair; buildPairSelect();
+    }
+  } catch (e) {}
 }
 function buildPairSelect() {
   document.getElementById('pairSelect').innerHTML = PAIR_IDS.map(id =>
@@ -618,46 +808,84 @@ function showTab(t) {
   if (t === 'account') buildAcctSubtabs();
   if (t === 'admin') loadAdmin();
 }
-async function refreshPrices(manual) {
+async function refreshPrices(manual, force) {
   const btn = document.getElementById('refreshBtn');
   if (manual) { btn.disabled = true; btn.textContent = t('refreshing'); }
   try {
-    const d = await api('/api/prices');
+    const d = await api('/api/prices' + (force ? '?fresh=1' : ''));
     lastUpdateAt = Date.now();
-    const grid = document.getElementById('priceList');
-    grid.innerHTML = d.pairs.map(p => {
-      const prev = prevPrices[p.id];
-      const arrow = p.price != null && prev != null ? (p.price > prev ? ' <span class="up">▲</span>' : p.price < prev ? ' <span class="down">▼</span>' : '') : '';
-      if (p.price != null) prevPrices[p.id] = p.price;
-      const chg = p.change24h == null ? '—' : (p.change24h >= 0 ? '+' : '') + p.change24h.toFixed(2) + '%';
-      return `<div class="price-cell"><div>${esc(p.label)} <span style="color:#8ea0c2;font-size:11px">${p.live ? 'LIVE' : esc(p.source)}</span></div><b>${fmt(p.price, p.dec)}${arrow}</b><div style="color:${(p.change24h || 0) >= 0 ? '#3ddc84' : '#ff6b6b'}">${chg}</div></div>`;
-    }).join('');
-    document.getElementById('liveCount').textContent = 'LIVE ' + d.pairs.filter(p => p.live).length + '/' + d.pairs.length;
-    document.getElementById('apiHealth').textContent = d.sources.map(s => s.name + ': ' + s.status).join(' · ');
-    if (currentTab === 'terminal') loadTerminal(true);
-  } catch (e) { document.getElementById('apiHealth').textContent = t('priceLoadFail') + ' ' + e.message; }
+    updatePriceGrid(d.pairs); // v7 perf: cells sirf ek dafa bante hain, phir sirf values update hoti hain
+    const lc = document.getElementById('liveCount');
+    const lcTxt = 'LIVE ' + d.pairs.filter(p => p.live).length + '/' + d.pairs.length;
+    if (lc && lc.textContent !== lcTxt) lc.textContent = lcTxt;
+    const ah = document.getElementById('apiHealth');
+    const ahTxt = d.sources.map(s => s.name + ': ' + s.status + (s.ageSec != null ? ' (' + s.ageSec + 's)' : '')).join(' · ');
+    if (ah && ah.textContent !== ahTxt) ah.textContent = ahTxt;
+    if (currentTab === 'terminal') loadTerminal(true, force);
+  } catch (e) { const ah = document.getElementById('apiHealth'); if (ah) ah.textContent = t('priceLoadFail') + ' ' + e.message; }
   if (manual) { btn.disabled = false; btn.textContent = t('refresh'); loadIndStrip(); }
+}
+// v7 perf: price grid ke cells ek dafa bante hain; har tick par sirf badli hui values likhi jati hain
+// (poora grid dobara banana = layout thrash, phone par lag).
+function updatePriceGrid(pairs) {
+  const grid = document.getElementById('priceList');
+  const sig = pairs.map(p => p.id).join(',');
+  if (!grid || grid.dataset.built !== sig) {
+    if (!grid) return;
+    grid.dataset.built = sig;
+    grid.innerHTML = pairs.map(p => `<div class="price-cell"><div>${esc(p.label)} <span id="pcl-${p.id}" style="color:#8ea0c2;font-size:11px"></span></div><b id="pcp-${p.id}">—</b><div id="pcc-${p.id}"></div></div>`).join('');
+    priceCells = {};
+    pairs.forEach(p => { priceCells[p.id] = { price: document.getElementById('pcp-' + p.id), chg: document.getElementById('pcc-' + p.id), live: document.getElementById('pcl-' + p.id) }; });
+  }
+  pairs.forEach(p => {
+    const c = priceCells[p.id]; if (!c || !c.price) return;
+    const prev = prevPrices[p.id];
+    const arrow = p.price != null && prev != null ? (p.price > prev ? ' ▲' : p.price < prev ? ' ▼' : '') : '';
+    const priceTxt = fmt(p.price, p.dec) + arrow;
+    if (c.price.textContent !== priceTxt) c.price.textContent = priceTxt;
+    if (p.price != null) prevPrices[p.id] = p.price;
+    const chg = p.change24h == null ? '—' : (p.change24h >= 0 ? '+' : '') + p.change24h.toFixed(2) + '%';
+    if (c.chg && c.chg.textContent !== chg) {
+      c.chg.textContent = chg;
+      c.chg.style.color = (p.change24h || 0) >= 0 ? '#3ddc84' : '#ff6b6b';
+    }
+    const liveTxt = p.live ? 'LIVE' : p.source;
+    if (c.live && c.live.textContent !== liveTxt) c.live.textContent = liveTxt;
+  });
 }
 function tickLastUpdate() {
   if (!lastUpdateAt) return;
   const s = Math.floor((Date.now() - lastUpdateAt) / 1000);
-  document.getElementById('lastUpdate').textContent = t('lastUpdate') + ' · ' + s + ' ' + t('secAgo');
-  const cd = document.getElementById('countdown');
-  if (cd && lastSignalAt) {
-    const left = 30 - (Math.floor((Date.now() - lastSignalAt) / 1000) % 30);
-    cd.textContent = t('nextCheck') + ' ' + left + t('nextCheckSuffix');
+  const lu = document.getElementById('lastUpdate');
+  const luTxt = t('lastUpdate') + ' · ' + s + ' ' + t('secAgo');
+  if (lu && lu.textContent !== luTxt) lu.textContent = luTxt;
+  // Countdown: monitoring interval ke hisaab se (5/10/15/30s) — sirf tab jab text badle
+  let cdTxt = '';
+  if (!monitoringOn) cdTxt = t('monitoringOff');
+  else if (lastSignalAt) {
+    const left = monitorInterval - (Math.floor((Date.now() - lastSignalAt) / 1000) % monitorInterval);
+    cdTxt = t('nextCheck') + ' ' + left + 's';
   }
+  const cd = document.getElementById('countdown');
+  if (cd && cd.textContent !== cdTxt) cd.textContent = cdTxt;
+  const mc = document.getElementById('monCountdown');
+  if (mc && mc.textContent !== cdTxt) mc.textContent = cdTxt;
 }
 // ---------------- Big BUY/SELL banner (sirf tab dikhata hai jab gate paar ho — logic nahi badalta) ----------------
+// v7 perf: banner bhi sirf tab dobara banta hai jab direction/levels badlein.
 function renderSignalBanner(d) {
   const el = document.getElementById('signalBanner');
   if (!el) return;
+  const bsig = !d || d.error || d.disabled ? 'empty' : [d.direction, d.confluence, d.direction === 'BUY' ? d.buyPlan.trigger : d.direction === 'SELL' ? d.sellPlan.trigger : '', d.direction === 'BUY' ? d.buyPlan.sl : d.direction === 'SELL' ? d.sellPlan.sl : ''].join('|');
+  if (lastBannerSig === bsig) return;
+  lastBannerSig = bsig;
   if (!d || d.error || d.disabled) { el.innerHTML = ''; return; }
   const pair = currentPair.replace('USD', '/USD');
   if (d.direction === 'BUY') {
     const p = d.buyPlan;
     el.innerHTML = `<div class="signal-banner buy"><div class="sb-title">${esc(t('buyNow'))} — ${esc(pair)}</div>
       <div class="sb-line">${esc(t('bannerLine'))}</div>
+      <div class="sb-line">⏱ ${esc(t('bestTimeframe'))}</div>
       <div class="sb-vals">${t('entryZone')}: <b>${fmt(p.entryZone[0], 2)} – ${fmt(p.entryZone[1], 2)}</b> · ${t('trigger')}: <b>${fmt(p.trigger, 2)}</b><br>
       SL: <b>${fmt(p.sl, 2)}</b> · TP1: <b>${fmt(p.tp1, 2)}</b> · TP2: <b>${fmt(p.tp2, 2)}</b> · TP3: <b>${fmt(p.tp3, 2)}</b><br>
       ${t('confluence')}: <b>${d.confluence}%</b> (${t('gate')} 85%)</div></div>`;
@@ -665,6 +893,7 @@ function renderSignalBanner(d) {
     const p = d.sellPlan;
     el.innerHTML = `<div class="signal-banner sell"><div class="sb-title">${esc(t('sellNow'))} — ${esc(pair)}</div>
       <div class="sb-line">${esc(t('bannerLine'))}</div>
+      <div class="sb-line">⏱ ${esc(t('bestTimeframe'))}</div>
       <div class="sb-vals">${t('entryZone')}: <b>${fmt(p.entryZone[0], 2)} – ${fmt(p.entryZone[1], 2)}</b> · ${t('trigger')}: <b>${fmt(p.trigger, 2)}</b><br>
       SL: <b>${fmt(p.sl, 2)}</b> · TP1: <b>${fmt(p.tp1, 2)}</b> · TP2: <b>${fmt(p.tp2, 2)}</b> · TP3: <b>${fmt(p.tp3, 2)}</b><br>
       ${t('confluence')}: <b>${d.confluence}%</b> (${t('gate')} 85%)</div></div>`;
@@ -857,7 +1086,7 @@ function riskBoxHtml(plan) {
   const rr3 = risk ? (Math.abs(plan.tp3 - plan.trigger) / risk).toFixed(2) : '—';
   return `<div class="risk-box"><b>${esc(t('riskTitle'))}</b><br>
   ${esc(t('riskRrTarget'))} — TP3 1:${rr3} · TP2 1:${rr2}<br>
-  ${esc(t('riskTp1'))}<br>${esc(t('riskSize'))}<br>${esc(t('riskDd'))}</div>`;
+  ${esc(t('riskTp1'))}<br>${esc(t('riskSize'))}<br>${esc(t('riskDd'))}<br>${esc(t('riskProfileLine'))}: ${esc(riskProfileText())}</div>`;
 }
 
 // ---------------- Copy Signal + Download Signal Image (WealthMind-style share) ----------------
@@ -894,20 +1123,7 @@ function buildSignalText(sig) {
 }
 async function copySignal(sig) {
   if (!sig) return;
-  const text = buildSignalText(sig);
-  let ok = false;
-  try {
-    if (navigator.clipboard && navigator.clipboard.writeText) { await navigator.clipboard.writeText(text); ok = true; }
-  } catch (e) { ok = false; }
-  if (!ok) {
-    try {
-      const ta = document.createElement('textarea');
-      ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
-      document.body.appendChild(ta); ta.select();
-      ok = !!document.execCommand('copy');
-      document.body.removeChild(ta);
-    } catch (e2) { ok = false; }
-  }
+  const ok = await copyTextToClipboard(buildSignalText(sig));
   showToast(t('copyDone'), esc(ok ? t('copyDoneBody') : t('copyFailBody')));
 }
 function roundRectPath(ctx, x, y, w, h, r) {
@@ -999,13 +1215,280 @@ function downloadCurrentSignal() { if (currentSignal) downloadSignalImage(curren
 function copyHistorySignal(i) { const s = histSignals[i]; if (s) copySignal(s); }
 function downloadHistorySignal(i) { const s = histSignals[i]; if (s) downloadSignalImage(s); }
 
-async function loadTerminal(fromPrice) {
+// ---------------- v7: Big signal-arrival pop-up (toast se bara, sound ke saath) ----------------
+// Modal pehle se HTML me hai (display:none) — sirf khulta/band hota hai, har dafa DOM nahi banta.
+function showSignalPopup(sig) {
+  const s = signalToShare(sig);
+  popupSignal = s;
+  const el = document.getElementById('signalPopupBody');
+  if (!el) return;
+  const dirCls = s.direction === 'BUY' ? 'buy' : 'sell';
+  el.innerHTML = `<div class="signal-banner ${dirCls}" style="margin:0 0 10px"><div class="sb-title">${esc(t('newSignalPopup'))}</div>
+    <div class="sb-line">${esc(s.pair)} — <b>${s.direction}</b></div>
+    <div class="sb-line">⏱ ${esc(t('bestTimeframe'))}</div>
+    <div class="sb-vals">Entry: <b>${fmt(s.entry, 2)}</b><br>SL: <b>${fmt(s.sl, 2)}</b> · TP1: <b>${fmt(s.tp1, 2)}</b> · TP2: <b>${fmt(s.tp2, 2)}</b> · TP3: <b>${fmt(s.tp3, 2)}</b><br>${s.score != null ? t('confluence') + ': <b>' + s.score + '%</b>' : ''}${s.rr ? ' · R:R ' + esc(s.rr) : ''}</div></div>
+    <p class="fine">${esc(t('shareDisclaimer'))}</p>`;
+  const m = document.getElementById('signalPopup');
+  if (m) m.style.display = 'flex';
+}
+function closeSignalPopup() { const m = document.getElementById('signalPopup'); if (m) m.style.display = 'none'; }
+function copyPopupSignal() { if (popupSignal) copySignal(popupSignal); }
+function downloadPopupSignal() { if (popupSignal) downloadSignalImage(popupSignal); }
+
+// ---------------- v7: Branded Share Card modal ----------------
+// Portrait card (HTML preview + 1080x1350 canvas PNG). Status sirf recorded outcome se:
+// Win -> TP1 HIT, Loss -> SL HIT, Break-Even -> TP1 HIT + trade band, baaki sab PENDING.
+function shareStatusOf(level, s) {
+  if (s.outcome === 'Win') return level === 'tp1' ? t('hit') : t('pending');
+  if (s.outcome === 'Loss') return level === 'sl' ? t('hit') : t('pending');
+  if (s.outcome === 'Break-Even') return level === 'tp1' ? t('hit') : t('pending');
+  return t('pending');
+}
+function timelineDone(s) {
+  const done = [true, true, false, false, false, false];
+  if (s.outcome === 'Win' || s.outcome === 'Break-Even') done[2] = true;
+  if (s.outcome === 'Loss' || s.outcome === 'Break-Even') done[5] = true;
+  return done;
+}
+function buildFormattedShareText(s) {
+  const emoji = s.direction === 'BUY' ? '🟢' : '🔴';
+  return [
+    '*' + s.pair + ' ' + s.direction + '* ' + emoji,
+    'Signal: ' + (s.code || s.id || ''),
+    'Entry: ' + fmt(s.entry, 2),
+    'SL: ' + fmt(s.sl, 2),
+    'TP1: ' + fmt(s.tp1, 2) + ' | TP2: ' + fmt(s.tp2, 2) + ' | TP3: ' + fmt(s.tp3, 2),
+    'Score: ' + (s.score != null ? s.score + '%' : '—') + (s.rr ? ' | R:R ' + s.rr : ''),
+    'DCA: TP1 par 50% profit lo.',
+    'Breakeven: TP1 ke baad SL entry par.',
+    'Forex Trading Pro · ' + fmtPktTime(s.time) + ' PKT',
+    'Koi signal 100% profitable nahi hota.',
+  ].join('\n');
+}
+function openShareCard(sig) {
+  if (!sig) return;
+  const s = signalToShare(sig);
+  shareSignal = { ...s, id: sig.id || '', code: sig.signalCode || sig.code || sig.id || '', outcome: sig.outcome || 'In-Flight', engine: sig.engine || 'terminal', smcScore: sig.smcScore != null ? sig.smcScore : null };
+  renderSharePreview();
+  const m = document.getElementById('shareModal');
+  if (m) m.style.display = 'flex';
+}
+function openShareCardTerminal() { if (currentSignal) openShareCard(currentSignal); }
+function closeShareModal() { const m = document.getElementById('shareModal'); if (m) m.style.display = 'none'; }
+function renderSharePreview() {
+  const s = shareSignal; if (!s) return;
+  const isBuy = s.direction === 'BUY';
+  const box = (label, val, cls, level) => `<div class="share-box"><div class="share-box-label">${esc(label)}</div><div class="share-box-val ${cls}">${fmt(val, 2)}</div><div class="share-box-status">${esc(shareStatusOf(level, s))}</div></div>`;
+  const done = timelineDone(s);
+  const steps = [t('stepSignal'), t('stepEntry'), t('stepTp1'), t('stepTp2'), t('stepTp3'), t('stepDone')];
+  const pv = document.getElementById('shareCardPreview');
+  if (pv) pv.innerHTML =
+    `<div class="share-card">
+      <div class="share-card-brand">FOREX TRADING PRO</div>
+      <div class="share-card-pair">${esc(s.pair)}</div>
+      <div class="share-card-dir ${isBuy ? 'buy' : 'sell'}">${s.direction}</div>
+      <div class="share-card-code">${esc(s.code || s.id || '')}</div>
+      <div class="share-boxes">
+        ${box(t('entry'), s.entry, '', 'entry')}
+        ${box('SL', s.sl, 'sell', 'sl')}
+        ${box('TP1', s.tp1, 'buy', 'tp1')}
+        ${box('TP2', s.tp2, 'buy', 'tp2')}
+        ${box('TP3', s.tp3, 'buy', 'tp3')}
+      </div>
+      <p>${t('confluenceLbl')}: <b>${s.score != null ? s.score + '%' : '—'}</b>${s.rr ? ' · R:R ' + esc(s.rr) : ''}${s.smcScore != null ? ' · SMC ' + s.smcScore + '/100' : ''}</p>
+      <p class="fine">${esc(t('dcaNote'))}<br>${esc(t('breakevenNote'))}</p>
+      <h4>${t('progression')}</h4>
+      <div class="share-timeline">${steps.map((st, i) => `<span class="${done[i] ? 'tl-done' : 'tl-pend'}">${done[i] ? '✓' : '○'} ${esc(st)}</span>`).join('')}</div>
+      <p class="fine">${fmtPktTime(s.time)} PKT · ${esc(t('shareDisclaimer'))}</p>
+    </div>`;
+  const tp = document.getElementById('shareTextPreview');
+  if (tp) tp.textContent = buildFormattedShareText(s);
+}
+// Portrait share card 1080x1350 (v5 ke square card se lamba — WealthMind-style, lekin asal data se)
+function drawShareCardPng(s) {
+  const W = 1080, H = 1350;
+  const cv = document.createElement('canvas');
+  cv.width = W; cv.height = H;
+  const ctx = cv.getContext('2d');
+  const isBuy = s.direction === 'BUY';
+  const accent = isBuy ? '#3ddc84' : '#ff6b6b';
+  ctx.fillStyle = '#0a0f1e'; ctx.fillRect(0, 0, W, H);
+  roundRectPath(ctx, 36, 36, W - 72, H - 72, 32);
+  ctx.fillStyle = '#111a30'; ctx.fill();
+  ctx.strokeStyle = '#f5c542'; ctx.lineWidth = 3; ctx.stroke();
+  ctx.fillStyle = '#f5c542'; ctx.fillRect(36, 36, W - 72, 8);
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#f5c542'; ctx.font = '800 40px Arial, sans-serif';
+  ctx.fillText('FOREX TRADING PRO', W / 2, 128);
+  ctx.fillStyle = '#e8ecf5'; ctx.font = '800 96px Arial, sans-serif';
+  ctx.fillText(s.pair, W / 2, 252);
+  ctx.font = '800 64px Arial, sans-serif';
+  const bw = ctx.measureText(s.direction).width + 90;
+  roundRectPath(ctx, (W - bw) / 2, 288, bw, 92, 46);
+  ctx.fillStyle = accent; ctx.fill();
+  ctx.fillStyle = isBuy ? '#0a0f1e' : '#ffffff';
+  ctx.fillText(s.direction, W / 2, 352);
+  ctx.fillStyle = '#8ea0c2'; ctx.font = '400 30px Arial, sans-serif';
+  ctx.fillText(s.code || s.id || '', W / 2, 428);
+  const rows = [
+    ['Entry', fmt(s.entry, 2), '#e8ecf5', 'entry'],
+    ['SL', fmt(s.sl, 2), '#ff6b6b', 'sl'],
+    ['TP1', fmt(s.tp1, 2), '#3ddc84', 'tp1'],
+    ['TP2', fmt(s.tp2, 2), '#3ddc84', 'tp2'],
+    ['TP3', fmt(s.tp3, 2), '#3ddc84', 'tp3'],
+  ];
+  let y = 500;
+  rows.forEach((row, i) => {
+    ctx.textAlign = 'left'; ctx.font = '700 40px Arial, sans-serif'; ctx.fillStyle = '#8ea0c2';
+    ctx.fillText(row[0], 100, y);
+    ctx.textAlign = 'right'; ctx.font = '800 44px Arial, sans-serif'; ctx.fillStyle = row[2];
+    ctx.fillText(row[1] + '  ·  ' + shareStatusOf(row[3], s), W - 100, y);
+    y += 74;
+    if (i < rows.length - 1) { ctx.fillStyle = '#22304d'; ctx.fillRect(100, y - 26, W - 200, 2); }
+  });
+  ctx.textAlign = 'center';
+  ctx.font = '700 38px Arial, sans-serif'; ctx.fillStyle = '#f5c542';
+  ctx.fillText('Score: ' + (s.score != null ? s.score + '%' : '—') + (s.rr ? '   ·   R:R ' + s.rr : ''), W / 2, y + 10);
+  y += 70;
+  ctx.font = '400 30px Arial, sans-serif'; ctx.fillStyle = '#8ea0c2';
+  ctx.fillText('DCA: TP1 par 50% lo, baaki TP2/TP3 tak.', W / 2, y);
+  y += 44;
+  ctx.fillText('Breakeven: TP1 ke baad SL entry par.', W / 2, y);
+  y += 64;
+  ctx.font = '700 32px Arial, sans-serif'; ctx.fillStyle = '#f5c542';
+  ctx.fillText(t('progression'), W / 2, y);
+  y += 48;
+  const steps = [t('stepSignal'), t('stepEntry'), t('stepTp1'), t('stepTp2'), t('stepTp3'), t('stepDone')];
+  const done = timelineDone(s);
+  ctx.font = '400 30px Arial, sans-serif';
+  steps.forEach((st, i) => {
+    const col = i % 3, rowi = Math.floor(i / 3);
+    const cx = 150 + col * 330, cy = y + rowi * 52;
+    ctx.textAlign = 'left';
+    ctx.fillStyle = done[i] ? '#3ddc84' : '#8ea0c2';
+    ctx.fillText((done[i] ? '✓ ' : '○ ') + st, cx, cy);
+  });
+  y += 130;
+  ctx.textAlign = 'center';
+  ctx.font = '400 30px Arial, sans-serif'; ctx.fillStyle = '#8ea0c2';
+  ctx.fillText(fmtPktTime(s.time) + ' PKT', W / 2, y);
+  ctx.font = '400 28px Arial, sans-serif';
+  ctx.fillText(t('shareDisclaimer'), W / 2, y + 44);
+  return cv;
+}
+function downloadShareCardPng() {
+  if (!shareSignal) return;
+  const s = shareSignal;
+  const name = s.pair + '-' + s.direction + '-share-card.png';
+  const done = () => showToast(t('imgDone'), esc(t('imgDoneBody')));
+  const fail = () => showToast(t('imgDone'), esc(t('imgFail')));
+  try {
+    const cv = drawShareCardPng(s);
+    if (cv.toBlob) {
+      cv.toBlob((blob) => {
+        if (!blob) { fail(); return; }
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = name; a.click();
+        setTimeout(() => { try { URL.revokeObjectURL(url); } catch (e) {} }, 2000);
+        done();
+      }, 'image/png');
+    } else {
+      const a = document.createElement('a');
+      a.href = cv.toDataURL('image/png'); a.download = name; a.click();
+      done();
+    }
+  } catch (e) { fail(); }
+}
+async function copyShareCardImage() {
+  if (!shareSignal) return;
+  try {
+    const cv = drawShareCardPng(shareSignal);
+    const blob = await new Promise((res, rej) => {
+      if (cv.toBlob) cv.toBlob(b => b ? res(b) : rej(new Error('no blob')), 'image/png');
+      else rej(new Error('no toBlob'));
+    });
+    if (navigator.clipboard && window.ClipboardItem) {
+      await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+      showToast(t('imgCopyDone'), esc(t('imgCopyDoneBody')));
+    } else { showToast(t('imgCopyFail'), esc(t('imgCopyFailBody'))); }
+  } catch (e) { showToast(t('imgCopyFail'), esc(t('imgCopyFailBody'))); }
+}
+async function copyShareCardText() {
+  if (!shareSignal) return;
+  const ok = await copyTextToClipboard(buildFormattedShareText(shareSignal));
+  showToast(t('copyDone'), esc(ok ? t('copyDoneBody') : t('copyFailBody')));
+}
+
+// ---------------- v7: Terminal helpers (price line / Why Wait / Sentiment Wave / Copy WAIT) ----------------
+function priceLineHtml(d) {
+  return `${t('price')}: <b>${fmt(d.price, 2)}</b> · Bid ${fmt(d.bid, 2)} · Ask ${fmt(d.ask, 2)} · Spread ${fmt(d.spread, 2)} · ${t('confluence')}: <b>${d.confluence}%</b> (${t('gate')} 85%)`;
+}
+// "Why Wait?" — asal gate breakdown se top failing gates (koi wajah banayi nahi jati)
+function whyWaitHtml(d) {
+  const lead = d.buyScore >= d.sellScore ? { gates: d.buyGates || [] } : { gates: d.sellGates || [] };
+  const failing = (lead.gates || []).filter(g => g.points < g.max).sort((a, b) => (b.max - b.points) - (a.max - a.points)).slice(0, 3);
+  let rows = failing.map(g => `<div class="gate"><span>${esc(g.name)}</span><span>${g.points}/${g.max} — ${esc(t('gateNotMet'))}</span></div>`).join('');
+  if (d.smc && d.smc.score < 80) rows += `<div class="gate"><span>SMC Score</span><span>${d.smc.score}/100 — ${esc(t('smcBelowGate'))} (80%)</span></div>`;
+  if (d.zoneBlocked) rows += `<div class="gate"><span>${esc(t('tradeZone'))}</span><span>${esc(t('zoneBlockedReason'))}</span></div>`;
+  if (!rows) return '';
+  return `<h4>${t('whyWait')}</h4>${rows}`;
+}
+async function copyWaitAnalysis() {
+  const d = lastSignalData; if (!d) return;
+  const lead = d.buyScore >= d.sellScore ? { dir: 'BUY', gates: d.buyGates || [], score: d.buyScore } : { dir: 'SELL', gates: d.sellGates || [], score: d.sellScore };
+  const failing = (lead.gates || []).filter(g => g.points < g.max).sort((a, b) => (b.max - b.points) - (a.max - a.points)).slice(0, 3);
+  const lines = [
+    d.pair + ' — WAIT (koi trade nahi)',
+    'Confluence: ' + d.confluence + '% (gate 85%)',
+    'BUY: ' + d.buyScore + '% · SELL: ' + d.sellScore + '%',
+    'Leading: ' + lead.dir + ' ' + lead.score + '%',
+  ];
+  failing.forEach(g => lines.push('• ' + g.name + ': ' + g.points + '/' + g.max));
+  if (d.smc) lines.push('SMC: ' + d.smc.score + '/100 (gate 80%)');
+  if (d.zoneBlocked) lines.push('• ' + t('zoneBlockedReason'));
+  lines.push('Best timeframe: 1H (4H bhi theek hai) — 15M sirf entry timing.');
+  lines.push('Forex Trading Pro · ' + fmtPktTime(Date.now()) + ' PKT');
+  const ok = await copyTextToClipboard(lines.join('\n'));
+  showToast(t('waitCopyDone'), esc(ok ? t('waitCopyDoneBody') : t('copyFailBody')));
+}
+// Sentiment Wave: bull/bear bars + Demand/Supply Index + zone corridor — sab asal data se.
+// Demand Index = price demand zone ke kitna qareeb hai (0–100); Supply Index us ka ulta.
+function sentimentWaveHtml(d) {
+  const s = d.sentiment; if (!s) return '';
+  const bull = s.bullishPct, bear = s.bearishPct;
+  let dIdx = null, sIdx = null;
+  if (s.demandZone && s.supplyZone) {
+    const lo = s.demandZone[0], hi = s.supplyZone[1];
+    if (hi > lo) {
+      const pos = Math.max(0, Math.min(1, (d.price - lo) / (hi - lo)));
+      dIdx = Math.round((1 - pos) * 100); sIdx = Math.round(pos * 100);
+    }
+  }
+  let corridor = '';
+  if (d.range && d.range.pdh > d.range.pdl) {
+    const pct = (v) => Math.max(0, Math.min(100, (v - d.range.pdl) / (d.range.pdh - d.range.pdl) * 100));
+    const dz = s.demandZone ? `<div class="corr-zone demand" style="left:${pct(s.demandZone[0])}%;width:${Math.max(1, pct(s.demandZone[1]) - pct(s.demandZone[0]))}%"></div>` : '';
+    const sz = s.supplyZone ? `<div class="corr-zone supply" style="left:${pct(s.supplyZone[0])}%;width:${Math.max(1, pct(s.supplyZone[1]) - pct(s.supplyZone[0]))}%"></div>` : '';
+    corridor = `<div class="corr-track">${dz}${sz}<div class="corr-price" style="left:${pct(d.price)}%"></div></div><p class="fine">PDL ${fmt(d.range.pdl, 2)} — PDH ${fmt(d.range.pdh, 2)} · <span style="color:#f5c542">▮</span> = price</p>`;
+  }
+  return `<h4>${t('sentimentWave')}</h4>
+  <div class="sent-bar"><div class="sent-bull" style="width:${bull}%"></div><div class="sent-bear" style="width:${bear}%"></div></div>
+  <p>Bullish ${bull}% · Bearish ${bear}% — ${esc(s.label)}</p>
+  <p>${t('demandIndex')}: ${dIdx == null ? '—' : dIdx + '/100'} · ${t('supplyIndex')}: ${sIdx == null ? '—' : sIdx + '/100'}</p>
+  <p>${t('demandZone')}: ${s.demandZone ? fmt(s.demandZone[0], 2) + ' – ' + fmt(s.demandZone[1], 2) : '—'} · ${t('supplyZone')}: ${s.supplyZone ? fmt(s.supplyZone[0], 2) + ' – ' + fmt(s.supplyZone[1], 2) : '—'}</p>
+  <h4>${t('zoneCorridor')}</h4>${corridor}
+  <p class="fine">${t('sentimentWaveNote')}</p>`;
+}
+
+async function loadTerminal(fromPrice, force) {
   const el = document.getElementById('terminalCard');
   try {
-    const d = await api('/api/signal?pair=' + currentPair + '&lang=' + lang);
-    if (d.disabled) { currentSignal = null; el.innerHTML = '<p>' + esc(d.message) + '</p>'; renderSignalBanner(null); return; }
-    if (d.error) { currentSignal = null; el.innerHTML = '<p>' + esc(d.message) + '</p>'; renderSignalBanner(null); return; }
+    const d = await api('/api/signal?pair=' + currentPair + '&lang=' + lang + (force ? '&fresh=1' : ''));
+    if (d.disabled) { currentSignal = null; lastSignalData = null; el.innerHTML = '<p>' + esc(d.message) + '</p>'; renderSignalBanner(null); return; }
+    if (d.error) { currentSignal = null; lastSignalData = null; el.innerHTML = '<p>' + esc(d.message) + '</p>'; renderSignalBanner(null); return; }
     lastSignalAt = Date.now();
+    lastSignalData = d;
     renderSignalBanner(d);
     const dirCls = d.direction === 'BUY' ? 'buy' : d.direction === 'SELL' ? 'sell' : 'wait';
     const planHtml = (plan, label) => {
@@ -1022,7 +1505,9 @@ async function loadTerminal(fromPrice) {
       TP1: <span class="buy"><b>${fmt(plan.tp1, 2)}</b></span> (${rrOf(plan.tp1)}) · TP2: <b>${fmt(plan.tp2, 2)}</b> (${rrOf(plan.tp2)}) · TP3: <b>${fmt(plan.tp3, 2)}</b> (${rrOf(plan.tp3)})<br>
       ${d.tradeZone ? `${t('tradeZone')}: <b>${esc(d.tradeZone.type)} ${fmt(d.tradeZone.low, 2)} – ${fmt(d.tradeZone.high, 2)}</b>` : ''}
       ${riskBoxHtml(plan)}
-      <div class="sig-actions"><button class="btn-sig" onclick="copyCurrentSignal()">${esc(t('copySignal'))}</button> <button class="btn-sig" onclick="downloadCurrentSignal()">${esc(t('downloadSignal'))}</button></div></div>`;
+      <p class="fine">⏱ ${esc(t('bestTimeframe'))}</p>
+      ${d.signalCode ? `<p class="fine">${t('signalCode')}: <b>${esc(d.signalCode)}</b> · ${t('validUntil')}: ${fmtPktTimeShort(d.validUntil)}</p>` : ''}
+      <div class="sig-actions"><button class="btn-sig" onclick="copyCurrentSignal()">${esc(t('copySignal'))}</button> <button class="btn-sig" onclick="downloadCurrentSignal()">${esc(t('downloadSignal'))}</button> <button class="btn-sig" onclick="openShareCardTerminal()">${esc(t('shareCard'))}</button></div></div>`;
     };
     const gatesHtml = (gates, title) => `<h4>${title}</h4>` + gates.map(g =>
       `<div class="gate"><span>${esc(g.name)}</span><span>${g.points}/${g.max}</span></div>`).join('');
@@ -1033,22 +1518,31 @@ async function loadTerminal(fromPrice) {
       : gatesHtml(d.buyGates, t('buyGates')) + ' ' + gatesHtml(d.sellGates, t('sellGates'));
     const activePlan = d.direction === 'BUY' ? d.buyPlan : d.direction === 'SELL' ? d.sellPlan : null;
     // Terminal ka active signal — sirf jab BUY/SELL plan ho (WAIT par null, to Copy/Download buttons nahi bante)
-    currentSignal = activePlan ? { pair: currentPair, direction: d.direction, entry: activePlan.trigger, sl: activePlan.sl, tp1: activePlan.tp1, tp2: activePlan.tp2, tp3: activePlan.tp3, score: d.confluence, rr: activePlan.rr || '', time: d.updatedAt } : null;
+    currentSignal = activePlan ? { pair: currentPair, direction: d.direction, entry: activePlan.trigger, sl: activePlan.sl, tp1: activePlan.tp1, tp2: activePlan.tp2, tp3: activePlan.tp3, score: d.confluence, rr: activePlan.rr || '', time: d.updatedAt, signalCode: d.signalCode || null, smcScore: d.smc ? d.smc.score : null } : null;
     const oppDir = d.direction === 'BUY' ? 'SELL' : d.direction === 'SELL' ? 'BUY' : null;
     const oppScore = d.direction === 'BUY' ? d.sellScore : d.direction === 'SELL' ? d.buyScore : null;
+    // v7 perf: price tick par poora card dobara na banayein — sirf tab jab signal ki asal values badlein.
+    // Badli hui price sirf price line me update hoti hai (ek chhota <p>), baaki card waisa ka waisa rehta hai.
+    const termSig = [d.direction, d.confluence, d.buyScore, d.sellScore, activePlan ? activePlan.trigger : '', activePlan ? activePlan.sl : '', activePlan ? activePlan.tp1 : '', activePlan ? activePlan.tp2 : '', activePlan ? activePlan.tp3 : '', d.smc ? d.smc.score : '', d.zoneBlocked, d.signalCode || ''].join('|');
+    if (fromPrice && lastTerminalSig === termSig) {
+      const pl = document.getElementById('termPriceLine');
+      if (pl) pl.innerHTML = priceLineHtml(d);
+      renderSignalBanner(d);
+      return;
+    }
+    lastTerminalSig = termSig;
     el.innerHTML = `
       <h3>${esc(currentPair.replace('USD', '/USD'))} — <span class="${dirCls}">${d.direction}</span> ${d.direction === 'WAIT' ? t('noTrade') : ''}</h3>
-      <p>${t('price')}: <b>${fmt(d.price, 2)}</b> · Bid ${fmt(d.bid, 2)} · Ask ${fmt(d.ask, 2)} · Spread ${fmt(d.spread, 2)} · ${t('confluence')}: <b>${d.confluence}%</b> (${t('gate')} 85%)</p>
+      <p id="termPriceLine">${priceLineHtml(d)}</p>
       <p>PDH ${fmt(d.range.pdh, 2)} · PDL ${fmt(d.range.pdl, 2)} · Range ${fmt(d.range.pdl, 2)} – ${fmt(d.range.pdh, 2)}</p>
       ${gatesSection}
       <h4>${t('signalPlan')} — ${d.direction}</h4>
-      ${activePlan ? planHtml(activePlan, d.direction) : '<p>' + esc(t('waitNoTrade')) + (d.zoneBlocked && d.zoneNote ? '<br>' + esc(d.zoneNote) : '') + '</p>'}
+      ${activePlan ? planHtml(activePlan, d.direction) : '<p>' + esc(t('waitNoTrade')) + (d.zoneBlocked && d.zoneNote ? '<br>' + esc(d.zoneNote) : '') + '</p><div class="sig-actions"><button class="btn-sig" onclick="copyWaitAnalysis()">' + esc(t('copyWaitAnalysis')) + '</button></div>'}
+      ${d.direction === 'WAIT' ? whyWaitHtml(d) : ''}
       ${oppDir ? `<p class="fine">${t('oppScenario')}: ${oppDir} ${oppScore}% — ${t('oppGateNotMet')} (${t('gate')} 85%)</p>` : ''}
       ${smcChecklistHtml(d)}
       ${extendedConfluenceHtml(d)}
-      <h4>${t('sentiment')} — ${esc(d.sentiment.label)}</h4>
-      <p>Bullish ${d.sentiment.bullishPct}% · Bearish ${d.sentiment.bearishPct}%</p>
-      <p>${t('demandZone')}: ${d.sentiment.demandZone ? fmt(d.sentiment.demandZone[0], 2) + ' – ' + fmt(d.sentiment.demandZone[1], 2) : '—'} · ${t('supplyZone')}: ${d.sentiment.supplyZone ? fmt(d.sentiment.supplyZone[0], 2) + ' – ' + fmt(d.sentiment.supplyZone[1], 2) : '—'}</p>
+      ${sentimentWaveHtml(d)}
       <h4>${t('liveComments')}</h4>
       <ul>${d.comments.map(c => '<li>' + esc(c) + '</li>').join('')}</ul>
       <p>${t('nextCheck')} ${d.nextCheckInSec}${t('nextCheckSuffix')} · ${t('signalUpdated')}: ${new Date(d.updatedAt).toLocaleTimeString()}</p>`;
@@ -1073,8 +1567,19 @@ async function loadIndicators() {
       <h4>${t('vwapSar')}</h4>${row('VWAP', fmt(tf.vwap, 2))}${row('Parabolic SAR', fmt(tf.sar, 2))}
       <h4>${t('tf15d')}</h4>
       <p>15M — RSI ${fmt(d.timeframes['15m'].rsi14, 1)} · EMA20 ${fmt(d.timeframes['15m'].ema20, 2)} · ATR ${fmt(d.timeframes['15m'].atr14, 2)}</p>
-      <p>Daily — RSI ${fmt(d.timeframes['1D'].rsi14, 1)} · EMA20 ${fmt(d.timeframes['1D'].ema20, 2)} · ATR ${fmt(d.timeframes['1D'].atr14, 2)}</p>`;
+      <p>Daily — RSI ${fmt(d.timeframes['1D'].rsi14, 1)} · EMA20 ${fmt(d.timeframes['1D'].ema20, 2)} · ATR ${fmt(d.timeframes['1D'].atr14, 2)}</p>
+      ${d.pivots ? `<h4>${t('pivotTitle')}</h4>${row('P', fmt(d.pivots.P, 2))}${row('R1', fmt(d.pivots.R1, 2))}${row('R2', fmt(d.pivots.R2, 2))}${row('S1', fmt(d.pivots.S1, 2))}${row('S2', fmt(d.pivots.S2, 2))}` : ''}
+      <h4>${t('fearGreedTitle')}</h4><div id="fngBody"><p>${esc(t('loading'))}</p></div>`;
+    loadFearGreed();
   } catch (e) { body.innerHTML = '<p>' + t('indLoadFail') + ' ' + esc(e.message) + '</p>'; }
+}
+async function loadFearGreed() {
+  const el = document.getElementById('fngBody'); if (!el) return;
+  try {
+    const d = await api('/api/feargreed');
+    if (!d.available || d.value == null) { el.innerHTML = '<p>' + esc(t('fearGreedNa')) + '</p>'; return; }
+    el.innerHTML = `<p><b>${d.value}/100</b> — ${esc(d.classification || '')} · ${new Date(d.updatedAt).toLocaleTimeString()}</p><div class="sent-bar"><div class="sent-bull" style="width:${d.value}%"></div></div>`;
+  } catch (e) { el.innerHTML = '<p>' + esc(t('fearGreedNa')) + '</p>'; }
 }
 async function loadSmc() {
   const el = document.getElementById('smcBody');
@@ -1156,8 +1661,21 @@ async function loadHistory() {
   try {
     const d = await api('/api/history?outcome=' + o + '&engine=' + en);
     histSignals = d.signals || [];
-    el.innerHTML = d.signals.length ? d.signals.map((s, i) => `<div class="price-cell" style="margin:6px 0"><b>${esc(s.pair)}</b> <span class="${s.direction === 'BUY' ? 'buy' : 'sell'}">${s.direction}</span> · ${new Date(s.createdAt).toLocaleString()}<br>${t('entry')} ${fmt(s.entry, 2)} · SL ${fmt(s.sl, 2)} · TP1 ${fmt(s.tp1, 2)} · TP2 ${fmt(s.tp2, 2)} · TP3 ${fmt(s.tp3, 2)} · Score ${s.score}% · ${esc(s.engine)} · <b>${esc(s.outcome || 'In-Flight')}</b><br><button class="btn-sig-sm" onclick="copyHistorySignal(${i})">${esc(t('copySignal'))}</button> <button class="btn-sig-sm" onclick="downloadHistorySignal(${i})">${esc(t('downloadSignal'))}</button></div>`).join('') : '<p>' + esc(t('noSignals')) + '</p>';
+    el.innerHTML = d.signals.length ? d.signals.map((s, i) => `<div class="price-cell hist-row" style="margin:6px 0" onclick="toggleHistDetails(${i})"><b>${esc(s.pair)}</b> <span class="${s.direction === 'BUY' ? 'buy' : 'sell'}">${s.direction}</span> · ${new Date(s.createdAt).toLocaleString()}<br>${t('entry')} ${fmt(s.entry, 2)} · SL ${fmt(s.sl, 2)} · TP1 ${fmt(s.tp1, 2)} · TP2 ${fmt(s.tp2, 2)} · TP3 ${fmt(s.tp3, 2)} · Score ${s.score}% · ${esc(s.engine)} · <b>${esc(s.outcome || 'In-Flight')}</b><br><button class="btn-sig-sm" onclick="event.stopPropagation();copyHistorySignal(${i})">${esc(t('copySignal'))}</button> <button class="btn-sig-sm" onclick="event.stopPropagation();downloadHistorySignal(${i})">${esc(t('downloadSignal'))}</button> <button class="btn-sig-sm" onclick="event.stopPropagation();openShareCard(histSignals[${i}])">${esc(t('shareCard'))}</button> <button class="btn-sig-sm" onclick="event.stopPropagation();toggleHistDetails(${i})">${esc(t('detailsBtn'))}</button><div id="hist-det-${i}" style="display:${histOpenDetails[i] ? 'block' : 'none'}">${histDetailsHtml(s)}</div></div>`).join('') : '<p>' + esc(t('noSignals')) + '</p>';
   } catch (e) { el.innerHTML = '<p>' + esc(e.message) + '</p>'; }
+}
+// History per-row details — RECORDED gate breakdown (audit). Purane signals me gates save nahi hue.
+function histDetailsHtml(s) {
+  let h = `<h4>${t('histDetails')}</h4><p>${t('signal')}: ${esc(s.id || '—')} · ${esc(s.engine)} · ${t('gate')} ${s.gate || '—'}% · Score ${s.score}%</p>`;
+  if (s.gates && s.gates.length) h += s.gates.map(g => `<div class="gate"><span>${esc(g.name)}</span><span>${g.points}/${g.max}</span></div>`).join('');
+  else h += '<p>' + esc(t('gatesNotSaved')) + '</p>';
+  if (s.smcScore != null) h += `<p>SMC Score: ${s.smcScore}/100</p>`;
+  return h;
+}
+function toggleHistDetails(i) {
+  histOpenDetails[i] = !histOpenDetails[i];
+  const el = document.getElementById('hist-det-' + i);
+  if (el) el.style.display = histOpenDetails[i] ? 'block' : 'none';
 }
 async function loadRefiner() {
   const el = document.getElementById('refinerBody');
@@ -1187,9 +1705,17 @@ async function loadAcct() {
       <p>${t('signals')}: ${t('total')} ${p.total} · ${t('wins')} ${p.wins} · ${t('losses')} ${p.losses} · ${t('inFlight')} ${p.inFlight}</p>`;
     } else if (acctTab === 'engineControls') {
       const s = await api('/api/settings');
-      el.innerHTML = ['terminal', 'smc', 'session', 'news'].map(k => `<div class="gate"><span>${k === 'terminal' ? t('mainTerminal') : k === 'smc' ? t('smcEngine') : k === 'session' ? t('sessionEngine') : t('newsIntel')}</span><button class="btn small ${s.settings.engines[k] ? 'gold' : ''}" onclick="toggleEngine('${k}', ${!s.settings.engines[k]})">${s.settings.engines[k] ? 'ON' : 'OFF'}</button></div>`).join('') +
-      `<p>${esc(t('engineOffNote'))}</p>
-      <button class="btn small" onclick="testPush()">${t('testPushBtn')}</button> <span id="pushMsg"></span>`;
+      const engLabel = (k) => k === 'terminal' ? t('mainTerminal') : k === 'smc' ? t('smcEngine') : k === 'session' ? t('sessionEngine') : t('newsIntel');
+      // Toggles sirf admin ke liye — buyer ko 403 alert dikhana bekar hai; buyer ko sirf status dikhta hai.
+      if (me.role === 'admin') {
+        el.innerHTML = ['terminal', 'smc', 'session', 'news'].map(k => `<div class="gate"><span>${engLabel(k)}</span><button class="btn small ${s.settings.engines[k] ? 'gold' : ''}" onclick="toggleEngine('${k}', ${!s.settings.engines[k]})">${s.settings.engines[k] ? 'ON' : 'OFF'}</button></div>`).join('') +
+        `<p>${esc(t('engineOffNote'))}</p>
+        <button class="btn small" onclick="testPush()">${t('testPushBtn')}</button> <span id="pushMsg"></span>`;
+      } else {
+        el.innerHTML = ['terminal', 'smc', 'session', 'news'].map(k => `<div class="gate"><span>${engLabel(k)}</span><span>${s.settings.engines[k] ? 'ON' : 'OFF'}</span></div>`).join('') +
+        `<p class="fine">${esc(t('engineStatus'))} — ${esc(t('engineOffNote'))}</p>
+        <button class="btn small" onclick="testPush()">${t('testPushBtn')}</button> <span id="pushMsg"></span>`;
+      }
     } else if (acctTab === 'signalDetails') {
       const d = await api('/api/signal?pair=' + currentPair + '&lang=' + lang);
       // Ek direction, ek trade — sirf wo plan dikhao jo gate paar kare (Terminal jaisa)
@@ -1210,8 +1736,20 @@ async function loadAcct() {
       el.innerHTML = `<p><b>${esc(t('aiTitle'))}</b> ${esc(t('aiText'))}</p>
       <input id="aiQ" data-i18n-ph="phAiQ" placeholder="${esc(t('phAiQ'))}"><button class="btn gold" onclick="askAi()">${t('aiAsk')}</button><p id="aiA"></p>`;
     } else if (acctTab === 'preferences') {
-      el.innerHTML = `<p>${t('defaultPair')}: <select id="prefPair" onchange="savePref()">${PAIR_IDS.map(p => `<option ${p === currentPair ? 'selected' : ''}>${p}</option>`).join('')}</select></p><p id="prefMsg"></p>
+      el.innerHTML = `
+      <p>${t('prefPair')}: <select id="prefPair" onchange="savePrefPair(this.value)">${PAIR_IDS.map(p => `<option ${p === currentPair ? 'selected' : ''}>${p}</option>`).join('')}</select></p>
+      <p>${t('riskProfile')}: <select id="prefRisk" onchange="savePrefRisk(this.value)">
+        <option value="conservative" ${riskProfile === 'conservative' ? 'selected' : ''}>${t('riskConservative')}</option>
+        <option value="moderate" ${riskProfile === 'moderate' ? 'selected' : ''}>${t('riskModerate')}</option>
+        <option value="aggressive" ${riskProfile === 'aggressive' ? 'selected' : ''}>${t('riskAggressive')}</option></select>
+        <span class="fine"> — ${esc(riskProfileText())}</span></p>
+      <p>${t('timezone')}: <b>PKT (UTC+5)</b></p>
+      <p>${t('language')}: <button class="btn small" onclick="setLang('ur')">اردو</button> <button class="btn small" onclick="setLang('en')">English</button> <span class="fine">(${lang === 'en' ? 'English' : 'اردو'})</span></p>
+      <p>${t('theme')}: <select id="prefTheme" onchange="setTheme(this.value)">
+        <option value="dark" ${theme === 'dark' ? 'selected' : ''}>${t('themeDark')}</option>
+        <option value="light" ${theme === 'light' ? 'selected' : ''}>${t('themeLight')}</option></select></p>
       <p>${t('sound')}: <button class="btn small ${soundOn ? 'gold' : ''}" onclick="toggleSound()">${soundOn ? 'ON' : 'OFF'}</button> · ${t('notifications')}: <button class="btn small ${notifOn ? 'gold' : ''}" onclick="toggleNotif()">${notifOn ? 'ON' : 'OFF'}</button></p>
+      <p id="prefMsg"></p>
       <p class="fine">${esc(t('alertsNote'))}</p>`;
     }
   } catch (e) { el.innerHTML = '<p>' + esc(e.message) + '</p>'; }
@@ -1235,9 +1773,25 @@ async function askAi() {
   try { const d = await api('/api/ai', { method: 'POST', body: JSON.stringify({ question: q }) }); document.getElementById('aiA').textContent = d.answer + ' (' + d.note + ')'; }
   catch (e) { document.getElementById('aiA').textContent = e.message; }
 }
-async function savePref() {
-  try { await api('/api/settings', { method: 'POST', body: JSON.stringify({ defaultPair: document.getElementById('prefPair').value }) }); document.getElementById('prefMsg').textContent = t('saved'); }
-  catch (e) { document.getElementById('prefMsg').textContent = e.message; }
+async function savePrefPair(v) {
+  currentPair = v;
+  localStorage.setItem('ftp_pref_pair', v);
+  buildPairSelect(); loadTerminal(); loadIndicators(); loadSmc(); loadChart(); loadIndStrip();
+  // Admin ho to server ka defaultPair bhi update karein (buyer ke liye 403 — chup chap ignore)
+  if (me && me.role === 'admin') { try { await api('/api/settings', { method: 'POST', body: JSON.stringify({ defaultPair: v }) }); } catch (e) {} }
+  const m = document.getElementById('prefMsg'); if (m) m.textContent = t('prefSaved');
+}
+function savePrefRisk(v) {
+  riskProfile = ['conservative', 'moderate', 'aggressive'].includes(v) ? v : 'moderate';
+  localStorage.setItem('ftp_risk_profile', riskProfile);
+  loadAcct(); // risk wali line dobara dikhaye
+  const m = document.getElementById('prefMsg'); if (m) m.textContent = t('prefSaved');
+}
+function setTheme(v) {
+  theme = v === 'light' ? 'light' : 'dark';
+  localStorage.setItem('ftp_theme', theme);
+  applyTheme();
+  const m = document.getElementById('prefMsg'); if (m) m.textContent = t('prefSaved');
 }
 
 // ---- Admin ----
