@@ -129,10 +129,12 @@ function krakenKeyToPair(key) {
 // ---------------- Live prices (ONE parallel batch, ~3s cache) ----------------
 let priceCache = { at: 0, data: null };
 let priceInflight = null;
+// Har source aakhri dafa kab kamyab hua (per-source freshness ke liye) — memory me hi, DB me nahi.
+const sourceFresh = {};
 
-async function fetchAllPrices() {
+async function fetchAllPrices(force) {
   const now = Date.now();
-  if (priceCache.data && now - priceCache.at < 3000) return priceCache.data;
+  if (!force && priceCache.data && now - priceCache.at < 3000) return priceCache.data;
   if (priceInflight) return priceInflight;
   priceInflight = (async () => {
     const started = Date.now();
@@ -160,6 +162,7 @@ async function fetchAllPrices() {
         krakenMap[pair] = { bid: parseFloat(v.b[0]), ask: parseFloat(v.a[0]), last: parseFloat(v.c[0]), open: parseFloat(v.o), high24: parseFloat(v.h[1]), low24: parseFloat(v.l[1]) };
       }
       sources.push({ name: 'Kraken', status: 'CONNECTED' });
+      sourceFresh['Kraken'] = Date.now();
     } else sources.push({ name: 'Kraken', status: 'RETRY' });
 
     const yahooMap = {};
@@ -169,15 +172,18 @@ async function fetchAllPrices() {
       if (m && typeof m.regularMarketPrice === 'number') { yahooMap[id] = { price: m.regularMarketPrice, prevClose: m.previousClose }; yahooOk++; }
     }
     sources.push({ name: 'Yahoo Finance', status: yahooOk ? 'CONNECTED' : 'RETRY' });
+    if (yahooOk) sourceFresh['Yahoo Finance'] = Date.now();
 
     const exRates = (ex && ex.rates) ? ex.rates : null;
     sources.push({ name: 'ExchangeRate-API', status: exRates ? 'CONNECTED' : 'RETRY' });
+    if (exRates) sourceFresh['ExchangeRate-API'] = Date.now();
 
     const goldMap = {};
     for (const { s, d } of goldApiList) {
       if (d && typeof d.price === 'number') goldMap[s] = d.price;
     }
     sources.push({ name: 'Gold-API', status: Object.keys(goldMap).length ? 'CONNECTED' : 'RETRY' });
+    if (Object.keys(goldMap).length) sourceFresh['Gold-API'] = Date.now();
 
     // Binance: crypto 24h change (non-critical — Kraken/Yahoo se bhi change nikal sakta hai)
     const binMap = {};
@@ -189,6 +195,7 @@ async function fetchAllPrices() {
       }
     }
     sources.push({ name: 'Binance', status: Object.keys(binMap).length ? 'CONNECTED' : 'STANDBY' });
+    if (Object.keys(binMap).length) sourceFresh['Binance'] = Date.now();
 
     const out = [];
     for (const p of PAIRS) {
@@ -380,6 +387,27 @@ function stochArr(candles, period = 14) {
   const d = ks.length >= 3 ? (ks[ks.length - 1] + ks[ks.length - 2] + ks[ks.length - 3]) / 3 : k;
   return { k, d };
 }
+// Daily Pivot Points: pichle poore UTC din ke H/L/C se (asal 1H candles).
+// P = (H+L+C)/3, R1 = 2P−L, S1 = 2P−H, R2 = P+(H−L), S2 = P−(H−L).
+// Poora din na mile to null (koi number banaya nahi jata).
+function dailyPivots(candles) {
+  if (!candles || candles.length < 25) return null;
+  const keyOf = (t) => { const d = new Date(t); return d.getUTCFullYear() + '-' + (d.getUTCMonth() + 1) + '-' + d.getUTCDate(); };
+  const lastKey = keyOf(candles[candles.length - 1].t);
+  let day = null, H = -Infinity, L = Infinity, C = null;
+  for (let i = candles.length - 1; i >= 0; i--) {
+    const k = keyOf(candles[i].t);
+    if (k === lastKey) continue; // aaj (chaloo din) ki candles skip — poora din chahiye
+    if (day === null) day = k;
+    if (k !== day) break;
+    H = Math.max(H, candles[i].h); L = Math.min(L, candles[i].l);
+    if (C === null) C = candles[i].c; // peeche se pehli candle = us din ki aakhri candle ka close
+  }
+  if (day === null || !isFinite(H) || !isFinite(L) || C == null) return null;
+  const P = (H + L + C) / 3;
+  return { P: +P.toFixed(2), R1: +(2 * P - L).toFixed(2), S1: +(2 * P - H).toFixed(2), R2: +(P + (H - L)).toFixed(2), S2: +(P - (H - L)).toFixed(2), dayHigh: H, dayLow: L, dayClose: C };
+}
+
 function computeIndicators(candles) {
   const closes = candles.map(c => c.c);
   const last = candles[candles.length - 1];
@@ -882,11 +910,12 @@ function zoneSupportFor(smc, demandZone, supplyZone, live, atr, dir) {
   return { ok: false, zone: null };
 }
 let signalCache = new Map(); // pair -> {at, data}
-async function computeSignal(pairId, lang) {
+async function computeSignal(pairId, lang, force) {
   const cacheKey = pairId + '|' + (lang === 'en' ? 'en' : 'ur');
+  if (force) signalCache.delete(cacheKey);
   const cached = signalCache.get(cacheKey);
   if (cached && Date.now() - cached.at < 30000) return cached.data;
-  const prices = await fetchAllPrices();
+  const prices = await fetchAllPrices(force);
   const quote = prices.pairs.find(p => p.id === pairId);
   const candles = await getCandles(pairId, '15m');
   if (!candles.length || !quote || quote.price == null) {
@@ -944,6 +973,15 @@ async function computeSignal(pairId, lang) {
   else if (ind.ema200) comments.push(en ? 'Price is below EMA 200 — the big trend is down.' : 'Price EMA 200 ke neeche hai — bara trend neeche.');
   const pdh = Math.max(...candles.slice(-96).map(c => c.h));
   const pdl = Math.min(...candles.slice(-96).map(c => c.l));
+  // Signal code + validity: pair + aaj ki tareekh (YYMMDD) + aaj ka sequence number.
+  // Sequence = aaj is pair/direction ke record kiye gaye signals + 1 (asal ginti, banayi nahi).
+  // Validity = agle 1H candle ka close (signal 1H par banta hai) — UTC ghante ke hisaab se.
+  const nowD = new Date();
+  const dayStr = String(nowD.getUTCFullYear()).slice(2) + String(nowD.getUTCMonth() + 1).padStart(2, '0') + String(nowD.getUTCDate()).padStart(2, '0');
+  const utcDayStart = Date.UTC(nowD.getUTCFullYear(), nowD.getUTCMonth(), nowD.getUTCDate());
+  const seqToday = db.signals.filter(s => s.pair === pairId && s.direction === direction && s.createdAt >= utcDayStart).length + 1;
+  const signalCode = direction === 'WAIT' ? null : 'FTP-' + pairId + '-' + dayStr + '-' + seqToday;
+  const validUntil = Math.floor(Date.now() / 3600000) * 3600000 + 3600000;
   // v4 extended confluence — sirf display; direction/gates ko nahi chhoota.
   let extended = null;
   try {
@@ -972,14 +1010,16 @@ async function computeSignal(pairId, lang) {
     sentiment, range: { pdh, pdl },
     rsi14: ind.rsi14, atr14: ind.atr14, ema20: ind.ema20, ema50: ind.ema50, ema200: ind.ema200,
     comments, nextCheckInSec: 30, updatedAt: Date.now(),
+    signalCode, validUntil,
   };
   signalCache.set(cacheKey, { at: Date.now(), data });
-  // Record BUY/SELL signal (WAIT kabhi record nahi hota)
+  // Record BUY/SELL signal (WAIT kabhi record nahi hota) — gate breakdown bhi save karein
+  // taake History me har signal ki details (audit) dikh sake.
   if (direction !== 'WAIT') {
     const plan = direction === 'BUY' ? buyPlan : sellPlan;
     const recentSame = db.signals.find(s => s.pair === pairId && s.direction === direction && Date.now() - s.createdAt < 3600000);
     if (!recentSame) {
-      db.signals.unshift({ id: 'SIG-' + Date.now().toString(36).toUpperCase(), pair: pairId, direction, entry: plan.entry, sl: plan.sl, tp1: plan.tp1, tp2: plan.tp2, tp3: plan.tp3, score: confluence, gate: 85, engine: 'terminal', createdAt: Date.now(), outcome: null, outcomeAt: null });
+      db.signals.unshift({ id: 'SIG-' + Date.now().toString(36).toUpperCase(), pair: pairId, direction, entry: plan.entry, sl: plan.sl, tp1: plan.tp1, tp2: plan.tp2, tp3: plan.tp3, score: confluence, gate: 85, engine: 'terminal', createdAt: Date.now(), outcome: null, outcomeAt: null, gates: direction === 'BUY' ? buy.gates : sell.gates, smcScore: smc.error ? null : smc.score, signalCode });
       if (db.signals.length > 500) db.signals.length = 500;
       logEvent(direction + ' signal: ' + pairId + ' @ ' + plan.entry.toFixed(2) + ' (' + confluence + '%)');
       saveDb();
@@ -1197,6 +1237,32 @@ function sessionQuality(ind, candles) {
 // ---------------- API routes ----------------
 app.get('/api/health', (req, res) => res.json({ ok: true, name: 'Forex Trading Pro', time: new Date().toISOString(), pairs: PAIRS.length }));
 
+// Public prices (login screen ke market cards ke liye) — NO auth, sirf 5 pairs, 3s cache.
+app.get('/api/public-prices', async (req, res) => {
+  try {
+    const data = await fetchAllPrices();
+    const want = ['XAUUSD', 'BTCUSD', 'EURUSD', 'GBPUSD', 'USDJPY'];
+    res.json({
+      pairs: data.pairs.filter(p => want.includes(p.id)).map(p => ({ id: p.id, label: p.label, price: p.price, change24h: p.change24h, live: p.live, dec: p.dec })),
+      updatedAt: data.updatedAt,
+    });
+  } catch (e) { res.status(500).json({ error: 'price_fail', message: 'Price nahi mil saki.' }); }
+});
+
+// Fear & Greed Index (Bitcoin, alternative.me free API) — 5 min cache.
+// API na mile to available:false (koi number banaya nahi jata).
+let fngCache = { at: 0, data: null };
+app.get('/api/feargreed', requireAuth, async (req, res) => {
+  if (fngCache.data && Date.now() - fngCache.at < 300000) return res.json(fngCache.data);
+  const d = await tryFetch('https://api.alternative.me/fng/?limit=1', 5000);
+  const item = d && Array.isArray(d.data) && d.data[0];
+  const data = item && item.value != null
+    ? { available: true, value: parseInt(item.value, 10), classification: item.value_classification || '', updatedAt: Date.now(), source: 'alternative.me' }
+    : { available: false, value: null, classification: '', updatedAt: Date.now(), source: 'alternative.me' };
+  fngCache = { at: Date.now(), data };
+  res.json(data);
+});
+
 // Auth state + setup + login
 app.get('/api/auth/state', (req, res) => {
   const hasAdmin = db.users.some(u => u.role === 'admin');
@@ -1239,7 +1305,12 @@ app.get('/api/auth/me', requireAuth, (req, res) => {
 
 // Prices
 app.get('/api/prices', requireAuth, async (req, res) => {
-  try { res.json(await fetchAllPrices()); }
+  try {
+    const data = await fetchAllPrices(req.query.fresh === '1');
+    // Per-source freshness: har source aakhri dafa kab kamyab hua (response ke waqt hisaab)
+    const sources = data.sources.map(s => ({ ...s, ageSec: sourceFresh[s.name] ? Math.floor((Date.now() - sourceFresh[s.name]) / 1000) : null }));
+    res.json({ ...data, sources });
+  }
   catch (e) { res.status(500).json({ error: 'price_fail', message: 'Price nahi mil saki: ' + e.message }); }
 });
 
@@ -1247,7 +1318,7 @@ app.get('/api/prices', requireAuth, async (req, res) => {
 app.get('/api/signal', requireAuth, async (req, res) => {
   if (!db.settings.engines.terminal) return res.json({ disabled: true, message: 'Terminal engine band hai (Admin ne band kiya hai).' });
   const pair = (req.query.pair || db.settings.defaultPair || 'XAUUSD').toUpperCase();
-  try { res.json(await computeSignal(pair, req.query.lang)); }
+  try { res.json(await computeSignal(pair, req.query.lang, req.query.fresh === '1')); }
   catch (e) { res.status(500).json({ error: 'signal_fail', message: e.message }); }
 });
 
@@ -1272,7 +1343,9 @@ app.get('/api/indicators', requireAuth, async (req, res) => {
     score = trend + mom + vol + str + struct;
     parts.push({ name: 'Trend', score: trend, max: 20 }, { name: 'Momentum', score: mom, max: 20 }, { name: 'Volatility', score: vol, max: 20 }, { name: 'Strength', score: str, max: 20 }, { name: 'Structure', score: struct, max: 20 });
   }
-  res.json({ pair, timeframes: out, scorecard: { score, parts, note: 'Score asal Kraken candles se banta hai.' } });
+  // Pivot points: pichle poore UTC din se (asal 1H candles)
+  const pivots = dailyPivots(await getCandles(pair, '1H'));
+  res.json({ pair, timeframes: out, scorecard: { score, parts, note: 'Score asal Kraken candles se banta hai.' }, pivots });
 });
 
 // Candles (Terminal chart ke liye — asal Kraken/Yahoo candles)
@@ -1301,7 +1374,7 @@ app.get('/api/smc', requireAuth, async (req, res) => {
       const live = q ? q.price : c15[c15.length - 1].c;
       const ind = computeIndicators(c15);
       const plan = buildPlan(live, ind.atr14, dir === 'SELL' ? 'sell' : 'buy');
-      db.signals.unshift({ id: 'SIG-' + Date.now().toString(36).toUpperCase(), pair, direction: dir, entry: plan.entry, sl: plan.sl, tp1: plan.tp1, tp2: plan.tp2, tp3: plan.tp3, score: smc.score, gate: 80, engine: 'smc', createdAt: Date.now(), outcome: null, outcomeAt: null });
+      db.signals.unshift({ id: 'SIG-' + Date.now().toString(36).toUpperCase(), pair, direction: dir, entry: plan.entry, sl: plan.sl, tp1: plan.tp1, tp2: plan.tp2, tp3: plan.tp3, score: smc.score, gate: 80, engine: 'smc', createdAt: Date.now(), outcome: null, outcomeAt: null, gates: smc.parts.map(p => ({ name: p.name, points: p.score, max: p.max })) });
       if (db.signals.length > 500) db.signals.length = 500;
       logEvent('SMC signal: ' + pair + ' ' + dir + ' (' + smc.score + '%)');
       saveDb();
@@ -1337,7 +1410,7 @@ app.get('/api/sessions', requireAuth, async (req, res) => {
       if (dir !== 'WAIT') {
         const recentSame = db.signals.find(s => s.pair === id && s.direction === dir && s.engine === 'session' && Date.now() - s.createdAt < 3600000);
         if (!recentSame) {
-          db.signals.unshift({ id: 'SIG-' + Date.now().toString(36).toUpperCase(), pair: id, direction: dir, entry: plan.entry, sl: plan.sl, tp1: plan.tp1, tp2: plan.tp2, tp3: plan.tp3, score: q.score, gate: 85, engine: 'session', createdAt: Date.now(), outcome: null, outcomeAt: null });
+          db.signals.unshift({ id: 'SIG-' + Date.now().toString(36).toUpperCase(), pair: id, direction: dir, entry: plan.entry, sl: plan.sl, tp1: plan.tp1, tp2: plan.tp2, tp3: plan.tp3, score: q.score, gate: 85, engine: 'session', createdAt: Date.now(), outcome: null, outcomeAt: null, gates: q.details });
           if (db.signals.length > 500) db.signals.length = 500;
           saveDb();
         }
