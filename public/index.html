@@ -11,23 +11,24 @@
   <!-- LOGIN / SETUP -->
   <div id="authScreen" class="auth-wrap">
     <div class="auth-card">
+      <button class="btn small" id="langBtnAuth" onclick="toggleLang()" style="float:right">EN | اردو</button>
       <h1>Forex Trading Pro</h1>
-      <p class="tagline">Gold, Bitcoin aur Forex ke live signals</p>
+      <p class="tagline" data-i18n="tagline">Gold, Bitcoin aur Forex ke live signals</p>
       <div id="setupBox" style="display:none">
-        <h2>Pehli Dafa Setup</h2>
-        <p>Apna Admin username aur password khud banayein. Password kahin likh kar mat bhejein — sirf aapko pata hona chahiye.</p>
-        <input id="setupUser" placeholder="Admin username (kam se kam 3 harf)" autocomplete="off">
-        <input id="setupPass" type="password" placeholder="Admin password (kam se kam 6 harf)">
-        <button class="btn gold" onclick="doSetup()">Admin Account Banayein</button>
+        <h2 data-i18n="setupTitle">Pehli Dafa Setup</h2>
+        <p data-i18n="setupText">Apna Admin username aur password khud banayein. Password kahin likh kar mat bhejein — sirf aapko pata hona chahiye.</p>
+        <input id="setupUser" data-i18n-ph="phSetupUser" placeholder="Admin username (kam se kam 3 harf)" autocomplete="off">
+        <input id="setupPass" type="password" data-i18n-ph="phSetupPass" placeholder="Admin password (kam se kam 6 harf)">
+        <button class="btn gold" data-i18n="setupBtn" onclick="doSetup()">Admin Account Banayein</button>
       </div>
       <div id="loginBox" style="display:none">
-        <h2>Login</h2>
-        <input id="loginUser" placeholder="Username" autocomplete="off">
-        <input id="loginPass" type="password" placeholder="Password" onkeydown="if(event.key==='Enter')doLogin()">
-        <button class="btn gold" onclick="doLogin()">Login</button>
+        <h2 data-i18n="loginTitle">Login</h2>
+        <input id="loginUser" data-i18n-ph="phLoginUser" placeholder="Username" autocomplete="off">
+        <input id="loginPass" type="password" data-i18n-ph="phLoginPass" placeholder="Password" onkeydown="if(event.key==='Enter')doLogin()">
+        <button class="btn gold" data-i18n="loginBtn" onclick="doLogin()">Login</button>
       </div>
       <p id="authMsg" class="msg"></p>
-      <p class="fine">Koi signal 100% profitable nahi hota. Pehle demo par practice karein, asal paisa jaldi mat lagayein.</p>
+      <p class="fine" data-i18n="finePrint">Koi signal 100% profitable nahi hota. Pehle demo par practice karein, asal paisa jaldi mat lagayein.</p>
     </div>
   </div>
 
@@ -35,99 +36,122 @@
   <div id="mainScreen" style="display:none">
     <header>
       <div class="brand">Forex Trading Pro</div>
-      <div class="userbox"><span id="helloUser"></span> <span id="roleBadge" class="badge"></span>
-      <button class="btn small" onclick="doLogout()">Logout</button></div>
+      <div class="userbox">
+      <button class="btn small" id="langBtn" onclick="toggleLang()">EN | اردو</button>
+      <button class="btn small" id="soundBtn" onclick="toggleSound()" title="Sound">🔊</button>
+      <button class="btn small" id="notifBtn" onclick="toggleNotif()" title="Notifications">🔔</button>
+      <span id="helloUser"></span> <span id="roleBadge" class="badge"></span>
+      <button class="btn small" data-i18n="logout" onclick="doLogout()">Logout</button></div>
     </header>
     <div class="livebar">
       <span id="liveCount">—</span> · <span id="lastUpdate">Last update · —</span>
-      <button class="btn small gold" id="refreshBtn" onclick="refreshPrices(true)">Refresh</button>
+      <button class="btn small gold" id="refreshBtn" data-i18n="refresh" onclick="refreshPrices(true)">Refresh</button>
       <span id="apiHealth" class="api-health"></span>
     </div>
     <nav class="tabs">
-      <button data-tab="terminal" class="active" onclick="showTab('terminal')">Terminal</button>
-      <button data-tab="indicators" onclick="showTab('indicators')">Indicators</button>
-      <button data-tab="smc" onclick="showTab('smc')">SMC</button>
-      <button data-tab="session" onclick="showTab('session')">Session</button>
-      <button data-tab="history" onclick="showTab('history')">History</button>
-      <button data-tab="account" onclick="showTab('account')">Account</button>
-      <button data-tab="admin" id="adminTabBtn" onclick="showTab('admin')" style="display:none">Admin</button>
+      <button data-tab="terminal" class="active" data-i18n="tabTerminal" onclick="showTab('terminal')">Terminal</button>
+      <button data-tab="indicators" data-i18n="tabIndicators" onclick="showTab('indicators')">Indicators</button>
+      <button data-tab="smc" data-i18n="tabSmc" onclick="showTab('smc')">SMC</button>
+      <button data-tab="session" data-i18n="tabSession" onclick="showTab('session')">Session</button>
+      <button data-tab="history" data-i18n="tabHistory" onclick="showTab('history')">History</button>
+      <button data-tab="account" data-i18n="tabAccount" onclick="showTab('account')">Account</button>
+      <button data-tab="admin" id="adminTabBtn" data-i18n="tabAdmin" onclick="showTab('admin')" style="display:none">Admin</button>
     </nav>
 
     <!-- TERMINAL -->
     <section id="tab-terminal" class="tab">
       <div class="pair-select" id="pairSelect"></div>
+      <div id="signalBanner"></div>
       <div id="terminalCard" class="card"><p>Loading…</p></div>
+      <div class="card"><h3 data-i18n="chartTitle">Price Chart — Candles + EMA 20/50/200</h3>
+      <div class="chart-tf" id="chartTf"></div>
+      <canvas id="chartCanvas" width="900" height="320"></canvas>
+      <p><span id="countdown"></span></p></div>
+      <div class="card"><h3><span data-i18n="indStripTitle">Live Indicators</span> — <span id="indStripPair"></span></h3><div id="indStrip" class="price-grid"></div></div>
       <div class="card">
-        <h3>Signal Kab Aur Kaise Banta Hai?</h3>
-        <p>Signal ka koi fixed time nahi hai. BUY/SELL tabhi banta hai jab 6 gates me se <b>85% ya zyada</b> points mil jayein. WAIT ka matlab hai: abhi trade mat karein, shartein poori nahi hain.</p>
-        <p>SMC ka gate alag hai (80%) — SMC tab me dekhein. Terminal ka signal SMC gate par nahi rukta.</p>
+        <h3 data-i18n="howSignalTitle">Signal Kab Aur Kaise Banta Hai?</h3>
+        <p data-i18n="howSignalText1">Signal ka koi fixed time nahi hai. BUY/SELL tabhi banta hai jab 6 gates me se <b>85% ya zyada</b> points mil jayein. WAIT ka matlab hai: abhi trade mat karein, shartein poori nahi hain.</p>
+        <p data-i18n="howSignalText2">SMC ka gate alag hai (80%) — SMC tab me dekhein. Terminal ka signal SMC gate par nahi rukta.</p>
       </div>
-      <div class="card"><h3>Tamam Pairs — Live Prices</h3><div id="priceList" class="price-grid"></div></div>
+      <div class="card"><h3 data-i18n="allPairsTitle">Tamam Pairs — Live Prices</h3><div id="priceList" class="price-grid"></div></div>
     </section>
 
     <!-- INDICATORS -->
     <section id="tab-indicators" class="tab" style="display:none">
-      <div class="card"><h3>Indicators Center</h3>
-      <p>Ye tamam numbers asal Kraken candles se hisaab karke nikale gaye hain — EMA 20/50 trend batata hai, RSI 14 momentum, aur ATR 14 ye batata hai ke price aam tor par kitna hilta hai.</p>
+      <div class="card"><h3 data-i18n="indCenterTitle">Indicators Center</h3>
+      <p data-i18n="indCenterText">Ye tamam numbers asal Kraken candles se hisaab karke nikale gaye hain — EMA 20/50 trend batata hai, RSI 14 momentum, aur ATR 14 ye batata hai ke price aam tor par kitna hilta hai.</p>
       <div id="indScore" class="score"></div>
       <div id="indBody"></div></div>
     </section>
 
     <!-- SMC -->
     <section id="tab-smc" class="tab" style="display:none">
-      <div class="card"><h3>SMC (Smart Money Concepts)</h3>
-      <p>SMC ke levels asal 15M candles ke swing high/low se nikale jate hain — jahan bade kharidar/bechne wale aam tor par rukte hain. SMC score 5 hisse x 20 points se banta hai, gate <b>80%</b> hai. Terminal ka BUY/SELL is tab se nahi banta; wo Terminal ki apni 85% wali sharton se banta hai.</p>
+      <div class="card"><h3 data-i18n="smcTitle">SMC (Smart Money Concepts)</h3>
+      <p data-i18n="smcText">SMC ke levels asal 15M candles ke swing high/low se nikale jate hain — jahan bade kharidar/bechne wale aam tor par rukte hain. SMC score 5 hisse x 20 points se banta hai, gate <b>80%</b> hai. Terminal ka BUY/SELL is tab se nahi banta; wo Terminal ki apni 85% wali sharton se banta hai.</p>
       <div id="smcBody"></div></div>
-      <div class="card"><h3>Global Market Scanner (11 pairs, har 45 second)</h3><div id="scannerBody"></div></div>
+      <div class="card"><h3 data-i18n="smcMacroTitle">15M Macro</h3><div id="smcMacro"></div></div>
+      <div class="card"><h3 data-i18n="smcMicroTitle">5M Micro</h3><div id="smcMicro"></div></div>
+      <div class="card"><h3 data-i18n="smcFeedTitle">SMC Signals Feed</h3><div id="smcFeed"></div></div>
+      <div class="card"><h3 data-i18n="smcBacktestTitle">SMC Backtest</h3>
+      <p><span data-i18n="smcBacktestNote">Asal 15M candles par SMC rule (score 80%+) — koi banaya hua number nahi.</span> <button class="btn small gold" data-i18n="smcBacktestBtn" onclick="runSmcBacktest()">SMC Backtest Chalayein (30 din)</button></p>
+      <div id="smcBacktestBody"></div></div>
+      <div class="card"><h3 data-i18n="scannerTitle">Global Market Scanner (11 pairs, har 45 second)</h3><div id="scannerBody"></div></div>
     </section>
 
     <!-- SESSION -->
     <section id="tab-session" class="tab" style="display:none">
-      <div class="card"><h3>Session Engine</h3><div id="sessionBody"></div></div>
-      <div class="card"><h3>Session Backtest Simulator</h3>
-      <p>Asal 1H candles par session rule chala kar dekhein. <button class="btn small gold" onclick="runBacktest()">Backtest Chalayein (30 din)</button></p>
+      <div class="card"><h3 data-i18n="sessionTitle">Session Engine</h3><div id="sessionBody"></div></div>
+      <div class="card"><h3 data-i18n="newsTitle">Fundamental News</h3>
+      <p data-i18n="newsText">Taza forex/market headlines — FXStreet aur ForexLive ke free RSS feeds se.</p>
+      <div id="newsBody"></div></div>
+      <div class="card"><h3 data-i18n="backtestTitle">Session Backtest Simulator</h3>
+      <p><span data-i18n="backtestText">Asal 1H candles par session rule chala kar dekhein.</span> <button class="btn small gold" data-i18n="backtestBtn" onclick="runBacktest()">Backtest Chalayein (30 din)</button></p>
       <div id="backtestBody"></div></div>
     </section>
 
     <!-- HISTORY -->
     <section id="tab-history" class="tab" style="display:none">
-      <div class="card"><h3>Signal History</h3>
-      <p>Sirf asal record kiye gaye signals dikhaye jate hain — koi purani history banayi nahi gayi. Nateeja (Win/Loss/Break-Even/In-Flight) baad ki candles se check karke dikhaya jata hai.</p>
+      <div class="card"><h3 data-i18n="historyTitle">Signal History</h3>
+      <p data-i18n="historyText">Sirf asal record kiye gaye signals dikhaye jate hain — koi purani history banayi nahi gayi. Nateeja (Win/Loss/Break-Even/In-Flight) baad ki candles se check karke dikhaya jata hai.</p>
       <div class="filters">
-        <select id="fOutcome" onchange="loadHistory()"><option value="">Sab outcomes</option><option>Win</option><option>Loss</option><option>Break-Even</option><option>In-Flight</option></select>
-        <select id="fEngine" onchange="loadHistory()"><option value="">Sab engines</option><option value="terminal">Main Terminal</option><option value="smc">SMC Engine</option><option value="session">Session Engine</option></select>
-        <button class="btn small" onclick="exportCsv()">Export CSV</button>
+        <select id="fOutcome" onchange="loadHistory()"><option value="" data-i18n="allOutcomes">Sab outcomes</option><option>Win</option><option>Loss</option><option>Break-Even</option><option>In-Flight</option></select>
+        <select id="fEngine" onchange="loadHistory()"><option value="" data-i18n="allEngines">Sab engines</option><option value="terminal" data-i18n="mainTerminal">Main Terminal</option><option value="smc" data-i18n="smcEngine">SMC Engine</option><option value="session" data-i18n="sessionEngine">Session Engine</option></select>
+        <button class="btn small" data-i18n="exportBtn" onclick="exportCsv()">Export CSV</button>
       </div>
       <div id="perfBody"></div>
       <div id="historyBody"></div>
-      <h4>Strategy Refiner</h4>
-      <p>Cutoff sirf is build ke baad record hone wale signals par lagta hai, kyunke purane signals me gate score save nahi hua.</p>
+      <h4 data-i18n="refinerTitle">Strategy Refiner</h4>
+      <p data-i18n="refinerText">Cutoff sirf is build ke baad record hone wale signals par lagta hai, kyunke purane signals me gate score save nahi hua.</p>
       <div class="filters">Cutoff: <select id="refCutoff" onchange="loadRefiner()"><option>80</option><option selected>85</option><option>90</option><option>98</option></select></div>
       <div id="refinerBody"></div></div>
+      <div class="card"><h3 data-i18n="termBacktestTitle">Terminal Backtest (30 din)</h3>
+      <p><button class="btn small gold" data-i18n="termBacktestBtn" onclick="runTerminalBacktest()">Terminal Backtest Chalayein</button></p>
+      <div id="termBacktestBody"></div></div>
     </section>
 
     <!-- ACCOUNT -->
     <section id="tab-account" class="tab" style="display:none">
-      <div class="card"><h3>Account</h3>
+      <div class="card"><h3 data-i18n="accountTitle">Account</h3>
       <div class="subtabs" id="acctSubtabs"></div>
       <div id="acctBody"></div></div>
     </section>
 
     <!-- ADMIN -->
     <section id="tab-admin" class="tab" style="display:none">
-      <div class="card"><h3>Admin Panel — Buyer Accounts</h3>
+      <div class="card"><h3 data-i18n="adminTitle">Admin Panel — Buyer Accounts</h3>
       <div id="adminCounts"></div>
       <div class="form-row">
-        <input id="newBuyerUser" placeholder="Buyer username">
-        <input id="newBuyerPass" type="password" placeholder="Buyer password">
+        <input id="newBuyerUser" data-i18n-ph="phBuyerUser" placeholder="Buyer username">
+        <input id="newBuyerPass" type="password" data-i18n-ph="phBuyerPass" placeholder="Buyer password">
         <select id="newBuyerPlan"><option>Monthly</option><option>Quarterly</option><option>Yearly</option><option>Lifetime</option></select>
-        <button class="btn gold" onclick="createBuyer()">Buyer Banayein</button>
+        <button class="btn gold" data-i18n="createBuyerBtn" onclick="createBuyer()">Buyer Banayein</button>
       </div>
-      <p class="fine">Monthly 30 din · Quarterly 90 din · Yearly 365 din · Lifetime (kabhi khatam nahi). Plan khatam hone par buyer login khud band ho jata hai.</p>
+      <p class="fine" data-i18n="adminPlansText">Monthly 30 din · Quarterly 90 din · Yearly 365 din · Lifetime (kabhi khatam nahi). Plan khatam hone par buyer login khud band ho jata hai.</p>
       <div id="adminUsers"></div></div>
     </section>
   </div>
 </div>
+<div id="toast" class="toast" style="display:none"></div>
 <script src="app.js"></script>
 </body>
 </html>

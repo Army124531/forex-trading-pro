@@ -40,3 +40,31 @@ td,th{border-bottom:1px solid #22304d;padding:6px;text-align:left}
 .filters{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}
 .filters select{width:auto}
 @media(max-width:600px){.brand{font-size:16px}header{flex-wrap:wrap}}
+
+/* New: language/alert/chart additions */
+.toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 100; background: #f5c542; color: #0a0f1e; border-radius: 12px; padding: 14px 18px; max-width: min(92vw, 560px); box-shadow: 0 8px 30px rgba(0,0,0,.5); font-size: 15px; line-height: 1.5; }
+.toast b { font-size: 16px; }
+.chart-tf { display: flex; gap: 6px; flex-wrap: wrap; margin: 6px 0 10px; }
+.chart-tf button { padding: 5px 10px; border: 1px solid #2a3550; background: #141b2e; color: #e8ecf5; border-radius: 999px; cursor: pointer; }
+.chart-tf button.active { background: #f5c542; color: #0a0f1e; border-color: #f5c542; }
+#chartCanvas { width: 100%; height: auto; background: #0a0f1e; border: 1px solid #2a3550; border-radius: 10px; }
+
+/* Big BUY/SELL signal banner */
+.signal-banner { border-radius: 14px; padding: 18px 16px; margin: 10px 0; text-align: center; border: 2px solid transparent; }
+.signal-banner.buy { background: #0d3b22; border-color: #3ddc84; color: #d6ffe8; }
+.signal-banner.sell { background: #3b0d0d; border-color: #ff6b6b; color: #ffe0e0; }
+.signal-banner.wait { background: #141b2e; border-color: #2a3550; color: #8ea0c2; }
+.sb-title { font-size: 30px; font-weight: 800; letter-spacing: .5px; }
+.sb-line { margin-top: 6px; font-size: 15px; }
+.sb-vals { margin-top: 10px; font-size: 17px; line-height: 1.8; }
+
+/* Dual BUY/SELL plan cards (WealthMind-style) */
+.plan-card { border: 1px solid #2a3550; border-radius: 10px; padding: 10px; margin: 6px 0; line-height: 1.8; }
+.plan-card.active-buy { border-color: #3ddc84; box-shadow: 0 0 0 1px #3ddc84 inset; }
+.plan-card.active-sell { border-color: #ff6b6b; box-shadow: 0 0 0 1px #ff6b6b inset; }
+.plan-head { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 4px; }
+.status-badge { padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; }
+.st-in { background: #3ddc84; color: #0a0f1e; }
+.st-near { background: #f5c542; color: #0a0f1e; }
+.st-wait { background: #2a3550; color: #8ea0c2; }
+.st-active { background: #f5c542; color: #0a0f1e; }
