@@ -25,6 +25,8 @@ ur: {
   howSignalTitle: 'Signal Kab Aur Kaise Banta Hai?',
   howSignalText1: 'Signal ka koi fixed time nahi hai. BUY/SELL tabhi banta hai jab 6 gates me se 85% ya zyada points mil jayein. WAIT ka matlab hai: abhi trade mat karein, shartein poori nahi hain.',
   howSignalText2: 'SMC ka gate alag hai (80%) — SMC tab me dekhein. Terminal ka signal SMC gate par nahi rukta.',
+  tfHint: 'Best timeframe: 1H (4H trend ke saath) — 1H/4H par signals sab se reliable hote hain, 15M sirf entry timing ke liye hai, 5M par zyada noise hota hai. (30-din 1H backtest: XAUUSD win rate 88.2%, profit factor 5.0 — pichla result hai, guarantee nahi.)',
+  rareSignals: 'Signal kam aate hain, lekin behtar hote hain — BUY/SELL sirf tabhi dikhta hai jab 85% gate poora ho. Zyada signals ka matlab behtar result nahi hota.',
   allPairsTitle: 'Tamam Pairs — Live Prices',
   indCenterTitle: 'Indicators Center',
   indCenterText: 'Ye tamam numbers asal Kraken candles se hisaab karke nikale gaye hain — EMA 20/50 trend batata hai, RSI 14 momentum, aur ATR 14 ye batata hai ke price aam tor par kitna hilta hai.',
@@ -53,6 +55,48 @@ ur: {
   hello: 'Salam', loading: 'Load ho raha hai…', noTrade: '(koi trade nahi)',
   price: 'Price', confluence: 'Confluence', gate: 'gate',
   buySellPlans: 'BUY aur SELL plans — dono ek saath',
+  signalPlan: 'Signal Plan — ek direction, ek trade',
+  smcChecklist: 'SMC Confluence Checklist — is signal ki asal wajah',
+  oppScenario: 'Doosri taraf ka scenario',
+  oppGateNotMet: 'gate poora nahi hua',
+  chkSweep: 'Liquidity Sweep', chkOB: 'Order Block', chkFvg: 'FVG (Fair Value Gap)',
+  chkSR: 'Support / Resistance', chkZones: 'Zones (Demand / Supply)',
+  chkYes: '✓ Support karta hai', chkNo: '✗ Support nahi karta', chkNa: '– Neutral',
+  noSweep: 'Koi sweep nahi hua', noObDir: 'Is taraf ka order block nahi mila', noFvgDir: 'Is taraf ka FVG nahi mila',
+  inDemand: 'Price demand zone me hai', inSupply: 'Price supply zone me hai',
+  nearDemand: 'Price demand zone ke qareeb hai', nearSupply: 'Price supply zone ke qareeb hai',
+  noZone: 'Price kisi zone me nahi hai',
+  tradeZone: 'Trade Zone', inZone: 'Price zone me hai', nearZone: 'Price zone ke qareeb hai',
+  farZone: 'Price zone se door hai', noZoneDir: 'Is direction ke liye koi zone nahi mila',
+  bosUp: 'Structure upar toota (BOS) — bullish', bosDown: 'Structure neeche toota (BOS) — bearish',
+  noBreak: 'Koi structure break nahi — level held hai',
+  extTitle: 'Extended Confluence — 1H candles se',
+  extNote: 'Ye tamam cheezein sirf confluence ke liye hain — signal ki direction aur gates (85%/80%) in se nahi badalte.',
+  chkCandle: 'Candlestick Pattern (1H)', chkChoch: 'CHOCH (Change of Character)', chkMss: 'MSS (Market Structure Shift)',
+  chkBreaker: 'Breaker / Mitigation Blocks', chkIdm: 'IDM (Inducement)', chkFib: 'Fibonacci Levels',
+  chkBb: 'Bollinger Squeeze', chkMacdDiv: 'MACD Divergence', chkMeanRev: 'Mean Reversion',
+  chkKillzone: 'Killzone / Session Timing', chkAsian: 'Asian Session Range', chkVwap: 'VWAP Bands (±1σ / ±2σ)', chkVol: 'Volume (1H)',
+  patBullEngulf: 'Bullish Engulfing', patBearEngulf: 'Bearish Engulfing', patHammer: 'Hammer / Pin Bar (bullish)',
+  patShootingStar: 'Shooting Star (bearish)', patDoji: 'Doji (neutral)', patMorningStar: 'Morning Star (bullish)', patEveningStar: 'Evening Star (bearish)',
+  noPattern: 'Koi clear pattern nahi',
+  chochUp: 'CHOCH upar — trend ke khilaf break', chochDown: 'CHOCH neeche — trend ke khilaf break', noChoch: 'Koi CHOCH nahi',
+  mssUp: 'MSS upar — naya trend confirm', mssDown: 'MSS neeche — naya trend confirm', noMss: 'Koi MSS nahi',
+  breakerLbl: 'Breaker', mitigationLbl: 'Mitigation', noBreaker: 'Koi breaker/mitigation block nahi',
+  idmSsl: 'IDM mila — SSL sweep phir reclaim (bullish)', idmBsl: 'IDM mila — BSL sweep phir reclaim (bearish)', noIdm: 'Koi IDM nahi',
+  fibNearest: 'Nearest level', squeezeOn: 'Squeeze hai — volatility kam, bara move aa sakta hai', squeezeOff: 'Koi squeeze nahi',
+  meanNear: 'Mean ke qareeb', meanExtended: 'Mean se door', meanOver: 'Bohat overextended', aboveMean: 'mean se upar', belowMean: 'mean se neeche',
+  macdBullDiv: 'Bullish divergence — price neeche, MACD upar', macdBearDiv: 'Bearish divergence — price upar, MACD neeche', noMacdDiv: 'Koi MACD divergence nahi',
+  killActive: 'Active killzone', killNext: 'Agla killzone', kzAsian: 'Asian', kzLondon: 'London', kzNewYork: 'New York',
+  asianIn: 'Price range ke andar hai', asianAbove: 'Price range se upar nikal gaya (expansion)', asianBelow: 'Price range se neeche nikal gaya (expansion)', noAsian: 'Asian range nahi mili',
+  vwapNearest: 'Nearest band',
+  volRising: 'Volume badh raha hai', volFalling: 'Volume kam ho raha hai', volNormal: 'Volume normal hai', volNa: 'Is pair par volume nahi milta',
+  dxyTitle: 'Dollar Index (DXY)', dxyNa: 'DXY abhi available nahi hai — Yahoo se nahi mila',
+  corrLabel: 'Correlation (20-period)', corrNeg: 'negative', corrPos: 'positive', corrFlat: 'kamzor',
+  riskTitle: 'Risk Management — guidance (live trade management nahi)',
+  riskRrTarget: 'R:R 1:2 ka target — TP3 par poora hota hai',
+  riskTp1: 'TP1 par 50% profit lo, phir SL ko breakeven (entry) par le jao.',
+  riskSize: 'Position size: har trade par account ka sirf 1% risk karein.',
+  riskDd: 'Drawdown control: aik trade me 1% se zyada risk nahi — loss chhota rakhein.',
   sentiment: '24H Sentiment', demandZone: 'Demand Zone', supplyZone: 'Supply Zone',
   liveComments: 'Live Comments', nextCheck: 'Next check in', nextCheckSuffix: 's (30 second monitoring)',
   signalUpdated: 'Signal updated', buyGates: 'BUY Gates', sellGates: 'SELL Gates',
@@ -134,6 +178,8 @@ en: {
   howSignalTitle: 'When and How Is a Signal Made?',
   howSignalText1: 'There is no fixed time for a signal. BUY/SELL only forms when 85% or more points are scored across the 6 gates. WAIT means: do not trade now, the conditions are not met.',
   howSignalText2: 'The SMC gate is separate (80%) — see the SMC tab. The Terminal signal does not wait on the SMC gate.',
+  tfHint: 'Best timeframe: 1H (with the 4H trend) — signals are most reliable on 1H/4H; 15M is only for entry timing and 5M is too noisy. (30-day 1H backtest: XAUUSD win rate 88.2%, profit factor 5.0 — a past result, not a guarantee.)',
+  rareSignals: 'Signals are rare but higher quality — BUY/SELL only shows when the 85% gate passes. More signals does not mean better results.',
   allPairsTitle: 'All Pairs — Live Prices',
   indCenterTitle: 'Indicators Center',
   indCenterText: 'All these numbers are calculated from real Kraken candles — EMA 20/50 shows trend, RSI 14 shows momentum, and ATR 14 shows how much price usually moves.',
@@ -162,6 +208,48 @@ en: {
   hello: 'Hello', loading: 'Loading…', noTrade: '(no trade)',
   price: 'Price', confluence: 'Confluence', gate: 'gate',
   buySellPlans: 'BUY and SELL plans — both together',
+  signalPlan: 'Signal Plan — one direction, one trade',
+  smcChecklist: 'SMC Confluence Checklist — why this signal',
+  oppScenario: 'Opposite scenario',
+  oppGateNotMet: 'gate not met',
+  chkSweep: 'Liquidity Sweep', chkOB: 'Order Block', chkFvg: 'FVG (Fair Value Gap)',
+  chkSR: 'Support / Resistance', chkZones: 'Zones (Demand / Supply)',
+  chkYes: '✓ Supports', chkNo: '✗ Does not support', chkNa: '– Neutral',
+  noSweep: 'No sweep', noObDir: 'No order block in this direction', noFvgDir: 'No FVG in this direction',
+  inDemand: 'Price is in the demand zone', inSupply: 'Price is in the supply zone',
+  nearDemand: 'Price is near the demand zone', nearSupply: 'Price is near the supply zone',
+  noZone: 'Price is in no zone',
+  tradeZone: 'Trade Zone', inZone: 'Price is in the zone', nearZone: 'Price is near the zone',
+  farZone: 'Price is away from the zone', noZoneDir: 'No zone found for this direction',
+  bosUp: 'Structure broke up (BOS) — bullish', bosDown: 'Structure broke down (BOS) — bearish',
+  noBreak: 'No structure break — level held',
+  extTitle: 'Extended Confluence — from 1H candles',
+  extNote: 'All of these are confluence only — they do not change the signal direction or the gates (85%/80%).',
+  chkCandle: 'Candlestick Pattern (1H)', chkChoch: 'CHOCH (Change of Character)', chkMss: 'MSS (Market Structure Shift)',
+  chkBreaker: 'Breaker / Mitigation Blocks', chkIdm: 'IDM (Inducement)', chkFib: 'Fibonacci Levels',
+  chkBb: 'Bollinger Squeeze', chkMacdDiv: 'MACD Divergence', chkMeanRev: 'Mean Reversion',
+  chkKillzone: 'Killzone / Session Timing', chkAsian: 'Asian Session Range', chkVwap: 'VWAP Bands (±1σ / ±2σ)', chkVol: 'Volume (1H)',
+  patBullEngulf: 'Bullish Engulfing', patBearEngulf: 'Bearish Engulfing', patHammer: 'Hammer / Pin Bar (bullish)',
+  patShootingStar: 'Shooting Star (bearish)', patDoji: 'Doji (neutral)', patMorningStar: 'Morning Star (bullish)', patEveningStar: 'Evening Star (bearish)',
+  noPattern: 'No clear pattern',
+  chochUp: 'CHOCH up — break against the trend', chochDown: 'CHOCH down — break against the trend', noChoch: 'No CHOCH',
+  mssUp: 'MSS up — new trend confirmed', mssDown: 'MSS down — new trend confirmed', noMss: 'No MSS',
+  breakerLbl: 'Breaker', mitigationLbl: 'Mitigation', noBreaker: 'No breaker/mitigation block',
+  idmSsl: 'IDM found — SSL sweep then reclaim (bullish)', idmBsl: 'IDM found — BSL sweep then reclaim (bearish)', noIdm: 'No IDM',
+  fibNearest: 'Nearest level', squeezeOn: 'Squeeze — volatility is low, a big move may come', squeezeOff: 'No squeeze',
+  meanNear: 'Near the mean', meanExtended: 'Extended from the mean', meanOver: 'Very overextended', aboveMean: 'above the mean', belowMean: 'below the mean',
+  macdBullDiv: 'Bullish divergence — price lower, MACD higher', macdBearDiv: 'Bearish divergence — price higher, MACD lower', noMacdDiv: 'No MACD divergence',
+  killActive: 'Active killzone', killNext: 'Next killzone', kzAsian: 'Asian', kzLondon: 'London', kzNewYork: 'New York',
+  asianIn: 'Price is inside the range', asianAbove: 'Price expanded above the range', asianBelow: 'Price expanded below the range', noAsian: 'No Asian range',
+  vwapNearest: 'Nearest band',
+  volRising: 'Volume rising', volFalling: 'Volume falling', volNormal: 'Volume normal', volNa: 'No volume available for this pair',
+  dxyTitle: 'Dollar Index (DXY)', dxyNa: 'DXY is not available right now — not received from Yahoo',
+  corrLabel: 'Correlation (20-period)', corrNeg: 'negative', corrPos: 'positive', corrFlat: 'weak',
+  riskTitle: 'Risk Management — guidance (not live trade management)',
+  riskRrTarget: 'Target R:R 1:2 — reached at TP3',
+  riskTp1: 'At TP1 take 50% profit, then move SL to breakeven (entry).',
+  riskSize: 'Position size: risk only 1% of your account per trade.',
+  riskDd: 'Drawdown control: never risk more than 1% on one trade — keep losses small.',
   sentiment: '24H Sentiment', demandZone: 'Demand Zone', supplyZone: 'Supply Zone',
   liveComments: 'Live Comments', nextCheck: 'Next check in', nextCheckSuffix: 's (30-second monitoring)',
   signalUpdated: 'Signal updated', buyGates: 'BUY Gates', sellGates: 'SELL Gates',
@@ -565,6 +653,192 @@ function renderSignalBanner(d) {
   }
 }
 
+// ---------------- SMC confluence checklist (sirf asal SMC data se — koi checkmark banaya nahi jata) ----------------
+function smcChecklistHtml(d) {
+  const s = d.smc;
+  if (!s) return '<p>' + esc(t('smcNoData')) + '</p>';
+  const dir = d.direction;
+  // Zone-blocked WAIT: checklist ko us direction se check karo jo block hui (warna WAIT par sab '–' dikhega)
+  const chkDir = dir !== 'WAIT' ? dir : (d.zoneBlocked && d.blockedDirection ? d.blockedDirection : 'WAIT');
+  const mark = (st) => st === true ? `<span class="chk-ok">${esc(t('chkYes'))}</span>` : st === false ? `<span class="chk-no">${esc(t('chkNo'))}</span>` : `<span class="chk-na">${esc(t('chkNa'))}</span>`;
+  const row = (label, st, detail) => `<div class="gate"><span>${esc(label)}</span><span>${mark(st)} ${detail}</span></div>`;
+  // 1. Liquidity Sweep — BUY ke liye SSL (neeche sweep), SELL ke liye BSL (upar sweep)
+  let sweepSt = null;
+  if (chkDir === 'BUY') sweepSt = s.sweepCode === 'SSL';
+  else if (chkDir === 'SELL') sweepSt = s.sweepCode === 'BSL';
+  const sweepDetail = esc(s.sweepFound ? s.sweep : t('noSweep'));
+  // 2. Order Block — BUY ke liye bullish OB, SELL ke liye bearish OB; fresh = support, mitigated = kamzor
+  const ob = chkDir === 'BUY' ? s.bullOB : chkDir === 'SELL' ? s.bearOB : (s.bullOB || s.bearOB);
+  let obSt = null, obDetail;
+  if (ob) {
+    obSt = chkDir === 'WAIT' ? null : !ob.mitigated;
+    obDetail = esc(fmt(ob.low, 2) + ' – ' + fmt(ob.high, 2) + ' (' + t(ob.mitigated ? 'mitigated' : 'fresh') + ')');
+  } else obDetail = esc(t('noObDir'));
+  // 3. FVG — BUY ke liye bullish gap, SELL ke liye bearish gap
+  const fvgs = chkDir === 'BUY' ? (s.fvgs || []).filter(f => f.type === 'Bullish')
+    : chkDir === 'SELL' ? (s.fvgs || []).filter(f => f.type === 'Bearish') : (s.fvgs || []);
+  let fvgSt = chkDir === 'WAIT' ? null : false, fvgDetail;
+  if (fvgs.length) {
+    fvgSt = chkDir === 'WAIT' ? null : true;
+    fvgDetail = esc(fvgs.length + ' × ' + fvgs[0].type + ' ' + fmt(fvgs[0].low, 2) + ' – ' + fmt(fvgs[0].high, 2));
+  } else fvgDetail = esc(t('noFvgDir'));
+  // 4. Support / Resistance + structure break (BOS)
+  let srSt = null;
+  if (chkDir === 'BUY') srSt = s.bosDir === 'up' ? true : s.bosDir === 'down' ? false : null;
+  else if (chkDir === 'SELL') srSt = s.bosDir === 'down' ? true : s.bosDir === 'up' ? false : null;
+  const srTxt = s.bosDir === 'up' ? t('bosUp') : s.bosDir === 'down' ? t('bosDown') : t('noBreak');
+  const srDetail = esc(t('swingLow') + ' ' + fmt(s.swingLow, 2) + ' · ' + t('swingHigh') + ' ' + fmt(s.swingHigh, 2) + ' — ' + srTxt);
+  // 5. Zones — trade zone (agar hai) + price us me / ke qareeb hai ya nahi; warna demand/supply zones
+  const atr = d.atr14 || 0;
+  let zoneSt = null, zoneDetail;
+  if (d.tradeZone) {
+    const z = d.tradeZone;
+    const inZ = d.price >= z.low && d.price <= z.high;
+    const nearZ = !inZ && Math.abs(d.price - (chkDir === 'BUY' ? z.high : z.low)) <= atr;
+    const zoneTxt = inZ ? t('inZone') : nearZ ? t('nearZone') : t('farZone');
+    zoneSt = inZ || nearZ;
+    zoneDetail = esc(t('tradeZone') + ': ' + z.type + ' ' + fmt(z.low, 2) + ' – ' + fmt(z.high, 2) + ' — ' + zoneTxt);
+  } else {
+    const inDz = s.demandZone && d.price >= s.demandZone[0] && d.price <= s.demandZone[1];
+    const inSz = s.supplyZone && d.price >= s.supplyZone[0] && d.price <= s.supplyZone[1];
+    const nearDz = s.demandZone && !inDz && Math.min(Math.abs(d.price - s.demandZone[0]), Math.abs(d.price - s.demandZone[1])) <= atr;
+    const nearSz = s.supplyZone && !inSz && Math.min(Math.abs(d.price - s.supplyZone[0]), Math.abs(d.price - s.supplyZone[1])) <= atr;
+    let zoneTxt;
+    if (inDz || nearDz) { zoneTxt = t(inDz ? 'inDemand' : 'nearDemand'); zoneSt = chkDir === 'BUY' ? true : chkDir === 'SELL' ? false : null; }
+    else if (inSz || nearSz) { zoneTxt = t(inSz ? 'inSupply' : 'nearSupply'); zoneSt = chkDir === 'SELL' ? true : chkDir === 'BUY' ? false : null; }
+    else { zoneTxt = chkDir === 'WAIT' ? t('noZone') : t('noZoneDir'); zoneSt = chkDir === 'WAIT' ? null : false; }
+    zoneDetail = esc(zoneTxt + ' — ' + t('demandZone') + ' ' + (s.demandZone ? fmt(s.demandZone[0], 2) + ' – ' + fmt(s.demandZone[1], 2) : '—') + ' · ' + t('supplyZone') + ' ' + (s.supplyZone ? fmt(s.supplyZone[0], 2) + ' – ' + fmt(s.supplyZone[1], 2) : '—'));
+  }
+  return `<h4>${t('smcChecklist')} — ${t('smcScore')}: ${s.score}/100 (${t('gate')} 80%)</h4>` +
+    row(t('chkSweep'), sweepSt, sweepDetail) +
+    row(t('chkOB'), obSt, obDetail) +
+    row(t('chkFvg'), fvgSt, fvgDetail) +
+    row(t('chkSR'), srSt, srDetail) +
+    row(t('chkZones'), zoneSt, zoneDetail);
+}
+
+// ---------------- v4 Extended confluence panel (sirf display — asal 1H candles se, koi value banayi nahi jati) ----------------
+function extendedConfluenceHtml(d) {
+  const x = d.extended;
+  if (!x) return '';
+  const dir = d.direction;
+  const chkDir = dir !== 'WAIT' ? dir : (d.zoneBlocked && d.blockedDirection ? d.blockedDirection : 'WAIT');
+  const mark = (st) => st === true ? `<span class="chk-ok">${esc(t('chkYes'))}</span>` : st === false ? `<span class="chk-no">${esc(t('chkNo'))}</span>` : `<span class="chk-na">${esc(t('chkNa'))}</span>`;
+  const row = (label, st, detail) => `<div class="gate"><span>${esc(label)}</span><span>${mark(st)} ${detail}</span></div>`;
+  const dirMatch = (sigDir) => (chkDir === 'WAIT' || !sigDir) ? null : sigDir === chkDir;
+  const pkt = (h) => String((h + 5) % 24).padStart(2, '0') + ':00';
+  let html = `<h4>${t('extTitle')}</h4>`;
+  // 1. Candlestick pattern (1H)
+  let cSt = null, cDetail = esc(t('noPattern'));
+  if (x.candle) {
+    const patKey = { bullEngulf: 'patBullEngulf', bearEngulf: 'patBearEngulf', hammer: 'patHammer', shootingStar: 'patShootingStar', doji: 'patDoji', morningStar: 'patMorningStar', eveningStar: 'patEveningStar' }[x.candle.code] || null;
+    cDetail = esc(patKey ? t(patKey) : x.candle.code);
+    cSt = x.candle.direction === 'NEUTRAL' ? null : dirMatch(x.candle.direction);
+  }
+  html += row(t('chkCandle'), cSt, cDetail);
+  // 2. CHOCH
+  let chSt = null, chDetail = esc(t('noChoch'));
+  if (x.choch && x.choch.found) {
+    chDetail = esc(x.choch.dir === 'up' ? t('chochUp') : t('chochDown'));
+    chSt = dirMatch(x.choch.dir === 'up' ? 'BUY' : 'SELL');
+  }
+  html += row(t('chkChoch'), chSt, chDetail);
+  // 3. MSS
+  let mSt = null, mDetail = esc(t('noMss'));
+  if (x.mss && x.mss.found) {
+    mDetail = esc(x.mss.dir === 'up' ? t('mssUp') : t('mssDown'));
+    mSt = dirMatch(x.mss.dir === 'up' ? 'BUY' : 'SELL');
+  }
+  html += row(t('chkMss'), mSt, mDetail);
+  // 4. Breaker / mitigation blocks
+  let bSt = null, bDetail = esc(t('noBreaker'));
+  if (x.breakers && x.breakers.length) {
+    const bl = x.breakers[0];
+    const blTxt = (bl.type === 'Breaker' ? t('breakerLbl') : t('mitigationLbl')) + ' (' + bl.dir + ') ' + fmt(bl.low, 2) + ' – ' + fmt(bl.high, 2);
+    bDetail = esc(blTxt + (x.breakers.length > 1 ? ' · +' + (x.breakers.length - 1) : ''));
+    bSt = dirMatch(bl.dir);
+  }
+  html += row(t('chkBreaker'), bSt, bDetail);
+  // 5. IDM
+  let iSt = null, iDetail = esc(t('noIdm'));
+  if (x.idm && x.idm.found) {
+    iDetail = esc(x.idm.side === 'SSL' ? t('idmSsl') : t('idmBsl'));
+    iSt = dirMatch(x.idm.side === 'SSL' ? 'BUY' : 'SELL');
+  }
+  html += row(t('chkIdm'), iSt, iDetail);
+  // 6. Fibonacci
+  let fDetail = '—';
+  if (x.fib && x.fib.nearest) fDetail = esc(t('fibNearest') + ': ' + x.fib.nearest.label + ' @ ' + fmt(x.fib.nearest.price, 2) + ' (High ' + fmt(x.fib.high, 2) + ' / Low ' + fmt(x.fib.low, 2) + ')');
+  html += row(t('chkFib'), null, fDetail);
+  // 7. Bollinger squeeze
+  let bbDetail = '—';
+  if (x.bollinger) bbDetail = esc((x.bollinger.squeeze ? t('squeezeOn') : t('squeezeOff')) + ' · Bandwidth ' + x.bollinger.bandwidthPct + '% · %B ' + x.bollinger.percentB);
+  html += row(t('chkBb'), null, bbDetail);
+  // 8. MACD divergence
+  let mdSt = null, mdDetail = esc(t('noMacdDiv'));
+  if (x.macdDiv && x.macdDiv.found) {
+    mdDetail = esc(x.macdDiv.type === 'bullish' ? t('macdBullDiv') : t('macdBearDiv'));
+    mdSt = dirMatch(x.macdDiv.type === 'bullish' ? 'BUY' : 'SELL');
+  }
+  html += row(t('chkMacdDiv'), mdSt, mdDetail);
+  // 9. Mean reversion
+  let mrDetail = '—';
+  if (x.meanRev) {
+    const lbl = x.meanRev.label === 'near' ? t('meanNear') : x.meanRev.label === 'extended' ? t('meanExtended') : t('meanOver');
+    mrDetail = esc('EMA20 se ' + Math.abs(x.meanRev.distATR) + ' ATR ' + t(x.meanRev.side === 'above' ? 'aboveMean' : 'belowMean') + ' — ' + lbl + (x.meanRev.percentB != null ? ' · %B ' + x.meanRev.percentB : ''));
+  }
+  html += row(t('chkMeanRev'), null, mrDetail);
+  // 10. Killzone
+  let kzDetail = '—';
+  if (x.killzone) {
+    const kzName = (code) => code === 'asian' ? t('kzAsian') : code === 'london' ? t('kzLondon') : t('kzNewYork');
+    if (x.killzone.active) kzDetail = esc(t('killActive') + ': ' + kzName(x.killzone.active) + ' ' + String(x.killzone.activeStart).padStart(2, '0') + ':00–' + String(x.killzone.activeEnd).padStart(2, '0') + ':00 UTC (' + pkt(x.killzone.activeStart) + '–' + pkt(x.killzone.activeEnd) + ' PKT)');
+    else kzDetail = esc(t('killNext') + ': ' + kzName(x.killzone.next) + ' ' + String(x.killzone.nextStart).padStart(2, '0') + ':00 UTC (' + pkt(x.killzone.nextStart) + ' PKT) — ' + x.killzone.nextInMin + ' min');
+  }
+  html += row(t('chkKillzone'), null, kzDetail);
+  // 11. Asian range
+  let aSt = null, aDetail = esc(t('noAsian'));
+  if (x.asian) {
+    const exp = x.asian.expanded;
+    aDetail = esc(fmt(x.asian.low, 2) + ' – ' + fmt(x.asian.high, 2) + ' — ' + t(exp === 'above' ? 'asianAbove' : exp === 'below' ? 'asianBelow' : 'asianIn'));
+    aSt = exp === 'above' ? dirMatch('BUY') : exp === 'below' ? dirMatch('SELL') : null;
+  }
+  html += row(t('chkAsian'), aSt, aDetail);
+  // 12. VWAP bands
+  let vDetail = '—';
+  if (x.vwapBands && x.vwapBands.nearest) vDetail = esc(t('vwapNearest') + ': ' + x.vwapBands.nearest.label + ' @ ' + fmt(x.vwapBands.nearest.price, 2) + ' · VWAP ' + fmt(x.vwapBands.vwap, 2));
+  html += row(t('chkVwap'), null, vDetail);
+  // 13. Volume
+  let volDetail = esc(t('volNa'));
+  if (x.volume && x.volume.available) {
+    const vt = x.volume.trend === 'rising' ? t('volRising') : x.volume.trend === 'falling' ? t('volFalling') : t('volNormal');
+    volDetail = esc(vt + ' — ' + x.volume.ratio + '× avg (20)');
+  }
+  html += row(t('chkVol'), null, volDetail);
+  // DXY + correlation line
+  let dxyLine = `<p><b>${t('dxyTitle')}:</b> `;
+  if (x.dxy && x.dxy.available && x.dxy.value != null) {
+    dxyLine += fmt(x.dxy.value, 2);
+    if (x.dxy.corr20 != null) {
+      const cl = x.dxy.corr20 <= -0.3 ? t('corrNeg') : x.dxy.corr20 >= 0.3 ? t('corrPos') : t('corrFlat');
+      dxyLine += ' · ' + esc(currentPair + ' vs DXY ' + t('corrLabel') + ': ' + x.dxy.corr20 + ' (' + cl + ')');
+    }
+  } else dxyLine += esc(t('dxyNa'));
+  dxyLine += '</p>';
+  html += dxyLine + `<p class="fine">${t('extNote')}</p>`;
+  return html;
+}
+
+// ---------------- Risk management box (plan card par — guidance, live trade management nahi) ----------------
+function riskBoxHtml(plan) {
+  const risk = Math.abs(plan.trigger - plan.sl);
+  const rr2 = risk ? (Math.abs(plan.tp2 - plan.trigger) / risk).toFixed(2) : '—';
+  const rr3 = risk ? (Math.abs(plan.tp3 - plan.trigger) / risk).toFixed(2) : '—';
+  return `<div class="risk-box"><b>${esc(t('riskTitle'))}</b><br>
+  ${esc(t('riskRrTarget'))} — TP3 1:${rr3} · TP2 1:${rr2}<br>
+  ${esc(t('riskTp1'))}<br>${esc(t('riskSize'))}<br>${esc(t('riskDd'))}</div>`;
+}
+
 async function loadTerminal(fromPrice) {
   const el = document.getElementById('terminalCard');
   try {
@@ -585,17 +859,30 @@ async function loadTerminal(fromPrice) {
       <div class="plan-head"><b>${label} ${plan.direction}</b> <span class="status-badge ${statusCls}">${esc(t(statusKey))}</span>${isActive ? ' <span class="status-badge st-active">' + esc(t('activePlan')) + '</span>' : ''}</div>
       ${t('entryZone')}: <b>${fmt(plan.entryZone[0], 2)} – ${fmt(plan.entryZone[1], 2)}</b> · ${t('trigger')}: <b>${fmt(plan.trigger, 2)}</b><br>
       SL: <span class="sell"><b>${fmt(plan.sl, 2)}</b></span> · R:R ${esc(plan.rr || '')}<br>
-      TP1: <span class="buy"><b>${fmt(plan.tp1, 2)}</b></span> (${rrOf(plan.tp1)}) · TP2: <b>${fmt(plan.tp2, 2)}</b> (${rrOf(plan.tp2)}) · TP3: <b>${fmt(plan.tp3, 2)}</b> (${rrOf(plan.tp3)})</div>`;
+      TP1: <span class="buy"><b>${fmt(plan.tp1, 2)}</b></span> (${rrOf(plan.tp1)}) · TP2: <b>${fmt(plan.tp2, 2)}</b> (${rrOf(plan.tp2)}) · TP3: <b>${fmt(plan.tp3, 2)}</b> (${rrOf(plan.tp3)})<br>
+      ${d.tradeZone ? `${t('tradeZone')}: <b>${esc(d.tradeZone.type)} ${fmt(d.tradeZone.low, 2)} – ${fmt(d.tradeZone.high, 2)}</b>` : ''}
+      ${riskBoxHtml(plan)}</div>`;
     };
     const gatesHtml = (gates, title) => `<h4>${title}</h4>` + gates.map(g =>
       `<div class="gate"><span>${esc(g.name)}</span><span>${g.points}/${g.max}</span></div>`).join('');
+    // Ek direction, ek trade: sirf wo direction dikhao jo gate paar kare.
+    // WAIT me dono gates dikhao taake pata chale kyun koi gate paar nahi hua.
+    const gatesSection = d.direction === 'BUY' ? gatesHtml(d.buyGates, t('buyGates'))
+      : d.direction === 'SELL' ? gatesHtml(d.sellGates, t('sellGates'))
+      : gatesHtml(d.buyGates, t('buyGates')) + ' ' + gatesHtml(d.sellGates, t('sellGates'));
+    const activePlan = d.direction === 'BUY' ? d.buyPlan : d.direction === 'SELL' ? d.sellPlan : null;
+    const oppDir = d.direction === 'BUY' ? 'SELL' : d.direction === 'SELL' ? 'BUY' : null;
+    const oppScore = d.direction === 'BUY' ? d.sellScore : d.direction === 'SELL' ? d.buyScore : null;
     el.innerHTML = `
       <h3>${esc(currentPair.replace('USD', '/USD'))} — <span class="${dirCls}">${d.direction}</span> ${d.direction === 'WAIT' ? t('noTrade') : ''}</h3>
       <p>${t('price')}: <b>${fmt(d.price, 2)}</b> · Bid ${fmt(d.bid, 2)} · Ask ${fmt(d.ask, 2)} · Spread ${fmt(d.spread, 2)} · ${t('confluence')}: <b>${d.confluence}%</b> (${t('gate')} 85%)</p>
       <p>PDH ${fmt(d.range.pdh, 2)} · PDL ${fmt(d.range.pdl, 2)} · Range ${fmt(d.range.pdl, 2)} – ${fmt(d.range.pdh, 2)}</p>
-      ${gatesHtml(d.buyGates, t('buyGates'))} ${gatesHtml(d.sellGates, t('sellGates'))}
-      <h4>${t('buySellPlans')}</h4>
-      ${planHtml(d.buyPlan, 'BUY')} ${planHtml(d.sellPlan, 'SELL')}
+      ${gatesSection}
+      <h4>${t('signalPlan')} — ${d.direction}</h4>
+      ${activePlan ? planHtml(activePlan, d.direction) : '<p>' + esc(t('waitNoTrade')) + (d.zoneBlocked && d.zoneNote ? '<br>' + esc(d.zoneNote) : '') + '</p>'}
+      ${oppDir ? `<p class="fine">${t('oppScenario')}: ${oppDir} ${oppScore}% — ${t('oppGateNotMet')} (${t('gate')} 85%)</p>` : ''}
+      ${smcChecklistHtml(d)}
+      ${extendedConfluenceHtml(d)}
       <h4>${t('sentiment')} — ${esc(d.sentiment.label)}</h4>
       <p>Bullish ${d.sentiment.bullishPct}% · Bearish ${d.sentiment.bearishPct}%</p>
       <p>${t('demandZone')}: ${d.sentiment.demandZone ? fmt(d.sentiment.demandZone[0], 2) + ' – ' + fmt(d.sentiment.demandZone[1], 2) : '—'} · ${t('supplyZone')}: ${d.sentiment.supplyZone ? fmt(d.sentiment.supplyZone[0], 2) + ' – ' + fmt(d.sentiment.supplyZone[1], 2) : '—'}</p>
@@ -741,8 +1028,11 @@ async function loadAcct() {
       <button class="btn small" onclick="testPush()">${t('testPushBtn')}</button> <span id="pushMsg"></span>`;
     } else if (acctTab === 'signalDetails') {
       const d = await api('/api/signal?pair=' + currentPair + '&lang=' + lang);
-      el.innerHTML = d.error ? '<p>' + esc(d.message) + '</p>' : `<p>BUY — ${t('entryZone')} ${fmt(d.buyPlan.entryZone[0], 2)} – ${fmt(d.buyPlan.entryZone[1], 2)} · ${t('trigger')} ${fmt(d.buyPlan.trigger, 2)} · SL ${fmt(d.buyPlan.sl, 2)} · TP ${fmt(d.buyPlan.tp1, 2)} / ${fmt(d.buyPlan.tp2, 2)} / ${fmt(d.buyPlan.tp3, 2)}</p>
-      <p>SELL — ${t('entryZone')} ${fmt(d.sellPlan.entryZone[0], 2)} – ${fmt(d.sellPlan.entryZone[1], 2)} · ${t('trigger')} ${fmt(d.sellPlan.trigger, 2)} · SL ${fmt(d.sellPlan.sl, 2)} · TP ${fmt(d.sellPlan.tp1, 2)} / ${fmt(d.sellPlan.tp2, 2)} / ${fmt(d.sellPlan.tp3, 2)}</p>`;
+      // Ek direction, ek trade — sirf wo plan dikhao jo gate paar kare (Terminal jaisa)
+      const p = d.direction === 'BUY' ? d.buyPlan : d.direction === 'SELL' ? d.sellPlan : null;
+      el.innerHTML = d.error ? '<p>' + esc(d.message) + '</p>' : p
+        ? `<p><b>${d.direction}</b> — ${t('entryZone')} ${fmt(p.entryZone[0], 2)} – ${fmt(p.entryZone[1], 2)} · ${t('trigger')} ${fmt(p.trigger, 2)} · SL ${fmt(p.sl, 2)} · TP ${fmt(p.tp1, 2)} / ${fmt(p.tp2, 2)} / ${fmt(p.tp3, 2)} · ${t('confluence')} ${d.confluence}%</p>`
+        : '<p>' + esc(t('waitNoTrade')) + ' — ' + t('confluence') + ' ' + d.confluence + '%</p>';
     } else if (acctTab === 'signalHistory') {
       el.innerHTML = `<p>${esc(t('historyTabText'))}</p><button class="btn small gold" onclick="showTab('history')">${t('openHistory')}</button>`;
     } else if (acctTab === 'tfMatrix') {
