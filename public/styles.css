@@ -66,6 +66,12 @@ td,th{border-bottom:1px solid #22304d;padding:6px;text-align:left}
 .chk-ok{color:#3ddc84;font-weight:700}.chk-no{color:#ff6b6b;font-weight:700}.chk-na{color:#8ea0c2}
 /* v4: risk management box on the plan card */
 .risk-box{border:1px dashed #f5c542;border-radius:10px;padding:10px;margin-top:8px;font-size:13px;line-height:1.7;background:#0d1526}
+/* v5: Copy Signal + Download Signal Image buttons */
+.sig-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.btn-sig{background:#22304d;color:#fff;border:1px solid #2a3550;border-radius:8px;padding:8px 14px;cursor:pointer;font-size:14px}
+.btn-sig:hover{background:#2c3d63}
+.btn-sig-sm{background:#16213a;color:#cdd8ee;border:1px solid #2a3550;border-radius:8px;padding:4px 10px;cursor:pointer;font-size:12px;margin:4px 4px 0 0}
+.btn-sig-sm:hover{background:#22304d}
 .plan-head { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 4px; }
 .status-badge { padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; }
 .st-in { background: #3ddc84; color: #0a0f1e; }
