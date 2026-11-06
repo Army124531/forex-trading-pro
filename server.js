@@ -89,6 +89,15 @@ async function fetchJson(url, timeoutMs = 5000, headers = {}) {
 async function tryFetch(url, timeoutMs = 5000) {
   try { return await fetchJson(url, timeoutMs); } catch (e) { return null; }
 }
+async function fetchText(url, timeoutMs = 6000) {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), timeoutMs);
+  try {
+    const r = await fetch(url, { signal: ctrl.signal, headers: { 'User-Agent': 'ForexTradingPro/1.0' } });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    return await r.text();
+  } finally { clearTimeout(t); }
+}
 
 // ---------------- Pairs ----------------
 const PAIRS = [
@@ -120,7 +129,6 @@ function krakenKeyToPair(key) {
 // ---------------- Live prices (ONE parallel batch, ~3s cache) ----------------
 let priceCache = { at: 0, data: null };
 let priceInflight = null;
-let cgCache = { at: 0, data: null };
 
 async function fetchAllPrices() {
   const now = Date.now();
@@ -136,17 +144,13 @@ async function fetchAllPrices() {
         .then(d => ({ id: p.id, d })));
     const exP = tryFetch('https://api.exchangerate-api.com/v4/latest/USD', 5000);
     const goldApiPs = ['XAU', 'XAG'].map(s =>
-      tryFetch('https://api.gold-api.com/api/' + s + '/USD', 3000).then(d => ({ s, d })));
-    // Swissquote: koshish ki jati hai; agar JSON quotes mile to use hoga, warna ignore.
-    const sqP = tryFetch('https://www.swissquote.com/sqx-api/1.0/market/quotes?symbols=XAUUSD,EURUSD,GBPUSD,USDJPY,AUDUSD,USDCAD,USDCHF,XAGUSD', 3000);
-    let cg = null;
-    if (!cgCache.data || now - cgCache.at > 60000) {
-      cg = await tryFetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,solana,binancecoin,ripple,dogecoin,cardano,pax-gold&vs_currencies=usd&include_24hr_change=true', 5000);
-      if (cg) cgCache = { at: now, data: cg };
-    } else cg = cgCache.data;
+      tryFetch('https://api.gold-api.com/price/' + s, 4000).then(d => ({ s, d })));
+    // Binance (key-less, free): crypto 24h change ke liye — CoinGecko ka free tier rate-limit karta hai, is liye Binance use hota hai.
+    const BIN_SYMBOLS = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'BNBUSDT', 'XRPUSDT', 'DOGEUSDT', 'ADAUSDT'];
+    const binP = tryFetch('https://data-api.binance.vision/api/v3/ticker/24hr?symbols=' + encodeURIComponent(JSON.stringify(BIN_SYMBOLS)), 5000);
 
-    const [kraken, yahooList, ex, goldApiList, sq] = await Promise.all([
-      krakenP, Promise.all(yahooPs), exP, Promise.all(goldApiPs), sqP,
+    const [kraken, yahooList, ex, goldApiList, bin] = await Promise.all([
+      krakenP, Promise.all(yahooPs), exP, Promise.all(goldApiPs), binP,
     ]);
 
     const krakenMap = {};
@@ -175,26 +179,22 @@ async function fetchAllPrices() {
     }
     sources.push({ name: 'Gold-API', status: Object.keys(goldMap).length ? 'CONNECTED' : 'RETRY' });
 
-    // Swissquote parse (agar JSON array mile)
-    const sqMap = {};
-    if (Array.isArray(sq)) {
-      for (const q of sq) {
-        const sym = (q.symbol || q.instrument || '').toString().toUpperCase().replace('/', '');
-        const bid = parseFloat(q.bid ?? q.bidPrice); const ask = parseFloat(q.ask ?? q.askPrice);
-        if (sym && isFinite(bid) && isFinite(ask)) sqMap[sym] = { bid, ask, price: (bid + ask) / 2 };
+    // Binance: crypto 24h change (non-critical — Kraken/Yahoo se bhi change nikal sakta hai)
+    const binMap = {};
+    if (Array.isArray(bin)) {
+      for (const b of bin) {
+        const sym = (b.symbol || '').replace('USDT', 'USD');
+        const chg = parseFloat(b.priceChangePercent);
+        if (sym && isFinite(chg)) binMap[sym] = chg;
       }
     }
-    sources.push({ name: 'Swissquote', status: Object.keys(sqMap).length ? 'CONNECTED' : 'RETRY' });
-    sources.push({ name: 'CoinGecko', status: cg ? 'CONNECTED' : 'RETRY' });
+    sources.push({ name: 'Binance', status: Object.keys(binMap).length ? 'CONNECTED' : 'STANDBY' });
 
     const out = [];
     for (const p of PAIRS) {
       let price = null, bid = null, ask = null, change = null, source = 'backup', live = false;
       const k = p.kraken ? krakenMap[p.kraken] : null;
       const y = yahooMap[p.id];
-      if (sqMap[p.id]) { // Swissquote pehle (agar mila)
-        price = sqMap[p.id].price; bid = sqMap[p.id].bid; ask = sqMap[p.id].ask; source = 'Swissquote'; live = true;
-      }
       if (price == null && p.id === 'XAUUSD' && goldMap.XAU) { price = goldMap.XAU; source = 'Gold-API'; live = true; }
       if (price == null && p.id === 'XAGUSD' && goldMap.XAG) { price = goldMap.XAG; source = 'Gold-API'; live = true; }
       if (price == null && k) { price = k.last; bid = k.bid; ask = k.ask; source = 'Kraken' + (p.id === 'XAUUSD' ? ' PAX Gold' : ''); live = true; }
@@ -211,8 +211,8 @@ async function fetchAllPrices() {
       }
       if (price != null) {
         if (bid == null || ask == null) { const sp = price * 0.0004; bid = price - sp / 2; ask = price + sp / 2; }
-        // 24h change
-        if (p.cg && cg && cg[p.cg] && typeof cg[p.cg].usd_24h_change === 'number') change = cg[p.cg].usd_24h_change;
+        // 24h change: crypto ke liye Binance, baaki ke liye Kraken open ya Yahoo prevClose
+        if (p.type === 'crypto' && binMap[p.id] != null) change = binMap[p.id];
         else if (k && k.open) change = (k.last - k.open) / k.open * 100;
         else if (y && y.prevClose) change = (y.price - y.prevClose) / y.prevClose * 100;
         const q = { id: p.id, label: p.label, name: p.name, type: p.type, price, bid, ask, spread: +(ask - bid).toFixed(p.dec), change24h: change == null ? null : +change.toFixed(2), source, live, dec: p.dec };
@@ -532,13 +532,19 @@ function buildPlan(livePrice, atr, side) {
   const sl = entry + 1.5 * R; // SELL ka SL HAMESHA entry se upar
   return { direction: 'SELL', entry, entryZone: [entry - 0.5 * R, entry + 0.5 * R], trigger: entry, sl, tp1: entry - 1 * R, tp2: entry - 2 * R, tp3: entry - 3 * R, rr: '1:2' };
 }
-function planStatus(plan, livePrice) {
-  const [lo, hi] = plan.entryZone;
-  return (livePrice >= lo && livePrice <= hi) ? 'IN_ZONE' : 'APPROACHING';
+function planStatus(score) {
+  // Gate score se status: 85%+ = gate paar, trade active (IN_ZONE);
+  // 70–84 = gate ke kareeb (APPROACHING); is se kam = WAIT.
+  // Sirf price se status nahi nikala ja sakta, kyunke entry zone live price
+  // ke ird-gird banti hai — price hamesha zone ke andar hota hai.
+  if (score >= 85) return 'IN_ZONE';
+  if (score >= 70) return 'APPROACHING';
+  return 'WAIT';
 }
 let signalCache = new Map(); // pair -> {at, data}
-async function computeSignal(pairId) {
-  const cached = signalCache.get(pairId);
+async function computeSignal(pairId, lang) {
+  const cacheKey = pairId + '|' + (lang === 'en' ? 'en' : 'ur');
+  const cached = signalCache.get(cacheKey);
   if (cached && Date.now() - cached.at < 30000) return cached.data;
   const prices = await fetchAllPrices();
   const quote = prices.pairs.find(p => p.id === pairId);
@@ -554,8 +560,8 @@ async function computeSignal(pairId) {
   const confluence = Math.max(buy.total, sell.total);
   const buyPlan = buildPlan(live, ind.atr14, 'buy');
   const sellPlan = buildPlan(live, ind.atr14, 'sell');
-  buyPlan.status = planStatus(buyPlan, live);
-  sellPlan.status = planStatus(sellPlan, live);
+  buyPlan.status = planStatus(buy.total);
+  sellPlan.status = planStatus(sell.total);
   // Sentiment: aakhri 24 candles
   const recent = candles.slice(-24);
   const bulls = recent.filter(c => c.c >= c.o).length;
@@ -569,12 +575,13 @@ async function computeSignal(pairId) {
     label: bullPct >= 60 ? 'BULLISH' : bullPct <= 40 ? 'BEARISH' : 'NEUTRAL',
   };
   const comments = [];
-  if (direction === 'WAIT') comments.push('WAIT — koi trade nahi. 85% gate poora nahi hua (' + confluence + '%).');
-  if (buy.total >= sell.total) comments.push('BUY taraf ' + buy.total + '% confluence hai.');
-  else comments.push('SELL taraf ' + sell.total + '% confluence hai.');
+  const en = lang === 'en';
+  if (direction === 'WAIT') comments.push(en ? 'WAIT — no trade. The 85% gate is not met (' + confluence + '%).' : 'WAIT — koi trade nahi. 85% gate poora nahi hua (' + confluence + '%).');
+  if (buy.total >= sell.total) comments.push(en ? 'BUY side confluence is ' + buy.total + '%.' : 'BUY taraf ' + buy.total + '% confluence hai.');
+  else comments.push(en ? 'SELL side confluence is ' + sell.total + '%.' : 'SELL taraf ' + sell.total + '% confluence hai.');
   if (ind.rsi14 != null) comments.push('RSI 14: ' + ind.rsi14.toFixed(1) + (ind.rsi14 > 70 ? ' (Overbought)' : ind.rsi14 < 30 ? ' (Oversold)' : ''));
-  if (ind.ema200 && live > ind.ema200) comments.push('Price EMA 200 ke upar hai — bara trend upar.');
-  else if (ind.ema200) comments.push('Price EMA 200 ke neeche hai — bara trend neeche.');
+  if (ind.ema200 && live > ind.ema200) comments.push(en ? 'Price is above EMA 200 — the big trend is up.' : 'Price EMA 200 ke upar hai — bara trend upar.');
+  else if (ind.ema200) comments.push(en ? 'Price is below EMA 200 — the big trend is down.' : 'Price EMA 200 ke neeche hai — bara trend neeche.');
   const pdh = Math.max(...candles.slice(-96).map(c => c.h));
   const pdl = Math.min(...candles.slice(-96).map(c => c.l));
   const data = {
@@ -586,7 +593,7 @@ async function computeSignal(pairId) {
     rsi14: ind.rsi14, atr14: ind.atr14, ema20: ind.ema20, ema50: ind.ema50, ema200: ind.ema200,
     comments, nextCheckInSec: 30, updatedAt: Date.now(),
   };
-  signalCache.set(pairId, { at: Date.now(), data });
+  signalCache.set(cacheKey, { at: Date.now(), data });
   // Record BUY/SELL signal (WAIT kabhi record nahi hota)
   if (direction !== 'WAIT') {
     const plan = direction === 'BUY' ? buyPlan : sellPlan;
@@ -847,7 +854,7 @@ app.get('/api/prices', requireAuth, async (req, res) => {
 app.get('/api/signal', requireAuth, async (req, res) => {
   if (!db.settings.engines.terminal) return res.json({ disabled: true, message: 'Terminal engine band hai (Admin ne band kiya hai).' });
   const pair = (req.query.pair || db.settings.defaultPair || 'XAUUSD').toUpperCase();
-  try { res.json(await computeSignal(pair)); }
+  try { res.json(await computeSignal(pair, req.query.lang)); }
   catch (e) { res.status(500).json({ error: 'signal_fail', message: e.message }); }
 });
 
@@ -873,6 +880,14 @@ app.get('/api/indicators', requireAuth, async (req, res) => {
     parts.push({ name: 'Trend', score: trend, max: 20 }, { name: 'Momentum', score: mom, max: 20 }, { name: 'Volatility', score: vol, max: 20 }, { name: 'Strength', score: str, max: 20 }, { name: 'Structure', score: struct, max: 20 });
   }
   res.json({ pair, timeframes: out, scorecard: { score, parts, note: 'Score asal Kraken candles se banta hai.' } });
+});
+
+// Candles (Terminal chart ke liye — asal Kraken/Yahoo candles)
+app.get('/api/candles', requireAuth, async (req, res) => {
+  const pair = (req.query.pair || 'XAUUSD').toUpperCase();
+  const tf = req.query.tf || '15m';
+  const candles = await getCandles(pair, tf);
+  res.json({ pair, tf, candles: candles.slice(-200) });
 });
 
 // SMC
@@ -907,32 +922,40 @@ app.get('/api/scanner', requireAuth, async (req, res) => {
 });
 
 // Sessions
+let sessionCache = { at: 0, data: null };
 app.get('/api/sessions', requireAuth, async (req, res) => {
   if (!db.settings.engines.session) return res.json({ disabled: true, message: 'Session engine band hai.' });
+  if (sessionCache.data && Date.now() - sessionCache.at < 30000) return res.json(sessionCache.data);
   const info = sessionInfo();
   const pairs = ['EURUSD', 'GBPUSD', 'USDJPY', 'XAUUSD', 'BTCUSD', 'AUDUSD'];
   const prices = await fetchAllPrices();
-  const rows = [];
-  for (const id of pairs) {
-    const candles = await getCandles(id, '1H');
-    if (!candles.length) continue;
-    const ind = computeIndicators(candles);
-    const q = sessionQuality(ind, candles);
-    const live = (prices.pairs.find(p => p.id === id) || {}).price || candles[candles.length - 1].c;
-    const dir = q.score >= 85 ? (ind.ema20 && live > ind.ema20 ? 'BUY' : 'SELL') : 'WAIT';
-    const plan = dir === 'WAIT' ? buildPlan(live, ind.atr14, 'BUY') : buildPlan(live, ind.atr14, dir);
-    rows.push({ pair: id, price: live, quality: q.score, qualityDetails: q.details, direction: dir, rsi: ind.rsi14, adx: ind.adx14, entry: plan.entry, sl: plan.sl, tp1: plan.tp1, tp2: plan.tp2, tp3: plan.tp3 });
-    if (dir !== 'WAIT') {
-      const recentSame = db.signals.find(s => s.pair === id && s.direction === dir && s.engine === 'session' && Date.now() - s.createdAt < 3600000);
-      if (!recentSame) {
-        db.signals.unshift({ id: 'SIG-' + Date.now().toString(36).toUpperCase(), pair: id, direction: dir, entry: plan.entry, sl: plan.sl, tp1: plan.tp1, tp2: plan.tp2, tp3: plan.tp3, score: q.score, gate: 85, engine: 'session', createdAt: Date.now(), outcome: null, outcomeAt: null });
-        if (db.signals.length > 500) db.signals.length = 500;
-        saveDb();
+  // Tamam pairs ek saath (parallel) — pehle ek ek karke 6 pairs ke candles mangwaye jate the,
+  // is liye endpoint 6-30+ second leta tha aur tab khaali dikhta tha. Ab har pair alag hai:
+  // ek slow pair baakiyon ko nahi rokta.
+  const rows = (await Promise.all(pairs.map(async (id) => {
+    try {
+      const candles = await getCandles(id, '1H');
+      if (!candles.length) return null;
+      const ind = computeIndicators(candles);
+      const q = sessionQuality(ind, candles);
+      const live = (prices.pairs.find(p => p.id === id) || {}).price || candles[candles.length - 1].c;
+      const dir = q.score >= 85 ? (ind.ema20 && live > ind.ema20 ? 'BUY' : 'SELL') : 'WAIT';
+      const plan = buildPlan(live, ind.atr14, dir === 'SELL' ? 'sell' : 'buy');
+      if (dir !== 'WAIT') {
+        const recentSame = db.signals.find(s => s.pair === id && s.direction === dir && s.engine === 'session' && Date.now() - s.createdAt < 3600000);
+        if (!recentSame) {
+          db.signals.unshift({ id: 'SIG-' + Date.now().toString(36).toUpperCase(), pair: id, direction: dir, entry: plan.entry, sl: plan.sl, tp1: plan.tp1, tp2: plan.tp2, tp3: plan.tp3, score: q.score, gate: 85, engine: 'session', createdAt: Date.now(), outcome: null, outcomeAt: null });
+          if (db.signals.length > 500) db.signals.length = 500;
+          saveDb();
+        }
       }
-    }
-  }
+      return { pair: id, price: live, quality: q.score, qualityDetails: q.details, direction: dir, rsi: ind.rsi14, adx: ind.adx14, entry: plan.entry, sl: plan.sl, tp1: plan.tp1, tp2: plan.tp2, tp3: plan.tp3 };
+    } catch (e) { return null; }
+  }))).filter(Boolean);
   const sessionSignals = db.signals.filter(s => s.engine === 'session');
-  res.json({ ...info, pairs: rows, stats: { total: sessionSignals.length, buy: sessionSignals.filter(s => s.direction === 'BUY').length, sell: sessionSignals.filter(s => s.direction === 'SELL').length, wait: 0, note: 'WAIT signals kabhi record nahi hote, is liye WAIT ki ginti hamesha 0 hoti hai.' } });
+  const data = { ...info, pairs: rows, stats: { total: sessionSignals.length, buy: sessionSignals.filter(s => s.direction === 'BUY').length, sell: sessionSignals.filter(s => s.direction === 'SELL').length, wait: 0, note: 'WAIT signals kabhi record nahi hote, is liye WAIT ki ginti hamesha 0 hoti hai.' } };
+  sessionCache = { at: Date.now(), data };
+  res.json(data);
 });
 app.get('/api/session/backtest', requireAuth, async (req, res) => {
   const days = Math.min(parseInt(req.query.days || '30', 10) || 30, 90);
@@ -966,6 +989,37 @@ app.get('/api/session/backtest', requireAuth, async (req, res) => {
     }
   }
   res.json({ days, session, trades, wins, losses, winRate: trades ? +(wins / trades * 100).toFixed(1) : 0, profitFactor: grossLoss ? +(grossWin / grossLoss).toFixed(2) : (wins ? 99 : 0), note: 'Ye backtest asal 1H candles par chala hai — koi banaya hua number nahi.' });
+});
+app.get('/api/smc/backtest', requireAuth, async (req, res) => {
+  const days = Math.min(parseInt(req.query.days || '30', 10) || 30, 30);
+  const pair = (req.query.pair || 'XAUUSD').toUpperCase();
+  // Asal 15M candles par SMC rule: score 80%+ par entry, phir TP1/SL check
+  const candles = await getCandles(pair, '15m');
+  let trades = 0, wins = 0, losses = 0, grossWin = 0, grossLoss = 0;
+  if (candles.length > 100) {
+    const need = Math.min(candles.length, days * 96);
+    const slice = candles.slice(-need);
+    for (let i = 60; i < slice.length - 10; i += 4) {
+      const window = slice.slice(Math.max(0, i - 60), i + 1);
+      const smc = computeSmc(window, []);
+      if (!smc || smc.error || smc.score < 80) continue;
+      const entry = window[window.length - 1].c;
+      const dir = window[window.length - 1].c >= window[window.length - 1].o ? 'BUY' : 'SELL';
+      const atr = lastVal(atrArr(window, 14)) || entry * 0.002;
+      const sl = dir === 'BUY' ? entry - 1.5 * atr : entry + 1.5 * atr;
+      const tp1 = dir === 'BUY' ? entry + 1.5 * atr : entry - 1.5 * atr;
+      let outcome = null;
+      for (let j = i + 1; j < Math.min(slice.length, i + 33); j++) {
+        const c = slice[j];
+        if (dir === 'BUY') { if (c.l <= sl) { outcome = 'Loss'; break; } if (c.h >= tp1) { outcome = 'Win'; break; } }
+        else { if (c.h >= sl) { outcome = 'Loss'; break; } if (c.l <= tp1) { outcome = 'Win'; break; } }
+      }
+      if (!outcome) continue;
+      trades++;
+      if (outcome === 'Win') { wins++; grossWin += 1.5; } else { losses++; grossLoss += 1.5; }
+    }
+  }
+  res.json({ pair, days, trades, wins, losses, winRate: trades ? +(wins / trades * 100).toFixed(1) : 0, profitFactor: grossLoss ? +(grossWin / grossLoss).toFixed(2) : (wins ? 99 : 0), note: 'Ye backtest asal 15M candles par SMC rule (score 80%+) se chala hai — koi banaya hua number nahi.' });
 });
 
 // History + performance + refiner
@@ -1002,6 +1056,96 @@ app.get('/api/refiner', requireAuth, async (req, res) => {
     winRate: closed.length ? +(wins / closed.length * 100).toFixed(1) : null,
     signals: list.slice(0, 50),
     note: db.buildNote + ' Purane signals (jinke score nahi hain) is me nahi aate.',
+  });
+});
+
+// ---------------- Fundamental News (free RSS feeds, key-less) ----------------
+function parseRss(xml, sourceName) {
+  const clean = (s) => (s || '').replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;|&apos;/g, "'").replace(/<[^>]+>/g, '').trim();
+  const tag = (block, name) => { const mm = block.match(new RegExp('<' + name + '[^>]*>([\\s\\S]*?)</' + name + '>')); return mm ? clean(mm[1]) : ''; };
+  const items = [];
+  const re = /<item>([\s\S]*?)<\/item>/g;
+  let m;
+  while ((m = re.exec(xml)) && items.length < 15) {
+    const b = m[1];
+    const title = tag(b, 'title');
+    const link = tag(b, 'link');
+    const pub = tag(b, 'pubDate');
+    const time = pub ? Date.parse(pub) : NaN;
+    if (title) items.push({ title, link, source: sourceName, time: isFinite(time) ? time : Date.now() });
+  }
+  return items;
+}
+let newsCache = { at: 0, data: null };
+app.get('/api/news', requireAuth, async (req, res) => {
+  if (newsCache.data && Date.now() - newsCache.at < 300000) return res.json(newsCache.data);
+  const feeds = [
+    { name: 'FXStreet', url: 'https://www.fxstreet.com/rss/news' },
+    { name: 'ForexLive', url: 'https://www.forexlive.com/feed/' },
+  ];
+  const results = await Promise.all(feeds.map(async (f) => {
+    try { const xml = await fetchText(f.url, 6000); return { name: f.name, ok: true, items: parseRss(xml, f.name) }; }
+    catch (e) { return { name: f.name, ok: false, items: [] }; }
+  }));
+  const all = results.flatMap(r => r.items).sort((a, b) => b.time - a.time).slice(0, 12);
+  const data = {
+    news: all,
+    sources: results.map(r => ({ name: r.name, status: r.ok ? 'CONNECTED' : 'RETRY' })),
+    updatedAt: Date.now(),
+    available: all.length > 0,
+    note: 'Headlines FXStreet aur ForexLive ke free RSS feeds se aati hain — koi headline banayi nahi jati. Feed band ho to "news abhi nahi mil rahi" dikhaya jata hai.',
+  };
+  newsCache = { at: Date.now(), data };
+  res.json(data);
+});
+
+// ---------------- Terminal backtest (signal quality review — asal 1H candles) ----------------
+app.get('/api/terminal/backtest', requireAuth, async (req, res) => {
+  const pair = (req.query.pair || 'XAUUSD').toUpperCase();
+  const days = Math.min(parseInt(req.query.days || '30', 10) || 30, 30);
+  const candles = await getCandles(pair, '1H');
+  const trades = [];
+  if (candles.length > 230) {
+    const need = Math.min(candles.length, days * 24);
+    const slice = candles.slice(-need);
+    for (let i = 220; i < slice.length - 10; i += 2) {
+      const window = slice.slice(i - 220, i + 1);
+      const ind = computeIndicators(window);
+      const live = window[window.length - 1].c;
+      const buy = gateScore(window, ind, live, 'buy');
+      const sell = gateScore(window, ind, live, 'sell');
+      const dir = buy.total >= 85 ? 'BUY' : sell.total >= 85 ? 'SELL' : null;
+      if (!dir) continue;
+      const atr = ind.atr14 || live * 0.002;
+      const sl = dir === 'BUY' ? live - 1.5 * atr : live + 1.5 * atr;
+      const tp1 = dir === 'BUY' ? live + 1 * atr : live - 1 * atr;
+      let outcome = null;
+      for (let j = i + 1; j < Math.min(slice.length, i + 25); j++) {
+        const c = slice[j];
+        if (dir === 'BUY') { if (c.l <= sl) { outcome = 'Loss'; break; } if (c.h >= tp1) { outcome = 'Win'; break; } }
+        else { if (c.h >= sl) { outcome = 'Loss'; break; } if (c.l <= tp1) { outcome = 'Win'; break; } }
+      }
+      if (!outcome) continue;
+      trades.push({ dir, outcome, adx: ind.adx14, macdHist: ind.macdHist, hourUTC: new Date(window[window.length - 1].t).getUTCHours() });
+    }
+  }
+  const stats = (list) => {
+    const wins = list.filter(t => t.outcome === 'Win').length;
+    const losses = list.length - wins;
+    // Win = +1R (TP1), Loss = -1.5R (SL) — profit factor R se hisaab hota hai, sirf ginti se nahi.
+    const grossWin = wins * 1, grossLoss = losses * 1.5;
+    return { trades: list.length, wins, losses, winRate: list.length ? +(wins / list.length * 100).toFixed(1) : 0, profitFactor: grossLoss ? +(grossWin / grossLoss).toFixed(2) : (wins ? 99 : 0) };
+  };
+  res.json({
+    pair, days,
+    baseline: stats(trades),
+    filters: {
+      adx20: stats(trades.filter(t => t.adx != null && t.adx >= 20)),
+      adx25: stats(trades.filter(t => t.adx != null && t.adx >= 25)),
+      macdAgree: stats(trades.filter(t => t.macdHist != null && ((t.dir === 'BUY' && t.macdHist > 0) || (t.dir === 'SELL' && t.macdHist < 0)))),
+      noDeadHours: stats(trades.filter(t => !(t.hourUTC >= 22 || t.hourUTC <= 1))),
+    },
+    note: 'Baseline = Terminal engine (6 gates, 85% gate) 1H candles par. Filters sirf un trades par lagte hain jo baseline me bane — gate kam nahi kiya gaya.',
   });
 });
 
