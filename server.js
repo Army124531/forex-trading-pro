@@ -1300,7 +1300,7 @@ app.get('/api/smc', requireAuth, async (req, res) => {
       const q = prices.pairs.find(p => p.id === pair);
       const live = q ? q.price : c15[c15.length - 1].c;
       const ind = computeIndicators(c15);
-      const plan = buildPlan(live, ind.atr14, dir);
+      const plan = buildPlan(live, ind.atr14, dir === 'SELL' ? 'sell' : 'buy');
       db.signals.unshift({ id: 'SIG-' + Date.now().toString(36).toUpperCase(), pair, direction: dir, entry: plan.entry, sl: plan.sl, tp1: plan.tp1, tp2: plan.tp2, tp3: plan.tp3, score: smc.score, gate: 80, engine: 'smc', createdAt: Date.now(), outcome: null, outcomeAt: null });
       if (db.signals.length > 500) db.signals.length = 500;
       logEvent('SMC signal: ' + pair + ' ' + dir + ' (' + smc.score + '%)');
