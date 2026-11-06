@@ -429,17 +429,26 @@ function emaSeries(values, period) {
   }
   return out;
 }
+// v6: chart canvas ki backing store ko dikhai dene wali chaudai ke hisaab se fit karo.
+// Warna 900px wala canvas phone par ~328px me sikud jata hai aur EMA legend (11px) parhna namumkin ho jata hai.
+// Desktop par clientWidth 900 se zyada ho to 900 par cap rehta hai — desktop jaisa tha waisa hi rehta hai.
+function fitChartCanvas(cv) {
+  const w = Math.min(cv.clientWidth || 900, 900);
+  if (w > 0 && cv.width !== w) { cv.width = w; cv.height = Math.round(w * 320 / 900); }
+}
 async function loadChart() {
   const cv = document.getElementById('chartCanvas'); if (!cv) return;
   try {
     const d = await api('/api/candles?pair=' + currentPair + '&tf=' + chartTf);
     drawChart(cv, d.candles || []);
   } catch (e) {
+    fitChartCanvas(cv);
     const ctx = cv.getContext('2d'); ctx.clearRect(0, 0, cv.width, cv.height);
     ctx.fillStyle = '#8ea0c2'; ctx.font = '14px sans-serif'; ctx.fillText(t('chartNoData'), 10, 24);
   }
 }
 function drawChart(cv, candles) {
+  fitChartCanvas(cv);
   const ctx = cv.getContext('2d'); const W = cv.width, H = cv.height;
   ctx.clearRect(0, 0, W, H);
   if (!candles || candles.length < 5) { ctx.fillStyle = '#8ea0c2'; ctx.font = '14px sans-serif'; ctx.fillText(t('chartNoData'), 10, 24); return; }
@@ -523,8 +532,8 @@ async function runTerminalBacktest() {
   try {
     const d = await api('/api/terminal/backtest?pair=' + currentPair + '&days=30');
     const row = (name, s) => `<tr><td>${esc(name)}</td><td>${s.trades}</td><td>${s.wins}</td><td>${s.losses}</td><td>${s.winRate}%</td><td>${s.profitFactor}</td></tr>`;
-    el.innerHTML = `<table><tr><th>${t('filter')}</th><th>${t('trades')}</th><th>${t('wins')}</th><th>${t('losses')}</th><th>${t('winRate')}</th><th>${t('profitFactor')}</th></tr>` +
-      row(t('baseline'), d.baseline) + row('ADX ≥ 20', d.filters.adx20) + row('ADX ≥ 25', d.filters.adx25) + row(t('macdAgree'), d.filters.macdAgree) + row(t('noDeadHours'), d.filters.noDeadHours) + `</table><p>${esc(t('termBacktestNote'))}</p>`;
+    el.innerHTML = `<div class="table-wrap"><table><tr><th>${t('filter')}</th><th>${t('trades')}</th><th>${t('wins')}</th><th>${t('losses')}</th><th>${t('winRate')}</th><th>${t('profitFactor')}</th></tr>` +
+      row(t('baseline'), d.baseline) + row('ADX ≥ 20', d.filters.adx20) + row('ADX ≥ 25', d.filters.adx25) + row(t('macdAgree'), d.filters.macdAgree) + row(t('noDeadHours'), d.filters.noDeadHours) + `</table></div><p>${esc(t('termBacktestNote'))}</p>`;
   } catch (e) { el.innerHTML = '<p>' + esc(e.message) + '</p>'; }
 }
 
@@ -1094,8 +1103,8 @@ async function loadScanner() {
   const el = document.getElementById('scannerBody');
   try {
     const d = await api('/api/scanner');
-    el.innerHTML = `<table><tr><th>${t('pair')}</th><th>${t('price')}</th><th>${t('smcScore')}</th><th>${t('direction')}</th></tr>` +
-      d.rows.map(r => `<tr><td>${esc(r.pair)}</td><td>${fmt(r.price, 2)}</td><td>${r.smcScore == null ? '—' : r.smcScore + '/100'}</td><td>${esc(r.direction)}</td></tr>`).join('') + `</table>
+    el.innerHTML = `<div class="table-wrap"><table><tr><th>${t('pair')}</th><th>${t('price')}</th><th>${t('smcScore')}</th><th>${t('direction')}</th></tr>` +
+      d.rows.map(r => `<tr><td>${esc(r.pair)}</td><td>${fmt(r.price, 2)}</td><td>${r.smcScore == null ? '—' : r.smcScore + '/100'}</td><td>${esc(r.direction)}</td></tr>`).join('') + `</table></div>
       <p>${t('confirmedSignals')}: ${d.confirmedSignals} · ${t('cycleEvery')} ${d.cycleSec} ${t('cycleSec')}</p>`;
   } catch (e) { el.innerHTML = '<p>' + t('scannerFail') + ' ' + esc(e.message) + '</p>'; }
 }
@@ -1110,10 +1119,10 @@ async function loadSession() {
       <p>${t('nextSession')}: ${esc(d.next.name)} — ${d.next.inMin} ${t('minutes')}</p>
       <p>${t('newsBlackout')}: <b>${t('notAvailable')}</b> — ${esc(d.newsBlackout.note)}</p>
       <h4>${t('allSessions')}</h4>
-      <table><tr><th>${t('session')}</th><th>${t('pktTime')}</th><th>${t('status')}</th></tr>
-      ${d.all.map(s => `<tr><td>${esc(s.name)}</td><td>${s.startPKT} – ${s.endPKT}</td><td>${s.isActive ? '<span class="buy">' + esc(t('sessionActive')) + '</span>' : '—'}</td></tr>`).join('')}</table>
-      <table><tr><th>${t('pair')}</th><th>${t('price')}</th><th>${t('quality')}</th><th>${t('direction')}</th><th>${t('entry')}</th><th>SL</th><th>TP1</th></tr>
-      ${d.pairs.map(p => `<tr><td>${esc(p.pair)}</td><td>${fmt(p.price, 2)}</td><td>${p.quality}/100</td><td>${esc(p.direction)}</td><td>${fmt(p.entry, 2)}</td><td>${fmt(p.sl, 2)}</td><td>${fmt(p.tp1, 2)}</td></tr>`).join('')}</table>
+      <div class="table-wrap"><table><tr><th>${t('session')}</th><th>${t('pktTime')}</th><th>${t('status')}</th></tr>
+      ${d.all.map(s => `<tr><td>${esc(s.name)}</td><td>${s.startPKT} – ${s.endPKT}</td><td>${s.isActive ? '<span class="buy">' + esc(t('sessionActive')) + '</span>' : '—'}</td></tr>`).join('')}</table></div>
+      <div class="table-wrap"><table><tr><th>${t('pair')}</th><th>${t('price')}</th><th>${t('quality')}</th><th>${t('direction')}</th><th>${t('entry')}</th><th>SL</th><th>TP1</th></tr>
+      ${d.pairs.map(p => `<tr><td>${esc(p.pair)}</td><td>${fmt(p.price, 2)}</td><td>${p.quality}/100</td><td>${esc(p.direction)}</td><td>${fmt(p.entry, 2)}</td><td>${fmt(p.sl, 2)}</td><td>${fmt(p.tp1, 2)}</td></tr>`).join('')}</table></div>
       <p>${t('sessionStats')} — ${t('total')}: ${d.stats.total} · BUY: ${d.stats.buy} · SELL: ${d.stats.sell} · WAIT: ${d.stats.wait}</p>
       <p>${esc(d.stats.note)}</p>
       <button class="btn small" onclick="loadSessionHistory()">${t('sessionHistoryBtn')}</button>
@@ -1212,8 +1221,8 @@ async function loadTfMatrix() {
   el.innerHTML = '<p>' + esc(t('tfLoading')) + '</p>';
   try {
     const d = await api('/api/tfmatrix?pair=' + currentPair);
-    el.innerHTML = `<table><tr><th>TF</th><th>${t('rsi')}</th><th>${t('ema20')}</th><th>${t('macdHist')}</th><th>${t('adx')}</th><th>${t('signal')}</th></tr>` +
-      d.rows.map(r => `<tr><td>${esc(r.tf)}</td><td>${r.rsi ?? '—'}</td><td>${fmt(r.ema20, 2)}</td><td>${fmt(r.macdHist, 2)}</td><td>${r.adx ?? '—'}</td><td>${esc(r.signal)}</td></tr>`).join('') + `</table><p>${esc(d.note)}</p>`;
+    el.innerHTML = `<div class="table-wrap"><table><tr><th>TF</th><th>${t('rsi')}</th><th>${t('ema20')}</th><th>${t('macdHist')}</th><th>${t('adx')}</th><th>${t('signal')}</th></tr>` +
+      d.rows.map(r => `<tr><td>${esc(r.tf)}</td><td>${r.rsi ?? '—'}</td><td>${fmt(r.ema20, 2)}</td><td>${fmt(r.macdHist, 2)}</td><td>${r.adx ?? '—'}</td><td>${esc(r.signal)}</td></tr>`).join('') + `</table></div><p>${esc(d.note)}</p>`;
   } catch (e) { el.innerHTML = '<p>' + esc(e.message) + '</p>'; }
 }
 async function toggleEngine(k, val) {

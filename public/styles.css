@@ -78,3 +78,59 @@ td,th{border-bottom:1px solid #22304d;padding:6px;text-align:left}
 .st-near { background: #f5c542; color: #0a0f1e; }
 .st-wait { background: #2a3550; color: #8ea0c2; }
 .st-active { background: #f5c542; color: #0a0f1e; }
+
+/* v6: mobile-friendly (phones 360-390px) — responsive additions only, desktop unchanged */
+html,body{overflow-x:hidden}
+.table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+@media (max-width:768px){
+  .tab{padding:0 12px 20px}
+  .card{padding:12px;margin:8px 0}
+  header{padding:10px 12px}
+  .livebar{padding:8px 12px;font-size:12px;gap:8px}
+  /* tabs / subtabs / pair selector: one scrollable row, big tap targets */
+  .tabs{flex-wrap:nowrap;overflow-x:auto;padding:8px 12px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+  .tabs::-webkit-scrollbar{display:none}
+  .tabs button{flex:0 0 auto;min-height:44px;padding:10px 16px;font-size:14px}
+  .subtabs{flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+  .subtabs::-webkit-scrollbar{display:none}
+  .subtabs button{flex:0 0 auto;min-height:44px;padding:10px 14px}
+  .pair-select{flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+  .pair-select::-webkit-scrollbar{display:none}
+  .pair-select button{flex:0 0 auto;min-height:44px;padding:10px 14px}
+  .chart-tf{flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .chart-tf button{flex:0 0 auto;min-height:40px;padding:8px 12px}
+  /* tap targets: at least ~44px tall on touch screens */
+  .btn{min-height:44px;padding:10px 16px}
+  .btn.small{min-height:44px;padding:10px 14px;font-size:14px}
+  .btn-sig{min-height:44px;padding:10px 16px}
+  .btn-sig-sm{min-height:44px;padding:10px 12px;font-size:13px}
+  input,select{min-height:44px;font-size:16px}
+  /* banner readable on narrow screens */
+  .signal-banner{padding:14px 12px}
+  .sb-title{font-size:24px}
+  .sb-line{font-size:14px}
+  .sb-vals{font-size:15px;line-height:1.7}
+  /* tables scroll inside their container, never the whole page */
+  .table-wrap{margin:8px -12px;padding:0 12px}
+  table{font-size:13px}
+  td,th{padding:6px 8px;white-space:nowrap}
+  /* checklist / gate rows may wrap to two lines instead of squeezing */
+  .gate{flex-wrap:wrap;gap:2px 10px}
+  .gate span:last-child{text-align:right}
+  /* price grid: 2 columns on phones */
+  .price-grid{grid-template-columns:repeat(2,1fr)}
+  .score{font-size:20px}
+  /* toast: above the home-indicator safe area, never full-width */
+  .toast{bottom:calc(16px + env(safe-area-inset-bottom,0px));max-width:92vw;font-size:14px}
+}
+@media (max-width:480px){
+  .brand{font-size:16px}
+  .sb-title{font-size:22px}
+  .sb-vals{font-size:14px}
+  .tab{padding:0 10px 20px}
+  .card{padding:12px 10px}
+  header{gap:8px}
+  .userbox{flex-wrap:wrap;justify-content:flex-end}
+  #helloUser{display:none}
+  .table-wrap{margin:8px -10px;padding:0 10px}
+}
