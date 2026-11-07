@@ -1262,7 +1262,7 @@ function sessionQuality(ind, candles) {
 // Bot token SIRF env var TELEGRAM_BOT_TOKEN se aata hai — kabhi file ya code me nahi likha jata.
 // Token na ho to Telegram ka kaam chup-chaap skip hota hai, baaki sab (recorder, website) chalta rehta hai.
 // Bot: @tradingforexprobot (getMe se verified: id 8435329849, "Forex trading pro alerts").
-// Alerts SIRF un buyers ko jate hain jinka plan Active hai — koi bhi Start dabane wala nahi.
+// Alerts un buyers ko jate hain jinka plan Active hai, aur admin ko bhi — koi bhi Start dabane wala nahi.
 // Har buyer ka apna personal link hota hai: https://t.me/tradingforexprobot?start=<tgCode>
 // (Account tab aur Terminal card me dikhta hai). /start ka code buyer se jor kar uska
 // Telegram chat id save hota hai. Plan khatam ya suspend hone par alerts ruk jate hain,
@@ -1273,9 +1273,9 @@ const TG_API = 'https://api.telegram.org';
 const TG_BOT_LINK = 'https://t.me/tradingforexprobot';
 const telegramDryRunSent = []; // sirf dry-run test ke liye — yahan kabhi asal message nahi jata
 
-// Buyer ka personal Telegram code — na ho to bana kar save karein (purane buyers ke liye bhi).
+// Har user (buyer + admin) ka personal Telegram code — na ho to bana kar save karein (purane accounts ke liye bhi).
 function ensureTgCode(u) {
-  if (!u || u.role !== 'buyer') return u;
+  if (!u) return u;
   if (!u.tgCode) { u.tgCode = crypto.randomBytes(8).toString('hex'); saveDb(); }
   return u;
 }
@@ -1319,13 +1319,13 @@ async function sendTelegramMessage(chatId, text) {
     return data;
   } finally { clearTimeout(t); }
 }
-// Naye signal par alert — sirf Active buyers ko, ek signal code par sirf ek dafa, WAIT par kabhi nahi.
+// Naye signal par alert — Active buyers + admin ko, ek signal code par sirf ek dafa, WAIT par kabhi nahi.
 // Pehle claim karein (telegramSent=true), phir bhejein — taake dobara kabhi na jaye. Kabhi throw nahi karta.
 async function sendSignalAlert(sig) {
   try {
     if (!TG_TOKEN || !sig) return;
     if (sig.telegramSent) return;
-    const targets = db.users.filter(u => u.tgChatId != null && buyerActive(u));
+    const targets = db.users.filter(u => u.tgChatId != null && (buyerActive(u) || (u.role === 'admin' && !u.suspended)));
     if (!targets.length) return;
     sig.telegramSent = true; saveDb();
     const text = buildTelegramMessage(sig);
@@ -1483,7 +1483,7 @@ app.post('/api/auth/setup', (req, res) => {
   if (!username || username.length < 3) return res.status(400).json({ error: 'bad_username', message: 'Username kam se kam 3 harf ka ho.' });
   if (!password || password.length < 6) return res.status(400).json({ error: 'bad_password', message: 'Password kam se kam 6 harf ka ho.' });
   const salt = crypto.randomBytes(16).toString('hex');
-  db.users.push({ username, passHash: hashPassword(password, salt), salt, role: 'admin', plan: 'Lifetime', createdAt: Date.now(), expiresAt: null, suspended: false });
+  db.users.push({ username, passHash: hashPassword(password, salt), salt, role: 'admin', plan: 'Lifetime', createdAt: Date.now(), expiresAt: null, suspended: false, tgCode: crypto.randomBytes(8).toString('hex'), tgChatId: null });
   const token = makeToken();
   db.sessions.push({ token, username, createdAt: Date.now() });
   logEvent('Admin account banaya gaya: ' + username);
