@@ -203,7 +203,7 @@ ur: {
   sound: 'Sound', notifications: 'Notifications',
   status: 'Status', session: 'Session', pktTime: 'PKT Time', quality: 'Quality',
   entry: 'Entry', sl: 'SL', tp1: 'TP1', rsi: 'RSI', adx: 'ADX', signal: 'Signal', macdHist: 'MACD Hist', ema20: 'EMA20',
-  noSmcSignals: 'Abhi tak koi SMC signal record nahi hua.',
+  noSmcSignals: 'Abhi tak koi SMC tasdeeq record nahi hui.',
   smcBacktestRunning: 'SMC backtest chal raha hai…', termBacktestRunning: 'Terminal backtest chal raha hai…',
   termBacktestNote: 'Pichle 30 din, 1H candles — mustaqbil ki guarantee nahi. Baseline = Terminal engine (6 gates, 85% gate). Filters ne har pair par behtari nahi dikhai, is liye live engine me koi filter nahi lagaya gaya.',
   termBacktestBtn: 'Terminal Backtest Chalayein',
@@ -336,6 +336,9 @@ ur: {
   smcLiveMove: 'Live move (entry se)',
   smcGenerated: 'Generated',
   smcBeTip: 'Break Even tip: +100 pips profit ke baad SL ko Entry par le jayein — sirf mashwara hai, auto nahi hota.',
+  // v9.2: SMC feed card note + Terminal-only perf note
+  smcFeedNote: 'Ye sirf tasdeeq hai — is par trade na lein, Terminal signal ka intezar karein.',
+  perfNoteTerminal: 'Win rate sirf Terminal signals se banta hai — SMC/Session is me nahi gin-te.',
   smcTpNote: 'TP2/TP3: sirf TP1/SL ka nateeja record hota hai.',
   smcInspectChart: 'Inspect Chart',
   tgTitle: 'Telegram Alerts — Signal Phone Par',
@@ -523,7 +526,7 @@ en: {
   sound: 'Sound', notifications: 'Notifications',
   status: 'Status', session: 'Session', pktTime: 'PKT Time', quality: 'Quality',
   entry: 'Entry', sl: 'SL', tp1: 'TP1', rsi: 'RSI', adx: 'ADX', signal: 'Signal', macdHist: 'MACD Hist', ema20: 'EMA20',
-  noSmcSignals: 'No SMC signal recorded yet.',
+  noSmcSignals: 'No SMC confirmation recorded yet.',
   smcBacktestRunning: 'SMC backtest running…', termBacktestRunning: 'Terminal backtest running…',
   termBacktestNote: 'Past 30 days, 1H candles — not a promise of future results. Baseline = Terminal engine (6 gates, 85% gate). The filters did not improve every pair, so no filter was added to the live engine.',
   termBacktestBtn: 'Run Terminal Backtest',
@@ -656,6 +659,9 @@ en: {
   smcLiveMove: 'Live move (from entry)',
   smcGenerated: 'Generated',
   smcBeTip: 'Break-even tip: after +100 pips profit, move SL to Entry — guidance only, not automatic.',
+  // v9.2: SMC feed card note + Terminal-only perf note
+  smcFeedNote: 'This is only confirmation — do not trade on it, wait for the Terminal signal.',
+  perfNoteTerminal: 'Win rate is computed from Terminal signals only — SMC/Session are not counted here.',
   smcTpNote: 'TP2/TP3: only the TP1/SL outcome is recorded.',
   smcInspectChart: 'Inspect Chart',
   tgTitle: 'Telegram Alerts — Signals on Your Phone',
@@ -774,6 +780,9 @@ function showToast(title, bodyHtml) {
   showToast._t = setTimeout(() => { el.style.display = 'none'; }, 15000);
 }
 function notifySignal(sig) {
+  // v9.2: pop-up/toast/sound/browser notification SIRF Terminal signal par — SMC/Session ki tasdeeq par nahi.
+  // History record me engine hota hai ('terminal' / 'smc' / 'session'); engine na ho to Terminal hi mana jata hai.
+  if (sig.engine && sig.engine !== 'terminal') return;
   const title = t('newSignal') + ' ' + sig.pair + ' ' + sig.direction;
   const body = 'Entry ' + fmt(sig.entry, 2) + ' · SL ' + fmt(sig.sl, 2) + ' · TP1 ' + fmt(sig.tp1, 2) + ' · ' + fmtPktTimeShort(sig.createdAt);
   showToast(title, esc(body));
@@ -959,55 +968,29 @@ async function loadNews() {
 }
 
 // ---------------- SMC extras: feed + backtest ----------------
-// SMC confirmation card — recorded confirmation ko terminal-style card me dikhayein.
-// ENTRY ZONE server ke buildPlan wale formula se (entry ± 0.5R, R = |entry - SL|) — record me zone save nahi hota.
-// TP/SL badge sirf recorded outcome se (shareStatusOf jaisa hi): Win -> TP1 HIT, Loss -> SL HIT, baaki PENDING.
-function smcEntryZone(s) {
-  const R = Math.abs((s.entry ?? 0) - (s.sl ?? 0));
-  return [s.entry - 0.5 * R, s.entry + 0.5 * R];
-}
+// v9.2: SMC feed card — SIRF tasdeeq (score/ring, bias, live price, nateeja, signal code).
+// Koi trade plan nahi (Entry/SL/TP), koi signal Copy/Share/Download button nahi — signal sirf Terminal par.
 function smcFeedCardHtml(s, i) {
-  const dirCls = s.direction === 'BUY' ? 'buy' : 'sell';
-  const zone = smcEntryZone(s);
   const live = (lastPriceMap[s.pair] && lastPriceMap[s.pair].price) || null;
-  const move = live != null ? (s.direction === 'BUY' ? live - s.entry : s.entry - live) : null;
-  const slSt = shareStatusOf('sl', s), tp1St = shareStatusOf('tp1', s);
-  const badge = (st) => `<span class="badge-${st === t('hit') ? 'conf' : 'pend'}">${esc(st)}</span>`;
+  const bias = s.direction === 'BUY' ? t('smcBiasBullish') : t('smcBiasBearish');
   return `<div class="sig-card smc-feed-card">
     <div class="sig-head">
       <div><span class="sig-pair">${esc(s.pair.replace('USD', '/USD'))}</span> <span class="pair-badge">${esc(t('confirmationLbl'))}</span>
-      <div class="sig-dir ${dirCls}">${s.direction} (${esc(t('confirmationLbl'))})</div></div>
+      <div class="sig-dir wait">${esc(t('smcBias'))}: ${esc(bias)}</div></div>
       ${confRingHtml(s.score, 80)}
     </div>
     <div class="sig-meta">
       <div><span class="pc-label">${t('signalCode')}</span><br><b>${esc(s.id || '—')}</b></div>
       <div><span class="pc-label">${t('timeframeLbl')}</span><br><b>15m / 1H</b></div>
-      <div><span class="pc-label">${t('liveMarketPrice')}</span><br><b>${live == null ? '—' : fmt(live, 2)}</b><br><span class="fine">${t('smcLiveMove')}: ${move == null ? '—' : (move >= 0 ? '+' : '') + fmt(move, 4)}</span></div>
+      <div><span class="pc-label">${t('liveMarketPrice')}</span><br><b>${live == null ? '—' : fmt(live, 2)}</b></div>
       <div><span class="pc-label">${t('smcGenerated')}</span><br><b>${fmtPktTime(s.createdAt)}</b><br><span class="fine">${esc(s.outcome || 'In-Flight')}</span></div>
     </div>
-    <div class="req-box">
-      <div class="req-buy"><b>${t('entryZone')}</b><br>${fmt(zone[0], 2)} – ${fmt(zone[1], 2)}</div>
-      <div class="req-sell"><b>${t('entry')}</b><br>${fmt(s.entry, 2)}</div>
-    </div>
-    <div class="tp-row">
-      <span>SL <b>${fmt(s.sl, 2)}</b> ${badge(slSt)}</span>
-      <span>TP1 <b>${fmt(s.tp1, 2)}</b> ${badge(tp1St)}</span>
-      <span>TP2 <b>${fmt(s.tp2, 2)}</b> <span class="badge-pend">${esc(t('pending'))}</span></span>
-      <span>TP3 <b>${fmt(s.tp3, 2)}</b> <span class="badge-pend">${esc(t('pending'))}</span></span>
-    </div>
-    <p class="fine">${esc(t('smcTpNote'))}</p>
-    <p class="fine">💡 ${esc(t('smcBeTip'))}</p>
+    <p class="fine">${esc(t('smcFeedNote'))}</p>
     <div class="sig-actions">
-      <button class="btn-sig-sm" onclick="copySmcFeedSignal(${i})">${esc(t('copySignal'))}</button>
-      <button class="btn-sig-sm" onclick="openSmcShareCard(${i})">${esc(t('shareCard'))}</button>
-      <button class="btn-sig-sm" onclick="downloadSmcFeedSignal(${i})">${esc(t('downloadSignal'))}</button>
       <button class="btn-sig-sm" onclick="inspectSmcChart(${i})">${esc(t('smcInspectChart'))}</button>
     </div>
   </div>`;
 }
-function copySmcFeedSignal(i) { const s = smcFeedSignals[i]; if (s) copySignal(s); }
-function downloadSmcFeedSignal(i) { const s = smcFeedSignals[i]; if (s) downloadSignalImage(s); }
-function openSmcShareCard(i) { const s = smcFeedSignals[i]; if (s) openShareCard(s); }
 // Inspect Chart: us pair ka Terminal chart kholein (maujooda selectPair + showTab reuse).
 function inspectSmcChart(i) { const s = smcFeedSignals[i]; if (!s) return; selectPair(s.pair); showTab('terminal'); }
 async function loadSmcFeed() {
@@ -2344,39 +2327,33 @@ async function loadSession() {
       <p>${t('newsBlackout')}: <b>${t('notAvailable')}</b> — ${esc(d.newsBlackout.note)}</p>
       <h4>${t('allSessions')}</h4>
       <div class="table-wrap"><table><tr><th>${t('session')}</th><th>${t('pktTime')}</th><th>${t('status')}</th></tr>
-      ${d.all.map(s => `<tr><td>${esc(s.name)}</td><td>${fmtHm12(s.startPKT)} – ${fmtHm12(s.endPKT)}</td><td>${s.isActive ? '<span class="buy">' + esc(t('sessionActive')) + '</span>' : '—'}</td></tr>`).join('')}</table></div>
-      <div class="table-wrap"><table><tr><th>${t('pair')}</th><th>${t('price')}</th><th>${t('quality')}</th><th>${t('direction')}</th><th>${t('entry')}</th><th>SL</th><th>TP1</th></tr>
-      ${d.pairs.map(p => `<tr><td>${esc(p.pair)}</td><td>${fmt(p.price, 2)}</td><td>${p.quality}/100</td><td>${esc(p.direction)}</td><td>${fmt(p.entry, 2)}</td><td>${fmt(p.sl, 2)}</td><td>${fmt(p.tp1, 2)}</td></tr>`).join('')}</table></div>
-      <p>${t('sessionStats')} — ${t('total')}: ${d.stats.total} · BUY: ${d.stats.buy} · SELL: ${d.stats.sell} · WAIT: ${d.stats.wait}</p>
-      <p>${esc(d.stats.note)}</p>
-      <button class="btn small" onclick="loadSessionHistory()">${t('sessionHistoryBtn')}</button>
-      <div id="sessionHistory"></div>`;
+      ${d.all.map(s => `<tr><td>${esc(s.name)}</td><td>${fmtHm12(s.startPKT)} – ${fmtHm12(s.endPKT)}</td><td>${s.isActive ? '<span class="buy">' + esc(t('sessionActive')) + '</span>' : '—'}</td></tr>`).join('')}</table></div>`;
   } catch (e) { el.innerHTML = '<p>' + t('sessionLoadFail') + ' ' + esc(e.message) + '</p>'; }
 }
-async function loadSessionHistory() {
-  const el = document.getElementById('sessionHistory');
+// v9.2: Terminal-only counts — /api/performance sab engines gin-ta hai (server.js), is liye
+// Terminal history (/api/history?engine=terminal, max 100 — History display ki bhi yahi had hai) se khud gin lein.
+async function loadTerminalPerf() {
   try {
-    const d = await api('/api/history?engine=session');
-    el.innerHTML = d.signals.length ? d.signals.map(s => `<p>${esc(s.pair)} ${s.direction} — ${t('entry')} ${fmt(s.entry, 2)} · ${esc(s.outcome || 'In-Flight')} · ${fmtPktTime(s.createdAt)}</p>`).join('') : '<p>' + esc(t('noSessionSignals')) + '</p>';
-  } catch (e) { el.innerHTML = '<p>' + esc(e.message) + '</p>'; }
-}
-async function runBacktest() {
-  const el = document.getElementById('backtestBody');
-  el.innerHTML = '<p>' + esc(t('backtestRunning')) + '</p>';
-  try {
-    const d = await api('/api/session/backtest?days=30');
-    el.innerHTML = `<p>${t('trades')}: ${d.trades} · ${t('wins')}: ${d.wins} · ${t('losses')}: ${d.losses} · ${t('winRate')}: ${d.winRate}% · ${t('profitFactor')}: ${d.profitFactor}</p><p>${esc(d.note)}</p>`;
-  } catch (e) { el.innerHTML = '<p>' + esc(e.message) + '</p>'; }
+    const d = await api('/api/history?engine=terminal');
+    const list = d.signals || [];
+    const wins = list.filter(s => s.outcome === 'Win').length;
+    const losses = list.filter(s => s.outcome === 'Loss').length;
+    const be = list.filter(s => s.outcome === 'Break-Even').length;
+    const inflight = list.filter(s => !s.outcome).length;
+    const closed = wins + losses + be;
+    return { total: list.length, wins, losses, breakEven: be, inFlight: inflight, winRate: closed ? +(wins / closed * 100).toFixed(1) : null };
+  } catch (e) { return null; }
 }
 async function loadPerf() {
-  try {
-    const d = await api('/api/performance');
-    document.getElementById('perfBody').innerHTML = `<p>${t('totalExecuted')}: ${d.total} · ${t('wins')}: ${d.wins} · ${t('losses')}: ${d.losses} · ${t('breakEven')}: ${d.breakEven} · ${t('inFlight')}: ${d.inFlight} · ${t('winRate')}: ${d.winRate == null ? t('noClosed') : d.winRate + '%'}</p><p>${esc(d.note)}</p>`;
-  } catch (e) {}
+  const el = document.getElementById('perfBody'); if (!el) return;
+  const p = await loadTerminalPerf();
+  if (!p) { el.innerHTML = ''; return; }
+  el.innerHTML = `<p>${t('totalExecuted')}: ${p.total} · ${t('wins')}: ${p.wins} · ${t('losses')}: ${p.losses} · ${t('breakEven')}: ${p.breakEven} · ${t('inFlight')}: ${p.inFlight} · ${t('winRate')}: ${p.winRate == null ? t('noClosed') : p.winRate + '%'}</p><p>${esc(t('perfNoteTerminal'))}</p>`;
 }
 async function loadHistory() {
   const el = document.getElementById('historyBody');
-  const o = document.getElementById('fOutcome').value, en = document.getElementById('fEngine').value;
+  // v9.2: History me SIRF Terminal signals — SMC/Session records yahan nahi dikhte.
+  const o = document.getElementById('fOutcome').value, en = 'terminal';
   try {
     const d = await api('/api/history?outcome=' + o + '&engine=' + en);
     histSignals = d.signals || [];
@@ -2418,7 +2395,8 @@ async function loadAcct() {
   try {
     if (acctTab === 'overview') {
       const s = await api('/api/settings');
-      const p = await api('/api/performance');
+      // v9.2: Overview counts bhi sirf Terminal signals se (loadTerminalPerf — /api/performance sab engines gin-ta hai).
+      const p = await loadTerminalPerf() || { total: 0, wins: 0, losses: 0, inFlight: 0 };
       el.innerHTML = `<p>${t('username')}: <b>${esc(me.username)}</b> · ${t('role')}: ${esc(me.role)} · ${t('plan')}: ${esc(me.plan || '—')}</p>
       <p>${t('engines')}: Terminal ${s.settings.engines.terminal ? 'ON' : 'OFF'} · SMC ${s.settings.engines.smc ? 'ON' : 'OFF'} · Session ${s.settings.engines.session ? 'ON' : 'OFF'}</p>
       <p>${t('signals')}: ${t('total')} ${p.total} · ${t('wins')} ${p.wins} · ${t('losses')} ${p.losses} · ${t('inFlight')} ${p.inFlight}</p>` +

@@ -42,7 +42,7 @@ td,th{border-bottom:1px solid #22304d;padding:6px;text-align:left}
 @media(max-width:600px){.brand{font-size:16px}header{flex-wrap:wrap}}
 
 /* New: language/alert/chart additions */
-.toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 100; background: #f5c542; color: #0a0f1e; border-radius: 12px; padding: 14px 18px; max-width: min(92vw, 560px); box-shadow: 0 8px 30px rgba(0,0,0,.5); font-size: 15px; line-height: 1.5; }
+.toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 10001; background: #f5c542; color: #0a0f1e; border-radius: 12px; padding: 14px 18px; max-width: min(92vw, 560px); box-shadow: 0 8px 30px rgba(0,0,0,.5); font-size: 15px; line-height: 1.5; }
 .toast b { font-size: 16px; }
 .chart-tf { display: flex; gap: 6px; flex-wrap: wrap; margin: 6px 0 10px; }
 .chart-tf button { padding: 5px 10px; border: 1px solid #2a3550; background: #141b2e; color: #e8ecf5; border-radius: 999px; cursor: pointer; }
@@ -136,7 +136,8 @@ html,body{overflow-x:hidden}
 }
 
 /* v7: modals (signal pop-up + share card) — pehle se HTML me, sirf show/hide */
-.modal{position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:200;display:flex;align-items:flex-start;justify-content:center;padding:16px;overflow-y:auto}
+/* v9.2: signal pop-up sits above everything, including the splash overlay (z-index 9999) */
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:10000;display:flex;align-items:flex-start;justify-content:center;padding:16px;overflow-y:auto}
 .modal-card{background:#111a30;border:1px solid #f5c542;border-radius:14px;padding:20px;max-width:520px;width:100%;margin:auto}
 .modal-card.wide{max-width:560px}
 /* v7: branded share card (portrait preview) */

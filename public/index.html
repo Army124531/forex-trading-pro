@@ -139,7 +139,7 @@
       <div id="smcBody"></div></div>
       <div class="card"><h3 data-i18n="smcMacroTitle">15M Macro</h3><div id="smcMacro"></div></div>
       <div class="card"><h3 data-i18n="smcMicroTitle">5M Micro</h3><div id="smcMicro"></div></div>
-      <div class="card"><h3 data-i18n="smcFeedTitle">SMC Signals Feed</h3><div id="smcFeed"></div></div>
+      <div class="card"><h3 data-i18n="smcFeedTitle">SMC Tasdeeq Feed</h3><div id="smcFeed"></div></div>
       <div class="card"><h3 data-i18n="smcBacktestTitle">SMC Backtest</h3>
       <p><span data-i18n="smcBacktestNote">Asal 15M candles par SMC rule (score 80%+) — koi banaya hua number nahi.</span> <button class="btn small gold" data-i18n="smcBacktestBtn" onclick="runSmcBacktest()">SMC Backtest Chalayein (30 din)</button></p>
       <div id="smcBacktestBody"></div></div>
@@ -152,9 +152,6 @@
       <div class="card"><h3 data-i18n="newsTitle">Fundamental News</h3>
       <p data-i18n="newsText">Taza forex/market headlines — FXStreet aur ForexLive ke free RSS feeds se.</p>
       <div id="newsBody"></div></div>
-      <div class="card"><h3 data-i18n="backtestTitle">Session Backtest Simulator</h3>
-      <p><span data-i18n="backtestText">Asal 1H candles par session rule chala kar dekhein.</span> <button class="btn small gold" data-i18n="backtestBtn" onclick="runBacktest()">Backtest Chalayein (30 din)</button></p>
-      <div id="backtestBody"></div></div>
     </section>
 
     <!-- HISTORY -->
@@ -163,7 +160,6 @@
       <p data-i18n="historyText">Sirf asal record kiye gaye signals dikhaye jate hain — koi purani history banayi nahi gayi. Nateeja (Win/Loss/Break-Even/In-Flight) baad ki candles se check karke dikhaya jata hai.</p>
       <div class="filters">
         <select id="fOutcome" onchange="loadHistory()"><option value="" data-i18n="allOutcomes">Sab outcomes</option><option>Win</option><option>Loss</option><option>Break-Even</option><option>In-Flight</option></select>
-        <select id="fEngine" onchange="loadHistory()"><option value="" data-i18n="allEngines">Sab engines</option><option value="terminal" data-i18n="mainTerminal">Main Terminal</option><option value="smc" data-i18n="smcEngine">SMC Engine</option><option value="session" data-i18n="sessionEngine">Session Engine</option></select>
         <button class="btn small" data-i18n="exportBtn" onclick="exportCsv()">Export CSV</button>
       </div>
       <div id="perfBody"></div>
