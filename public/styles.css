@@ -204,3 +204,8 @@ body.light .why-box h4{color:#2e9e5b}
   .share-card-pair{font-size:28px}
   .share-box-val{font-size:18px}
 }
+
+/* v9: Telegram alerts card */
+.tg-card .btn{display:inline-block;min-height:44px;line-height:1.5;padding:12px 18px;text-decoration:none}
+.tg-card p{line-height:1.7}
+body.light .tg-card .btn{color:#111}

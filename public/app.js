@@ -58,7 +58,7 @@ ur: {
   howSignalTitle: 'Signal Kab Aur Kaise Banta Hai?',
   howSignalText1: 'Signal ka koi fixed time nahi hai. BUY/SELL tabhi banta hai jab 6 gates me se 85% ya zyada points mil jayein. WAIT ka matlab hai: abhi trade mat karein, shartein poori nahi hain.',
   howSignalText2: 'SMC ka gate alag hai (80%) — SMC tab me dekhein. Terminal ka signal SMC gate par nahi rukta.',
-  tfHint: 'Best timeframe: 1H (4H trend ke saath) — 1H/4H par signals sab se reliable hote hain, 15M sirf entry timing ke liye hai, 5M par zyada noise hota hai. (30-din 1H backtest: XAUUSD win rate 88.2%, profit factor 5.0 — pichla result hai, guarantee nahi.)',
+  tfHint: 'Best timeframe: 1H (4H trend ke saath) — 1H/4H par signals sab se reliable hote hain, 15M sirf entry timing ke liye hai, 5M par zyada noise hota hai. (90-din backtest, 4 pairs: win rate ~60%, profit factor ~1.00 — breakeven, pichla result hai, guarantee nahi.)',
   rareSignals: 'Signal kam aate hain, lekin behtar hote hain — BUY/SELL sirf tabhi dikhta hai jab 85% gate poora ho. Zyada signals ka matlab behtar result nahi hota.',
   allPairsTitle: 'Tamam Pairs — Live Prices',
   indCenterTitle: 'Indicators Center',
@@ -297,6 +297,15 @@ ur: {
   smcConfirmWeak: 'Tasdeeq kamzor hai — 80+ par mazboot hoti hai',
   notASignalNote: 'Ye signal nahi hai — trade sirf Terminal signal par lein.',
   confirmationLbl: 'Tasdeeq',
+  tgTitle: 'Telegram Alerts — Signal Phone Par',
+  tgText: 'BUY/SELL signal aate hi aap ke phone par Telegram message aa jaye ga — website band ho tab bhi. Neeche wala link kholein aur bot par Start dabayein.',
+  tgButton: '📲 Telegram par Alerts Lein',
+  tgPersonalTitle: 'Aap ka Personal Telegram Link',
+  tgPersonalText: 'Ye link sirf aap ka hai — is se alerts aap ke account se jurte hain. Link kholein, bot par Start dabayein, bas! Plan khatam ya band hone par alerts ruk jayein ge.',
+  tgLinked: '✅ Telegram alerts ON hain — signal aate hi message mile ga.',
+  tgNotLinked: 'Abhi Telegram alerts ON nahi hain — link khol kar Start dabayein.',
+  tgCopyLink: 'Link Copy Karein',
+  tgLinkCopied: 'Aap ka personal Telegram link copy ho gaya — bot par Start dabayein.',
   marketCards: 'Live Market',
 },
 en: {
@@ -313,7 +322,7 @@ en: {
   howSignalTitle: 'When and How Is a Signal Made?',
   howSignalText1: 'There is no fixed time for a signal. BUY/SELL only forms when 85% or more points are scored across the 6 gates. WAIT means: do not trade now, the conditions are not met.',
   howSignalText2: 'The SMC gate is separate (80%) — see the SMC tab. The Terminal signal does not wait on the SMC gate.',
-  tfHint: 'Best timeframe: 1H (with the 4H trend) — signals are most reliable on 1H/4H; 15M is only for entry timing and 5M is too noisy. (30-day 1H backtest: XAUUSD win rate 88.2%, profit factor 5.0 — a past result, not a guarantee.)',
+  tfHint: 'Best timeframe: 1H (with the 4H trend) — signals are most reliable on 1H/4H; 15M is only for entry timing and 5M is too noisy. (90-day backtest, 4 pairs: win rate ~60%, profit factor ~1.00 — breakeven, a past result, not a guarantee.)',
   rareSignals: 'Signals are rare but higher quality — BUY/SELL only shows when the 85% gate passes. More signals does not mean better results.',
   allPairsTitle: 'All Pairs — Live Prices',
   indCenterTitle: 'Indicators Center',
@@ -552,6 +561,15 @@ en: {
   smcConfirmWeak: 'Confirmation is weak — strong at 80+',
   notASignalNote: 'This is not a signal — trade only on the Terminal signal.',
   confirmationLbl: 'Confirmation',
+  tgTitle: 'Telegram Alerts — Signals on Your Phone',
+  tgText: 'When a BUY/SELL signal appears, you get a Telegram message on your phone — even when the website is closed. Open the link below and press Start on the bot.',
+  tgButton: '📲 Get Alerts on Telegram',
+  tgPersonalTitle: 'Your Personal Telegram Link',
+  tgPersonalText: 'This link is only yours — it links alerts to your account. Open the link, press Start on the bot, done! Alerts stop if your plan expires or is suspended.',
+  tgLinked: '✅ Telegram alerts are ON — you will get a message when a signal appears.',
+  tgNotLinked: 'Telegram alerts are not ON yet — open the link and press Start.',
+  tgCopyLink: 'Copy Link',
+  tgLinkCopied: 'Your personal Telegram link is copied — press Start on the bot.',
   marketCards: 'Live Market',
 }};
 function t(k) { return (I18N[lang] && I18N[lang][k]) || I18N.ur[k] || k; }
@@ -566,6 +584,27 @@ function applyLang() {
   updateAlertButtons();
   updateMonitorUI();
   if (me) showTab(currentTab);
+  updateTgCard();
+}
+
+// ---------------- Telegram alerts card (v9) ----------------
+// Terminal card ka button buyer ke personal deep link par jata hai (Account tab wala hi link).
+// Admin ya login screen par generic bot link rehta hai — personal code sirf buyer ka hota hai.
+function tgPersonalLink() { return me && me.tgCode ? 'https://t.me/tradingforexprobot?start=' + me.tgCode : 'https://t.me/tradingforexprobot'; }
+function updateTgCard() {
+  const btn = document.getElementById('tgLinkBtn');
+  const st = document.getElementById('tgLinkStatus');
+  if (!btn) return;
+  if (me && me.role === 'buyer' && me.tgCode) {
+    btn.href = tgPersonalLink();
+    if (st) st.textContent = me.tgLinked ? t('tgLinked') : t('tgNotLinked');
+  } else {
+    btn.href = 'https://t.me/tradingforexprobot';
+    if (st) st.textContent = '';
+  }
+}
+function copyTgLink() {
+  copyTextToClipboard(tgPersonalLink()).then(() => showToast(t('tgCopyLink'), esc(t('tgLinkCopied'))));
 }
 
 // ---------------- Signal alerts (sound + on-screen + browser notification — site khuli ho to) ----------------
@@ -868,6 +907,7 @@ function enterApp() {
   document.getElementById('roleBadge').textContent = me.role === 'admin' ? 'ADMIN' : (me.plan || 'BUYER');
   if (me.role === 'admin') document.getElementById('adminTabBtn').style.display = '';
   updateAlertButtons();
+  updateTgCard();
   updateMonitorUI();
   applyDefaultPair(); // server ka defaultPair (agar local preferred pair nahi hai)
   buildPairSelect();
@@ -1038,7 +1078,7 @@ function whyTradeHtml(d) {
   const gates = dir === 'BUY' ? (d.buyGates || []) : (d.sellGates || []);
   const reasons = [];
   const trend = gates.find(g => g.name.indexOf('Indicator Trend') === 0);
-  if (trend && trend.points >= 10) reasons.push(esc(t('whyTrend')) + ' — ' + esc(t(dir === 'BUY' ? 'gateLblTrendUp' : 'gateLblTrendDown')) + ' ✓ (' + trend.points + '/' + trend.max + ')');
+  if (trend && trend.points >= 8) reasons.push(esc(t('whyTrend')) + ' — ' + esc(t(dir === 'BUY' ? 'gateLblTrendUp' : 'gateLblTrendDown')) + ' ✓ (' + trend.points + '/' + trend.max + ')');
   if (d.tradeZone) {
     const z = d.tradeZone;
     const inZ = d.price >= z.low && d.price <= z.high;
@@ -1868,7 +1908,8 @@ async function loadAcct() {
       const p = await api('/api/performance');
       el.innerHTML = `<p>${t('username')}: <b>${esc(me.username)}</b> · ${t('role')}: ${esc(me.role)} · ${t('plan')}: ${esc(me.plan || '—')}</p>
       <p>${t('engines')}: Terminal ${s.settings.engines.terminal ? 'ON' : 'OFF'} · SMC ${s.settings.engines.smc ? 'ON' : 'OFF'} · Session ${s.settings.engines.session ? 'ON' : 'OFF'}</p>
-      <p>${t('signals')}: ${t('total')} ${p.total} · ${t('wins')} ${p.wins} · ${t('losses')} ${p.losses} · ${t('inFlight')} ${p.inFlight}</p>`;
+      <p>${t('signals')}: ${t('total')} ${p.total} · ${t('wins')} ${p.wins} · ${t('losses')} ${p.losses} · ${t('inFlight')} ${p.inFlight}</p>` +
+      (me.role === 'buyer' ? `<p><b>${esc(t('tgPersonalTitle'))}</b><br><a class="btn gold" href="https://t.me/tradingforexprobot?start=${esc(me.tgCode || '')}" target="_blank" rel="noopener">${esc(t('tgButton'))}</a> <button class="btn small" onclick="copyTgLink()">${esc(t('tgCopyLink'))}</button><br><span class="fine">${esc(t('tgPersonalText'))}</span><br><span class="fine">${esc(me.tgLinked ? t('tgLinked') : t('tgNotLinked'))}</span></p>` : '');
     } else if (acctTab === 'engineControls') {
       const s = await api('/api/settings');
       const engLabel = (k) => k === 'terminal' ? t('mainTerminal') : k === 'smc' ? t('smcEngine') : k === 'session' ? t('sessionEngine') : t('newsIntel');
