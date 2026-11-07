@@ -7453,14 +7453,14 @@ function applyLang() {
 }
 
 // ---------------- Telegram alerts card (v9) ----------------
-// Terminal card ka button buyer ke personal deep link par jata hai (Account tab wala hi link).
-// Admin ya login screen par generic bot link rehta hai — personal code sirf buyer ka hota hai.
+// Terminal card ka button user ke personal deep link par jata hai (Account tab wala hi link).
+// Personal code buyer aur admin dono ka hota hai — link me ?start=<code> hota hai.
 function tgPersonalLink() { return me && me.tgCode ? 'https://t.me/tradingforexprobot?start=' + me.tgCode : 'https://t.me/tradingforexprobot'; }
 function updateTgCard() {
   const btn = document.getElementById('tgLinkBtn');
   const st = document.getElementById('tgLinkStatus');
   if (!btn) return;
-  if (me && me.role === 'buyer' && me.tgCode) {
+  if (me && me.tgCode) {
     btn.href = tgPersonalLink();
     if (st) st.textContent = me.tgLinked ? t('tgLinked') : t('tgNotLinked');
   } else {
@@ -9150,7 +9150,7 @@ async function loadAcct() {
       el.innerHTML = `<p>${t('username')}: <b>${esc(me.username)}</b> · ${t('role')}: ${esc(me.role)} · ${t('plan')}: ${esc(me.plan || '—')}</p>
       <p>${t('engines')}: Terminal ${s.settings.engines.terminal ? 'ON' : 'OFF'} · SMC ${s.settings.engines.smc ? 'ON' : 'OFF'} · Session ${s.settings.engines.session ? 'ON' : 'OFF'}</p>
       <p>${t('signals')}: ${t('total')} ${p.total} · ${t('wins')} ${p.wins} · ${t('losses')} ${p.losses} · ${t('inFlight')} ${p.inFlight}</p>` +
-      (me.role === 'buyer' ? `<p><b>${esc(t('tgPersonalTitle'))}</b><br><a class="btn gold" href="https://t.me/tradingforexprobot?start=${esc(me.tgCode || '')}" target="_blank" rel="noopener">${esc(t('tgButton'))}</a> <button class="btn small" onclick="copyTgLink()">${esc(t('tgCopyLink'))}</button><br><span class="fine">${esc(t('tgPersonalText'))}</span><br><span class="fine">${esc(me.tgLinked ? t('tgLinked') : t('tgNotLinked'))}</span></p>` : '');
+      (me.tgCode ? `<p><b>${esc(t('tgPersonalTitle'))}</b><br><a class="btn gold" href="https://t.me/tradingforexprobot?start=${esc(me.tgCode || '')}" target="_blank" rel="noopener">${esc(t('tgButton'))}</a> <button class="btn small" onclick="copyTgLink()">${esc(t('tgCopyLink'))}</button><br><span class="fine">${esc(t('tgPersonalText'))}</span><br><span class="fine">${esc(me.tgLinked ? t('tgLinked') : t('tgNotLinked'))}</span></p>` : '');
     } else if (acctTab === 'engineControls') {
       const s = await api('/api/settings');
       const engLabel = (k) => k === 'terminal' ? t('mainTerminal') : k === 'smc' ? t('smcEngine') : k === 'session' ? t('sessionEngine') : t('newsIntel');
