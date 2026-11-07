@@ -1393,6 +1393,20 @@ async function telegramPollUpdates() {
   } catch (e) { console.error('Telegram poll fail: ' + e.message); }
 }
 
+// ---------------- Weekend market-closed (v9.3) ----------------
+// Forex aur Gold (metal) ki market Hafta/Ittwaar ko band rehti hai; crypto 24/7 khula rehta hai.
+// Band market me weekend Kraken PAXG data se signal banana ghalat hota — is liye
+// recorder skip karta hai aur /api/signal WAIT + marketClosed deta hai.
+// PKT (Asia/Karachi, UTC+5, no DST) ke hisaab se Hafta 00:00 se Ittwaar 23:59 tak band.
+const PKT_OFFSET_MS = 5 * 3600 * 1000;
+function isMarketClosed(pairId, date) {
+  const p = PAIRS.find(x => x.id === (pairId || '').toUpperCase());
+  if (!p || p.type === 'crypto') return false;
+  const d = date ? new Date(date) : new Date();
+  const pktDay = new Date(d.getTime() + PKT_OFFSET_MS).getUTCDay(); // 0 = Sunday, 6 = Saturday
+  return pktDay === 0 || pktDay === 6;
+}
+
 // ---------------- Background recorder (v9) ----------------
 // Server jab jaag raha ho, har 15 minute me main pairs ka Terminal signal khud
 // compute karke record karein — chahe koi user site khole ya na khole. Signal ka
@@ -1408,6 +1422,8 @@ async function recorderTick(computeFn) {
     const fn = computeFn || computeSignal;
     const results = [];
     for (const pair of RECORDER_PAIRS) {
+      // Weekend: forex/Gold band hai — koi naya signal record nahi hota (BTC chalta rehta hai).
+      if (isMarketClosed(pair)) { results.push({ pair, closed: true }); continue; }
       try { const d = await fn(pair, 'ur', true); results.push({ pair, direction: d.direction || d.error || null }); }
       catch (e) { console.error('Recorder fail (' + pair + '): ' + e.message); results.push({ pair, error: e.message }); }
     }
@@ -1510,6 +1526,40 @@ app.get('/api/prices', requireAuth, async (req, res) => {
 app.get('/api/signal', requireAuth, async (req, res) => {
   if (!db.settings.engines.terminal) return res.json({ disabled: true, message: 'Terminal engine band hai (Admin ne band kiya hai).' });
   const pair = (req.query.pair || db.settings.defaultPair || 'XAUUSD').toUpperCase();
+  // Weekend: forex/Gold market band hai — weekend PAXG data se kabhi BUY/SELL nahi banta.
+  // Sirf aakhri available price ke saath WAIT + marketClosed wapas jata hai (kuch record nahi hota).
+  if (isMarketClosed(pair)) {
+    try {
+      const prices = await fetchAllPrices();
+      const quote = prices.pairs.find(p => p.id === pair);
+      const price = quote && quote.price != null ? quote.price : null;
+      return res.json({
+        pair, price, bid: quote ? quote.bid : null, ask: quote ? quote.ask : null, spread: quote ? quote.spread : null,
+        direction: 'WAIT', confluence: 0, threshold: 85,
+        buyGates: [], sellGates: [], buyScore: 0, sellScore: 0,
+        buyPlan: null, sellPlan: null,
+        tradeZone: null, zoneBlocked: false, blockedDirection: null, zoneNote: null,
+        smc: null, extended: null, sentiment: null,
+        range: { pdh: null, pdl: null },
+        rsi14: null, atr14: null, ema20: null, ema50: null, ema200: null,
+        comments: [], nextCheckInSec: 30, updatedAt: Date.now(),
+        signalCode: null, validUntil: null, marketClosed: true,
+      });
+    } catch (e) {
+      return res.json({
+        pair, price: null, bid: null, ask: null, spread: null,
+        direction: 'WAIT', confluence: 0, threshold: 85,
+        buyGates: [], sellGates: [], buyScore: 0, sellScore: 0,
+        buyPlan: null, sellPlan: null,
+        tradeZone: null, zoneBlocked: false, blockedDirection: null, zoneNote: null,
+        smc: null, extended: null, sentiment: null,
+        range: { pdh: null, pdl: null },
+        rsi14: null, atr14: null, ema20: null, ema50: null, ema200: null,
+        comments: [], nextCheckInSec: 30, updatedAt: Date.now(),
+        signalCode: null, validUntil: null, marketClosed: true,
+      });
+    }
+  }
   try { res.json(await computeSignal(pair, req.query.lang, req.query.fresh === '1')); }
   catch (e) { res.status(500).json({ error: 'signal_fail', message: e.message }); }
 });
@@ -1705,12 +1755,16 @@ app.get('/api/performance', requireAuth, async (req, res) => {
 });
 app.get('/api/refiner', requireAuth, async (req, res) => {
   const cutoff = parseInt(req.query.cutoff || '85', 10) || 85;
-  const eligible = db.signals.filter(s => typeof s.score === 'number');
+  // v9.3: engine filter — UI hamesha engine=terminal bhejta hai (Terminal-only).
+  // Param na ho to purana all-engine hisaab (backward compatible).
+  const engine = (req.query.engine || '').toLowerCase();
+  let eligible = db.signals.filter(s => typeof s.score === 'number');
+  if (engine) eligible = eligible.filter(s => s.engine === engine);
   const list = await enrichHistory(eligible.filter(s => s.score >= cutoff));
   const closed = list.filter(s => s.outcome && s.outcome !== 'In-Flight');
   const wins = list.filter(s => s.outcome === 'Win').length;
   res.json({
-    cutoff, qualifying: list.length,
+    cutoff, engine: engine || null, qualifying: list.length,
     winRate: closed.length ? +(wins / closed.length * 100).toFixed(1) : null,
     signals: list.slice(0, 50),
     note: db.buildNote + ' Purane signals (jinke score nahi hain) is me nahi aate.',
@@ -1818,7 +1872,12 @@ app.post('/api/settings', requireAdmin, (req, res) => {
 });
 app.get('/api/logs', requireAuth, (req, res) => res.json({ logs: db.logs }));
 app.get('/api/export.csv', requireAuth, async (req, res) => {
-  const list = await enrichHistory([...db.signals]);
+  // v9.3: engine filter — UI hamesha engine=terminal bhejta hai (Terminal-only).
+  // Param na ho to purana all-engine export (backward compatible).
+  const engine = (req.query.engine || '').toLowerCase();
+  let rows = [...db.signals];
+  if (engine) rows = rows.filter(s => s.engine === engine);
+  const list = await enrichHistory(rows);
   let csv = 'id,pair,direction,entry,sl,tp1,tp2,tp3,score,engine,createdAt,outcome\n';
   for (const s of list) csv += [s.id, s.pair, s.direction, s.entry, s.sl, s.tp1, s.tp2, s.tp3, s.score, s.engine, new Date(s.createdAt).toISOString(), s.outcome || 'In-Flight'].join(',') + '\n';
   res.setHeader('Content-Type', 'text/csv');
@@ -1926,5 +1985,5 @@ app.listen(PORT, () => console.log('Forex Trading Pro chal raha hai: http://loca
 
 // Test ke liye (NODE_ENV=test) — production me kuch nahi badalta.
 if (process.env.NODE_ENV === 'test') {
-  module.exports = { recordTerminalSignal, sendSignalAlert, buildTelegramMessage, parseTelegramUpdates, applyTelegramUpdates, telegramPollUpdates, recorderTick, backgroundTick, ensureTgCode, buyerActive, gateScore, getDb: () => db, telegramDryRunSent };
+  module.exports = { recordTerminalSignal, sendSignalAlert, buildTelegramMessage, parseTelegramUpdates, applyTelegramUpdates, telegramPollUpdates, recorderTick, backgroundTick, ensureTgCode, buyerActive, gateScore, isMarketClosed, getDb: () => db, telegramDryRunSent };
 }

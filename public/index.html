@@ -22,7 +22,7 @@
   <!-- LOGIN / SETUP -->
   <div id="authScreen" class="auth-wrap">
     <div class="auth-card">
-      <button class="btn small" id="langBtnAuth" onclick="toggleLang()" style="float:right">EN | اردو</button>
+      <select class="lang-select" id="langSelectAuth" onchange="setLang(this.value)" style="float:right"><option value="ur" selected>اردو</option><option value="en">English</option><option value="ar">العربية</option><option value="hi">हिन्दी</option><option value="bn">বাংলা</option><option value="es">Español</option><option value="fr">Français</option><option value="de">Deutsch</option><option value="tr">Türkçe</option><option value="pt">Português</option><option value="ru">Русский</option><option value="zh">中文</option><option value="id">Bahasa Indonesia</option><option value="fa">فارسی</option></select>
       <h1>Forex Trading Pro</h1>
       <p class="tagline" data-i18n="tagline">Gold, Bitcoin aur Forex ke live signals</p>
       <div id="publicPrices" class="price-grid" style="margin-bottom:12px"></div>
@@ -52,7 +52,7 @@
     <header>
       <div class="brand">Forex Trading Pro</div>
       <div class="userbox">
-      <button class="btn small" id="langBtn" onclick="toggleLang()">EN | اردو</button>
+      <select class="lang-select" id="langSelect" onchange="setLang(this.value)"><option value="ur" selected>اردو</option><option value="en">English</option><option value="ar">العربية</option><option value="hi">हिन्दी</option><option value="bn">বাংলা</option><option value="es">Español</option><option value="fr">Français</option><option value="de">Deutsch</option><option value="tr">Türkçe</option><option value="pt">Português</option><option value="ru">Русский</option><option value="zh">中文</option><option value="id">Bahasa Indonesia</option><option value="fa">فارسی</option></select>
       <button class="btn small" id="soundBtn" onclick="toggleSound()" title="Sound">🔊</button>
       <button class="btn small" id="notifBtn" onclick="toggleNotif()" title="Notifications">🔔</button>
       <span id="helloUser"></span> <span id="roleBadge" class="badge"></span>
