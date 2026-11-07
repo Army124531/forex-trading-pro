@@ -29,15 +29,19 @@
       <div id="setupBox" style="display:none">
         <h2 data-i18n="setupTitle">Pehli Dafa Setup</h2>
         <p data-i18n="setupText">Apna Admin username aur password khud banayein. Password kahin likh kar mat bhejein — sirf aapko pata hona chahiye.</p>
-        <input id="setupUser" data-i18n-ph="phSetupUser" placeholder="Admin username (kam se kam 3 harf)" autocomplete="off">
-        <input id="setupPass" type="password" data-i18n-ph="phSetupPass" placeholder="Admin password (kam se kam 6 harf)">
-        <button class="btn gold" data-i18n="setupBtn" onclick="doSetup()">Admin Account Banayein</button>
+        <form onsubmit="doSetup();return false">
+        <input id="setupUser" name="username" data-i18n-ph="phSetupUser" placeholder="Admin username (kam se kam 3 harf)" autocomplete="username">
+        <input id="setupPass" name="password" type="password" data-i18n-ph="phSetupPass" placeholder="Admin password (kam se kam 6 harf)" autocomplete="new-password">
+        <button type="submit" class="btn gold" data-i18n="setupBtn">Admin Account Banayein</button>
+        </form>
       </div>
       <div id="loginBox" style="display:none">
         <h2 data-i18n="loginTitle">Login</h2>
-        <input id="loginUser" data-i18n-ph="phLoginUser" placeholder="Username" autocomplete="off">
-        <input id="loginPass" type="password" data-i18n-ph="phLoginPass" placeholder="Password" onkeydown="if(event.key==='Enter')doLogin()">
-        <button class="btn gold" data-i18n="loginBtn" onclick="doLogin()">Login</button>
+        <form onsubmit="doLogin();return false">
+        <input id="loginUser" name="username" data-i18n-ph="phLoginUser" placeholder="Username" autocomplete="username">
+        <input id="loginPass" name="password" type="password" data-i18n-ph="phLoginPass" placeholder="Password" autocomplete="current-password">
+        <button type="submit" class="btn gold" data-i18n="loginBtn">Login</button>
+        </form>
       </div>
       <p id="authMsg" class="msg"></p>
       <div class="card tg-card"><h3 data-i18n="tgTitle">Telegram Alerts — Signal Phone Par</h3>
@@ -184,12 +188,12 @@
     <section id="tab-admin" class="tab" style="display:none">
       <div class="card"><h3 data-i18n="adminTitle">Admin Panel — Buyer Accounts</h3>
       <div id="adminCounts"></div>
-      <div class="form-row">
-        <input id="newBuyerUser" data-i18n-ph="phBuyerUser" placeholder="Buyer username">
-        <input id="newBuyerPass" type="password" data-i18n-ph="phBuyerPass" placeholder="Buyer password">
-        <select id="newBuyerPlan"><option>Monthly</option><option>Quarterly</option><option>Yearly</option><option>Lifetime</option></select>
-        <button class="btn gold" data-i18n="createBuyerBtn" onclick="createBuyer()">Buyer Banayein</button>
-      </div>
+      <form class="form-row" onsubmit="createBuyer();return false">
+        <input id="newBuyerUser" name="username" data-i18n-ph="phBuyerUser" placeholder="Buyer username" autocomplete="username">
+        <input id="newBuyerPass" name="password" type="password" data-i18n-ph="phBuyerPass" placeholder="Buyer password" autocomplete="new-password">
+        <select id="newBuyerPlan" name="plan"><option>Monthly</option><option>Quarterly</option><option>Yearly</option><option>Lifetime</option></select>
+        <button type="submit" class="btn gold" data-i18n="createBuyerBtn">Buyer Banayein</button>
+      </form>
       <p class="fine" data-i18n="adminPlansText">Monthly 30 din · Quarterly 90 din · Yearly 365 din · Lifetime (kabhi khatam nahi). Plan khatam hone par buyer login khud band ho jata hai.</p>
       <div id="adminUsers"></div></div>
     </section>

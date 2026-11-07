@@ -7839,6 +7839,11 @@ async function doLogout() {
   document.getElementById('authScreen').style.display = 'block';
   document.getElementById('loginBox').style.display = 'block';
   document.getElementById('setupBox').style.display = 'none';
+  // v9.3-sec: logout par admin button chhupayein aur purana admin data saaf karein —
+  // warna agla login (buyer) purani admin screen dekh sakta hai.
+  document.getElementById('adminTabBtn').style.display = 'none';
+  document.getElementById('adminCounts').innerHTML = '';
+  document.getElementById('adminUsers').innerHTML = '';
   loadPublicPrices();
 }
 function enterApp() {
@@ -7846,7 +7851,10 @@ function enterApp() {
   document.getElementById('mainScreen').style.display = 'block';
   document.getElementById('helloUser').textContent = t('hello') + ', ' + me.username;
   document.getElementById('roleBadge').textContent = me.role === 'admin' ? 'ADMIN' : (me.plan || 'BUYER');
-  if (me.role === 'admin') document.getElementById('adminTabBtn').style.display = '';
+  // v9.3-sec: Admin button sirf admin ko dikhe — buyer ke liye hamesha chhupayein
+  // (pehle sirf admin par show hota tha, buyer par kabhi hide nahi hota tha — admin se
+  // logout karke buyer login par button dikhta rehta tha).
+  document.getElementById('adminTabBtn').style.display = me.role === 'admin' ? '' : 'none';
   updateAlertButtons();
   updateTgCard();
   updateMonitorUI();
@@ -7879,6 +7887,13 @@ function buildPairSelect() {
 }
 function selectPair(id) { currentPair = id; buildPairSelect(); loadTerminal(); loadIndicators(); loadSmc(); loadTfMatrix(); loadChart(); loadIndStrip(); }
 function showTab(t) {
+  // v9.3-sec: Admin tab sirf admin khol sakta hai — buyer yahan aaye to Terminal par
+  // wapas bhej dein aur koi purana admin data bhi na dikhe.
+  if (t === 'admin' && (!me || me.role !== 'admin')) {
+    document.getElementById('adminCounts').innerHTML = '';
+    document.getElementById('adminUsers').innerHTML = '';
+    t = 'terminal';
+  }
   currentTab = t;
   document.querySelectorAll('.tabs button').forEach(b => b.classList.toggle('active', b.dataset.tab === t));
   document.querySelectorAll('.tab').forEach(s => s.style.display = 'none');
@@ -9116,11 +9131,17 @@ function exportCsv() { window.open('/api/export.csv?engine=terminal', '_blank');
 const ACCT_TAB_KEYS = ['overview', 'engineControls', 'signalDetails', 'signalHistory', 'tfMatrix', 'trackingLogs', 'exportCsv', 'aiAgent', 'preferences'];
 let acctTab = 'overview';
 function buildAcctSubtabs() {
-  document.getElementById('acctSubtabs').innerHTML = ACCT_TAB_KEYS.map(k => `<button class="${k === acctTab ? 'active' : ''}" onclick="acctTab='${k}';buildAcctSubtabs();loadAcct()">${t(k)}</button>`).join('');
+  // v9.3-sec: Tracking Logs me admin activity + buyer usernames hote hain — buyer ko ye sub-tab dikhe hi nahi.
+  const isAdmin = me && me.role === 'admin';
+  const keys = ACCT_TAB_KEYS.filter(k => isAdmin || k !== 'trackingLogs');
+  if (!keys.includes(acctTab)) acctTab = 'overview';
+  document.getElementById('acctSubtabs').innerHTML = keys.map(k => `<button class="${k === acctTab ? 'active' : ''}" onclick="acctTab='${k}';buildAcctSubtabs();loadAcct()">${t(k)}</button>`).join('');
   loadAcct();
 }
 async function loadAcct() {
   const el = document.getElementById('acctBody');
+  // v9.3-sec: purani admin session se acctTab 'trackingLogs' reh gaya ho to buyer ko wapas overview par bhej dein.
+  if (acctTab === 'trackingLogs' && (!me || me.role !== 'admin')) { acctTab = 'overview'; buildAcctSubtabs(); return; }
   try {
     if (acctTab === 'overview') {
       const s = await api('/api/settings');
@@ -9223,6 +9244,12 @@ function setTheme(v) {
 
 // ---- Admin ----
 async function loadAdmin() {
+  // v9.3-sec: defense-in-depth — admin na ho to kuch render na karein, na fetch karein.
+  if (!me || me.role !== 'admin') {
+    document.getElementById('adminCounts').innerHTML = '';
+    document.getElementById('adminUsers').innerHTML = '';
+    return;
+  }
   const el = document.getElementById('adminUsers');
   try {
     const d = await api('/api/admin/users');
