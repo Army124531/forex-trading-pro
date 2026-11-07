@@ -1483,12 +1483,13 @@ app.post('/api/auth/setup', (req, res) => {
   if (!username || username.length < 3) return res.status(400).json({ error: 'bad_username', message: 'Username kam se kam 3 harf ka ho.' });
   if (!password || password.length < 6) return res.status(400).json({ error: 'bad_password', message: 'Password kam se kam 6 harf ka ho.' });
   const salt = crypto.randomBytes(16).toString('hex');
-  db.users.push({ username, passHash: hashPassword(password, salt), salt, role: 'admin', plan: 'Lifetime', createdAt: Date.now(), expiresAt: null, suspended: false, tgCode: crypto.randomBytes(8).toString('hex'), tgChatId: null });
+  const adminUser = { username, passHash: hashPassword(password, salt), salt, role: 'admin', plan: 'Lifetime', createdAt: Date.now(), expiresAt: null, suspended: false, tgCode: crypto.randomBytes(8).toString('hex'), tgChatId: null };
+  db.users.push(adminUser);
   const token = makeToken();
   db.sessions.push({ token, username, createdAt: Date.now() });
   logEvent('Admin account banaya gaya: ' + username);
   saveDb();
-  res.json({ token, user: { username, role: 'admin' } });
+  res.json({ token, user: { username, role: 'admin', tgCode: adminUser.tgCode } });
 });
 app.post('/api/auth/login', (req, res) => {
   const { username, password } = req.body || {};
