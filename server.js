@@ -1370,13 +1370,16 @@ async function applyTelegramUpdates(parsed) {
         if (u) {
           const prev = db.users.find(x => x !== u && x.tgChatId === ev.chatId);
           if (prev) prev.tgChatId = null; // ek chat id sirf ek buyer se jurta hai
+          const alreadyLinked = u.tgChatId === ev.chatId;
           u.tgChatId = ev.chatId; saveDb();
-          await sendTelegramMessage(ev.chatId, '✅ Forex Trading Pro alerts ON hain! BUY/SELL signal aate hi aap ko yahan message mile ga. Alerts band karne ke liye /stop likhein.');
+          if (!alreadyLinked) await sendTelegramMessage(ev.chatId, '✅ Forex Trading Pro alerts ON hain! BUY/SELL signal aate hi aap ko yahan message mile ga. Alerts band karne ke liye /stop likhein.');
         } else {
           await sendTelegramMessage(ev.chatId, 'Ye link ghalat hai ya khatam ho gaya hai — apne Forex Trading Pro account se apna personal Telegram link lein (Account tab me milta hai).');
         }
       } else if (ev.type === 'plainStart') {
-        await sendTelegramMessage(ev.chatId, 'Signal alerts lene ke liye apne Forex Trading Pro account se apna personal Telegram link kholein aur Start dabayein. Link Account tab me milta hai.');
+        // Agar ye chat pehle se kisi account se linked hai to dobara yaad-dihani mat bhejo (restart par purana /start dobara parha jata hai).
+        const linked = db.users.find(x => x.tgChatId === ev.chatId);
+        if (!linked) await sendTelegramMessage(ev.chatId, 'Signal alerts lene ke liye apne Forex Trading Pro account se apna personal Telegram link kholein aur Start dabayein. Link Account tab me milta hai.');
       }
     } catch (e) { console.error('Telegram update apply fail: ' + e.message); }
   }
