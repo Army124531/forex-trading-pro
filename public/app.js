@@ -80,7 +80,7 @@ ur: {
   newsText: 'Taza forex/market headlines — FXStreet aur ForexLive ke free RSS feeds se.',
   chartTitle: 'Price Chart — Candles + EMA 20/50/200',
   indStripTitle: 'Live Indicators',
-  smcMacroTitle: '15M Macro', smcMicroTitle: '5M Micro', smcFeedTitle: 'SMC Signals Feed', smcBacktestTitle: 'SMC Backtest',
+  smcMacroTitle: '15M Macro', smcMicroTitle: '5M Micro', smcFeedTitle: 'SMC Confirmation Feed — tasdeeq, signal nahi', smcBacktestTitle: 'SMC Backtest',
   termBacktestTitle: 'Terminal Backtest (30 din)',
   phSetupUser: 'Admin username (kam se kam 3 harf)', phSetupPass: 'Admin password (kam se kam 6 harf)',
   phLoginUser: 'Username', phLoginPass: 'Password', phBuyerUser: 'Buyer username', phBuyerPass: 'Buyer password',
@@ -141,7 +141,7 @@ ur: {
   liqSweeps: 'Liquidity Sweeps', orderBlocks: 'Order Blocks', bullOB: 'Bullish OB', bearOB: 'Bearish OB',
   fresh: 'fresh', mitigated: 'mitigated', fvg: 'Fair Value Gaps (FVG)', noFvg: 'Koi FVG nahi mila.',
   microSweeps: '5M Micro SSL sweeps', liqPools: 'Liquidity pools',
-  pair: 'Pair', direction: 'Direction', confirmedSignals: 'Confirmed SMC signals',
+  pair: 'Pair', direction: 'Direction', confirmedSignals: 'SMC confirmations (tasdeeq)',
   cycleEvery: 'Cycle: har', cycleSec: 'second',
   sessionActive: 'Active', nowPkt: 'Abhi PKT time', nextSession: 'Agla session', minutes: 'minute me',
   newsBlackout: 'News blackout', notAvailable: 'Available nahi hai',
@@ -246,6 +246,57 @@ ur: {
   language: 'Language', prefPair: 'Preferred Pair',
   engineStatus: 'Engine Status',
   prefSaved: 'Preferences save ho gayin.',
+  // v8 keys — saaf zuban + aik trade + sirf Terminal signal
+  guideTitle: 'Trade Kaise Lein? — 4 Asan Steps',
+  guideStep1: 'Sirf BUY ya SELL signal par trade lein — WAIT par koi trade nahi.',
+  guideStep2: 'Entry, SL aur TP card par likhe hain — SL se zyada risk nahi lena.',
+  guideStep3: 'Confirmation card par hi hai: score gate se upar hai, aur neeche "Ye trade kyun?" wali wajah likhi hai.',
+  guideStep4: 'Best timeframe 1H hai (4H bhi theek hai) — 15M sirf entry timing ke liye hai.',
+  whyTradeTitle: 'Ye trade kyun? — Confirmation',
+  whyTrend: 'Trend is taraf hai',
+  whyZone: 'Price trade zone me hai',
+  whyZoneNear: 'Price trade zone ke qareeb hai',
+  whySmcHigh: 'SMC score 80+ hai — smart money bhi is taraf hai',
+  whyTopGate: 'Sab se mazboot check',
+  oneTradeLabel: 'Aik waqt par sirf aik trade',
+  oneTradeNote: 'Aik waqt par sirf aik trade — dosri direction ka setup nahi dikhaya jata.',
+  gatesExplain: '6 checks, 100 number — signal sirf 85+ par banta hai (jaise exam mein pass marks).',
+  smcExplain: '5 hisse, 100 number — 80+ par theek hai (mazboot tasdeeq).',
+  gateLblTrendUp: 'Trend upar hai (EMA)',
+  gateLblTrendDown: 'Trend neeche hai (EMA)',
+  gateLblStructure: 'Structure mazboot hai',
+  gateLblRsi: 'RSI theek range me hai',
+  gateLblRr: 'Reward risk se zyada hai',
+  gateLblEma200: 'Bara trend (EMA200) saath hai',
+  gateLblFresh: 'Data taaza hai',
+  smcLblSweep: 'Liquidity sweep hua',
+  smcLblStructure: 'Market structure badla',
+  smcLblOb: 'Order block mila',
+  smcLblFvg: 'FVG gap mila',
+  smcLblRr: 'Risk/reward theek hai',
+  chkLblSweep: 'Bade players ne liquidity li',
+  chkLblOb: 'Bade players ka zone',
+  chkLblFvg: 'Price me khaali jagah (gap)',
+  chkLblSr: 'Mazboot support/resistance level',
+  chkLblZones: 'Khareedne/bechne ka area',
+  extLblCandle: 'Candle se trend ka ishara',
+  extLblChoch: 'Trend badalne ka ishara',
+  extLblMss: 'Naya trend confirm hua',
+  extLblBreaker: 'Pehle ka level ab support/resistance',
+  extLblIdm: 'Jhooti move ke baad wapas',
+  extLblFib: 'Fibonacci level (hisaab se)',
+  extLblBb: 'Volatility squeeze',
+  extLblMacdDiv: 'MACD aur price me farq',
+  extLblMeanRev: 'Price mean se kitna door hai',
+  extLblKillzone: 'Session ka active time',
+  extLblAsian: 'Asian session ki range',
+  extLblVwap: 'VWAP bands (average price)',
+  extLblVol: 'Volume — kitna trade hua',
+  smcNoSignalBanner: 'SMC signal NAHI deta — ye Terminal signal ki tasdeeq (confirmation) hai.',
+  smcConfirmStrong: 'Mazboot tasdeeq ✓',
+  smcConfirmWeak: 'Tasdeeq kamzor hai — 80+ par mazboot hoti hai',
+  notASignalNote: 'Ye signal nahi hai — trade sirf Terminal signal par lein.',
+  confirmationLbl: 'Tasdeeq',
   marketCards: 'Live Market',
 },
 en: {
@@ -284,7 +335,7 @@ en: {
   newsText: 'Latest forex/market headlines — from the free FXStreet and ForexLive RSS feeds.',
   chartTitle: 'Price Chart — Candles + EMA 20/50/200',
   indStripTitle: 'Live Indicators',
-  smcMacroTitle: '15M Macro', smcMicroTitle: '5M Micro', smcFeedTitle: 'SMC Signals Feed', smcBacktestTitle: 'SMC Backtest',
+  smcMacroTitle: '15M Macro', smcMicroTitle: '5M Micro', smcFeedTitle: 'SMC Confirmation Feed — confirmation, not a signal', smcBacktestTitle: 'SMC Backtest',
   termBacktestTitle: 'Terminal Backtest (30 days)',
   phSetupUser: 'Admin username (at least 3 characters)', phSetupPass: 'Admin password (at least 6 characters)',
   phLoginUser: 'Username', phLoginPass: 'Password', phBuyerUser: 'Buyer username', phBuyerPass: 'Buyer password',
@@ -345,7 +396,7 @@ en: {
   liqSweeps: 'Liquidity Sweeps', orderBlocks: 'Order Blocks', bullOB: 'Bullish OB', bearOB: 'Bearish OB',
   fresh: 'fresh', mitigated: 'mitigated', fvg: 'Fair Value Gaps (FVG)', noFvg: 'No FVG found.',
   microSweeps: '5M Micro SSL sweeps', liqPools: 'Liquidity pools',
-  pair: 'Pair', direction: 'Direction', confirmedSignals: 'Confirmed SMC signals',
+  pair: 'Pair', direction: 'Direction', confirmedSignals: 'SMC confirmations',
   cycleEvery: 'Cycle: every', cycleSec: 'seconds',
   sessionActive: 'Active', nowPkt: 'Current PKT time', nextSession: 'Next session', minutes: 'minutes',
   newsBlackout: 'News blackout', notAvailable: 'Not available',
@@ -450,6 +501,57 @@ en: {
   language: 'Language', prefPair: 'Preferred Pair',
   engineStatus: 'Engine Status',
   prefSaved: 'Preferences saved.',
+  // v8 keys — plain language + one trade + Terminal-only signals
+  guideTitle: 'How to Take a Trade? — 4 Easy Steps',
+  guideStep1: 'Only trade on a BUY or SELL signal — never trade on WAIT.',
+  guideStep2: 'Entry, SL and TP are written on the card — never risk more than the SL.',
+  guideStep3: 'The confirmation is on the card itself: the score is above the gate, and the reasons are listed under "Why this trade?" below.',
+  guideStep4: 'The best timeframe is 1H (4H also works) — 15M is only for entry timing.',
+  whyTradeTitle: 'Why this trade? — Confirmation',
+  whyTrend: 'Trend is on this side',
+  whyZone: 'Price is in the trade zone',
+  whyZoneNear: 'Price is near the trade zone',
+  whySmcHigh: 'SMC score is 80+ — smart money agrees',
+  whyTopGate: 'Strongest check',
+  oneTradeLabel: 'Only one trade at a time',
+  oneTradeNote: 'Only one trade at a time — the other direction’s setup is not shown.',
+  gatesExplain: '6 checks, 100 points — a signal only forms at 85+ (like pass marks in an exam).',
+  smcExplain: '5 parts, 100 points — 80+ is good (strong confirmation).',
+  gateLblTrendUp: 'Trend is up (EMA)',
+  gateLblTrendDown: 'Trend is down (EMA)',
+  gateLblStructure: 'Structure is strong',
+  gateLblRsi: 'RSI is in a healthy range',
+  gateLblRr: 'Reward is bigger than risk',
+  gateLblEma200: 'Big trend (EMA200) agrees',
+  gateLblFresh: 'Data is fresh',
+  smcLblSweep: 'Liquidity was swept',
+  smcLblStructure: 'Market structure shifted',
+  smcLblOb: 'Order block found',
+  smcLblFvg: 'FVG gap found',
+  smcLblRr: 'Risk/reward is fine',
+  chkLblSweep: 'Big players took liquidity',
+  chkLblOb: 'Big players’ zone',
+  chkLblFvg: 'Empty gap in price',
+  chkLblSr: 'Strong support/resistance level',
+  chkLblZones: 'Buy/sell area',
+  extLblCandle: 'Candle hints at the trend',
+  extLblChoch: 'Sign the trend may be changing',
+  extLblMss: 'New trend confirmed',
+  extLblBreaker: 'Old level is now support/resistance',
+  extLblIdm: 'Back after a false move',
+  extLblFib: 'Fibonacci level (calculated)',
+  extLblBb: 'Volatility squeeze',
+  extLblMacdDiv: 'MACD and price disagree',
+  extLblMeanRev: 'How far price is from the mean',
+  extLblKillzone: 'Active session time',
+  extLblAsian: 'Asian session range',
+  extLblVwap: 'VWAP bands (average price)',
+  extLblVol: 'Volume — how much was traded',
+  smcNoSignalBanner: 'SMC does NOT give signals — it is only confirmation for the Terminal signal.',
+  smcConfirmStrong: 'Strong confirmation ✓',
+  smcConfirmWeak: 'Confirmation is weak — strong at 80+',
+  notASignalNote: 'This is not a signal — trade only on the Terminal signal.',
+  confirmationLbl: 'Confirmation',
   marketCards: 'Live Market',
 }};
 function t(k) { return (I18N[lang] && I18N[lang][k]) || I18N.ur[k] || k; }
@@ -676,7 +778,7 @@ async function loadSmcFeed() {
   const el = document.getElementById('smcFeed'); if (!el) return;
   try {
     const d = await api('/api/history?engine=smc');
-    el.innerHTML = d.signals.length ? d.signals.slice(0, 8).map(s => `<p>${esc(s.pair)} <span class="${s.direction === 'BUY' ? 'buy' : 'sell'}">${s.direction}</span> — Entry ${fmt(s.entry, 2)} · Score ${s.score}% · <b>${esc(s.outcome || 'In-Flight')}</b> · ${new Date(s.createdAt).toLocaleString()}</p>`).join('') : '<p>' + esc(t('noSmcSignals')) + '</p>';
+    el.innerHTML = d.signals.length ? d.signals.slice(0, 8).map(s => `<p>${esc(s.pair)} <span class="${s.direction === 'BUY' ? 'buy' : 'sell'}">${s.direction}</span> (${esc(t('confirmationLbl'))}) — Entry ${fmt(s.entry, 2)} · Score ${s.score}% · <b>${esc(s.outcome || 'In-Flight')}</b> · ${new Date(s.createdAt).toLocaleString()}</p>`).join('') : '<p>' + esc(t('noSmcSignals')) + '</p>';
   } catch (e) { el.innerHTML = '<p>' + esc(e.message) + '</p>'; }
 }
 async function runSmcBacktest() {
@@ -903,6 +1005,67 @@ function renderSignalBanner(d) {
   }
 }
 
+// ---------------- v8: Plain-language gate labels + marks (display only — numbers/logic nahi badalte) ----------------
+// Server ke technical gate/part naam -> saaf Roman Urdu matlab. ✓ = poore points, ◐ = aadhe, ✗ = zero.
+const GATE_PLAIN = {
+  'Indicator Trend (BUY)': 'gateLblTrendUp',
+  'Indicator Trend (SELL)': 'gateLblTrendDown',
+  'Structure Swing': 'gateLblStructure',
+  'RSI Recovery': 'gateLblRsi',
+  'R/R Geometry': 'gateLblRr',
+  'Macro EMA200': 'gateLblEma200',
+  'Data Freshness': 'gateLblFresh',
+  'Liquidity Sweep': 'smcLblSweep',
+  'Market Structure': 'smcLblStructure',
+  'Order Block': 'smcLblOb',
+  'FVG': 'smcLblFvg',
+  'Risk & Reward': 'smcLblRr',
+};
+function gateMark(points, max) {
+  if (points >= max) return '<span class="chk-ok">✓</span>';
+  if (points > 0) return '<span class="chk-na">◐</span>';
+  return '<span class="chk-no">✗</span>';
+}
+function gateRowHtml(name, points, max) {
+  const pk = GATE_PLAIN[name];
+  const lbl = pk ? esc(name) + ' — ' + esc(t(pk)) : esc(name);
+  return `<div class="gate"><span>${lbl}</span><span>${gateMark(points, max)} ${points}/${max}</span></div>`;
+}
+// "Ye trade kyun?" — BUY/SELL signal ki 3-4 asal wajah (sirf is signal ke real data se)
+function whyTradeHtml(d) {
+  const dir = d.direction;
+  if (dir === 'WAIT') return '';
+  const gates = dir === 'BUY' ? (d.buyGates || []) : (d.sellGates || []);
+  const reasons = [];
+  const trend = gates.find(g => g.name.indexOf('Indicator Trend') === 0);
+  if (trend && trend.points >= 10) reasons.push(esc(t('whyTrend')) + ' — ' + esc(t(dir === 'BUY' ? 'gateLblTrendUp' : 'gateLblTrendDown')) + ' ✓ (' + trend.points + '/' + trend.max + ')');
+  if (d.tradeZone) {
+    const z = d.tradeZone;
+    const inZ = d.price >= z.low && d.price <= z.high;
+    reasons.push(esc(inZ ? t('whyZone') : t('whyZoneNear')) + ' — ' + esc(z.type + ' ' + fmt(z.low, 2) + ' – ' + fmt(z.high, 2)));
+  } else if (d.smc) {
+    const s = d.smc;
+    const inDz = s.demandZone && d.price >= s.demandZone[0] && d.price <= s.demandZone[1];
+    const inSz = s.supplyZone && d.price >= s.supplyZone[0] && d.price <= s.supplyZone[1];
+    if (dir === 'BUY' && inDz) reasons.push(esc(t('whyZone')) + ' — ' + esc(t('demandZone') + ' ' + fmt(s.demandZone[0], 2) + ' – ' + fmt(s.demandZone[1], 2)));
+    else if (dir === 'SELL' && inSz) reasons.push(esc(t('whyZone')) + ' — ' + esc(t('supplyZone') + ' ' + fmt(s.supplyZone[0], 2) + ' – ' + fmt(s.supplyZone[1], 2)));
+  }
+  if (d.smc && d.smc.score >= 80) reasons.push(esc(t('whySmcHigh')) + ' (' + d.smc.score + '/100)');
+  if (d.smc && d.smc.bosDir) {
+    if (dir === 'BUY' && d.smc.bosDir === 'up') reasons.push(esc(t('bosUp')));
+    else if (dir === 'SELL' && d.smc.bosDir === 'down') reasons.push(esc(t('bosDown')));
+  }
+  const others = gates.filter(g => g !== trend && g.points > 0).sort((a, b) => (b.points / b.max) - (a.points / a.max));
+  if (others.length && reasons.length < 4) {
+    const g = others[0];
+    const pk = GATE_PLAIN[g.name];
+    reasons.push(esc(t('whyTopGate')) + ': ' + esc(pk ? t(pk) : g.name) + ' ' + g.points + '/' + g.max);
+  }
+  const list = reasons.slice(0, 4);
+  if (!list.length) return '';
+  return `<div class="why-box"><h4>✅ ${t('whyTradeTitle')}</h4><ul>${list.map(r => '<li>' + r + '</li>').join('')}</ul></div>`;
+}
+
 // ---------------- SMC confluence checklist (sirf asal SMC data se — koi checkmark banaya nahi jata) ----------------
 function smcChecklistHtml(d) {
   const s = d.smc;
@@ -911,7 +1074,7 @@ function smcChecklistHtml(d) {
   // Zone-blocked WAIT: checklist ko us direction se check karo jo block hui (warna WAIT par sab '–' dikhega)
   const chkDir = dir !== 'WAIT' ? dir : (d.zoneBlocked && d.blockedDirection ? d.blockedDirection : 'WAIT');
   const mark = (st) => st === true ? `<span class="chk-ok">${esc(t('chkYes'))}</span>` : st === false ? `<span class="chk-no">${esc(t('chkNo'))}</span>` : `<span class="chk-na">${esc(t('chkNa'))}</span>`;
-  const row = (label, st, detail) => `<div class="gate"><span>${esc(label)}</span><span>${mark(st)} ${detail}</span></div>`;
+  const row = (label, plainKey, st, detail) => `<div class="gate"><span>${esc(label)}${plainKey ? ' — ' + esc(t(plainKey)) : ''}</span><span>${mark(st)} ${detail}</span></div>`;
   // 1. Liquidity Sweep — BUY ke liye SSL (neeche sweep), SELL ke liye BSL (upar sweep)
   let sweepSt = null;
   if (chkDir === 'BUY') sweepSt = s.sweepCode === 'SSL';
@@ -960,11 +1123,11 @@ function smcChecklistHtml(d) {
     zoneDetail = esc(zoneTxt + ' — ' + t('demandZone') + ' ' + (s.demandZone ? fmt(s.demandZone[0], 2) + ' – ' + fmt(s.demandZone[1], 2) : '—') + ' · ' + t('supplyZone') + ' ' + (s.supplyZone ? fmt(s.supplyZone[0], 2) + ' – ' + fmt(s.supplyZone[1], 2) : '—'));
   }
   return `<h4>${t('smcChecklist')} — ${t('smcScore')}: ${s.score}/100 (${t('gate')} 80%)</h4>` +
-    row(t('chkSweep'), sweepSt, sweepDetail) +
-    row(t('chkOB'), obSt, obDetail) +
-    row(t('chkFvg'), fvgSt, fvgDetail) +
-    row(t('chkSR'), srSt, srDetail) +
-    row(t('chkZones'), zoneSt, zoneDetail);
+    row(t('chkSweep'), 'chkLblSweep', sweepSt, sweepDetail) +
+    row(t('chkOB'), 'chkLblOb', obSt, obDetail) +
+    row(t('chkFvg'), 'chkLblFvg', fvgSt, fvgDetail) +
+    row(t('chkSR'), 'chkLblSr', srSt, srDetail) +
+    row(t('chkZones'), 'chkLblZones', zoneSt, zoneDetail);
 }
 
 // ---------------- v4 Extended confluence panel (sirf display — asal 1H candles se, koi value banayi nahi jati) ----------------
@@ -974,7 +1137,7 @@ function extendedConfluenceHtml(d) {
   const dir = d.direction;
   const chkDir = dir !== 'WAIT' ? dir : (d.zoneBlocked && d.blockedDirection ? d.blockedDirection : 'WAIT');
   const mark = (st) => st === true ? `<span class="chk-ok">${esc(t('chkYes'))}</span>` : st === false ? `<span class="chk-no">${esc(t('chkNo'))}</span>` : `<span class="chk-na">${esc(t('chkNa'))}</span>`;
-  const row = (label, st, detail) => `<div class="gate"><span>${esc(label)}</span><span>${mark(st)} ${detail}</span></div>`;
+  const row = (label, plainKey, st, detail) => `<div class="gate"><span>${esc(label)}${plainKey ? ' — ' + esc(t(plainKey)) : ''}</span><span>${mark(st)} ${detail}</span></div>`;
   const dirMatch = (sigDir) => (chkDir === 'WAIT' || !sigDir) ? null : sigDir === chkDir;
   const pkt = (h) => String((h + 5) % 24).padStart(2, '0') + ':00';
   let html = `<h4>${t('extTitle')}</h4>`;
@@ -985,21 +1148,21 @@ function extendedConfluenceHtml(d) {
     cDetail = esc(patKey ? t(patKey) : x.candle.code);
     cSt = x.candle.direction === 'NEUTRAL' ? null : dirMatch(x.candle.direction);
   }
-  html += row(t('chkCandle'), cSt, cDetail);
+  html += row(t('chkCandle'), 'extLblCandle', cSt, cDetail);
   // 2. CHOCH
   let chSt = null, chDetail = esc(t('noChoch'));
   if (x.choch && x.choch.found) {
     chDetail = esc(x.choch.dir === 'up' ? t('chochUp') : t('chochDown'));
     chSt = dirMatch(x.choch.dir === 'up' ? 'BUY' : 'SELL');
   }
-  html += row(t('chkChoch'), chSt, chDetail);
+  html += row(t('chkChoch'), 'extLblChoch', chSt, chDetail);
   // 3. MSS
   let mSt = null, mDetail = esc(t('noMss'));
   if (x.mss && x.mss.found) {
     mDetail = esc(x.mss.dir === 'up' ? t('mssUp') : t('mssDown'));
     mSt = dirMatch(x.mss.dir === 'up' ? 'BUY' : 'SELL');
   }
-  html += row(t('chkMss'), mSt, mDetail);
+  html += row(t('chkMss'), 'extLblMss', mSt, mDetail);
   // 4. Breaker / mitigation blocks
   let bSt = null, bDetail = esc(t('noBreaker'));
   if (x.breakers && x.breakers.length) {
@@ -1008,36 +1171,36 @@ function extendedConfluenceHtml(d) {
     bDetail = esc(blTxt + (x.breakers.length > 1 ? ' · +' + (x.breakers.length - 1) : ''));
     bSt = dirMatch(bl.dir);
   }
-  html += row(t('chkBreaker'), bSt, bDetail);
+  html += row(t('chkBreaker'), 'extLblBreaker', bSt, bDetail);
   // 5. IDM
   let iSt = null, iDetail = esc(t('noIdm'));
   if (x.idm && x.idm.found) {
     iDetail = esc(x.idm.side === 'SSL' ? t('idmSsl') : t('idmBsl'));
     iSt = dirMatch(x.idm.side === 'SSL' ? 'BUY' : 'SELL');
   }
-  html += row(t('chkIdm'), iSt, iDetail);
+  html += row(t('chkIdm'), 'extLblIdm', iSt, iDetail);
   // 6. Fibonacci
   let fDetail = '—';
   if (x.fib && x.fib.nearest) fDetail = esc(t('fibNearest') + ': ' + x.fib.nearest.label + ' @ ' + fmt(x.fib.nearest.price, 2) + ' (High ' + fmt(x.fib.high, 2) + ' / Low ' + fmt(x.fib.low, 2) + ')');
-  html += row(t('chkFib'), null, fDetail);
+  html += row(t('chkFib'), 'extLblFib', null, fDetail);
   // 7. Bollinger squeeze
   let bbDetail = '—';
   if (x.bollinger) bbDetail = esc((x.bollinger.squeeze ? t('squeezeOn') : t('squeezeOff')) + ' · Bandwidth ' + x.bollinger.bandwidthPct + '% · %B ' + x.bollinger.percentB);
-  html += row(t('chkBb'), null, bbDetail);
+  html += row(t('chkBb'), 'extLblBb', null, bbDetail);
   // 8. MACD divergence
   let mdSt = null, mdDetail = esc(t('noMacdDiv'));
   if (x.macdDiv && x.macdDiv.found) {
     mdDetail = esc(x.macdDiv.type === 'bullish' ? t('macdBullDiv') : t('macdBearDiv'));
     mdSt = dirMatch(x.macdDiv.type === 'bullish' ? 'BUY' : 'SELL');
   }
-  html += row(t('chkMacdDiv'), mdSt, mdDetail);
+  html += row(t('chkMacdDiv'), 'extLblMacdDiv', mdSt, mdDetail);
   // 9. Mean reversion
   let mrDetail = '—';
   if (x.meanRev) {
     const lbl = x.meanRev.label === 'near' ? t('meanNear') : x.meanRev.label === 'extended' ? t('meanExtended') : t('meanOver');
     mrDetail = esc('EMA20 se ' + Math.abs(x.meanRev.distATR) + ' ATR ' + t(x.meanRev.side === 'above' ? 'aboveMean' : 'belowMean') + ' — ' + lbl + (x.meanRev.percentB != null ? ' · %B ' + x.meanRev.percentB : ''));
   }
-  html += row(t('chkMeanRev'), null, mrDetail);
+  html += row(t('chkMeanRev'), 'extLblMeanRev', null, mrDetail);
   // 10. Killzone
   let kzDetail = '—';
   if (x.killzone) {
@@ -1045,7 +1208,7 @@ function extendedConfluenceHtml(d) {
     if (x.killzone.active) kzDetail = esc(t('killActive') + ': ' + kzName(x.killzone.active) + ' ' + String(x.killzone.activeStart).padStart(2, '0') + ':00–' + String(x.killzone.activeEnd).padStart(2, '0') + ':00 UTC (' + pkt(x.killzone.activeStart) + '–' + pkt(x.killzone.activeEnd) + ' PKT)');
     else kzDetail = esc(t('killNext') + ': ' + kzName(x.killzone.next) + ' ' + String(x.killzone.nextStart).padStart(2, '0') + ':00 UTC (' + pkt(x.killzone.nextStart) + ' PKT) — ' + x.killzone.nextInMin + ' min');
   }
-  html += row(t('chkKillzone'), null, kzDetail);
+  html += row(t('chkKillzone'), 'extLblKillzone', null, kzDetail);
   // 11. Asian range
   let aSt = null, aDetail = esc(t('noAsian'));
   if (x.asian) {
@@ -1053,18 +1216,18 @@ function extendedConfluenceHtml(d) {
     aDetail = esc(fmt(x.asian.low, 2) + ' – ' + fmt(x.asian.high, 2) + ' — ' + t(exp === 'above' ? 'asianAbove' : exp === 'below' ? 'asianBelow' : 'asianIn'));
     aSt = exp === 'above' ? dirMatch('BUY') : exp === 'below' ? dirMatch('SELL') : null;
   }
-  html += row(t('chkAsian'), aSt, aDetail);
+  html += row(t('chkAsian'), 'extLblAsian', aSt, aDetail);
   // 12. VWAP bands
   let vDetail = '—';
   if (x.vwapBands && x.vwapBands.nearest) vDetail = esc(t('vwapNearest') + ': ' + x.vwapBands.nearest.label + ' @ ' + fmt(x.vwapBands.nearest.price, 2) + ' · VWAP ' + fmt(x.vwapBands.vwap, 2));
-  html += row(t('chkVwap'), null, vDetail);
+  html += row(t('chkVwap'), 'extLblVwap', null, vDetail);
   // 13. Volume
   let volDetail = esc(t('volNa'));
   if (x.volume && x.volume.available) {
     const vt = x.volume.trend === 'rising' ? t('volRising') : x.volume.trend === 'falling' ? t('volFalling') : t('volNormal');
     volDetail = esc(vt + ' — ' + x.volume.ratio + '× avg (20)');
   }
-  html += row(t('chkVol'), null, volDetail);
+  html += row(t('chkVol'), 'extLblVol', null, volDetail);
   // DXY + correlation line
   let dxyLine = `<p><b>${t('dxyTitle')}:</b> `;
   if (x.dxy && x.dxy.available && x.dxy.value != null) {
@@ -1428,7 +1591,7 @@ function priceLineHtml(d) {
 function whyWaitHtml(d) {
   const lead = d.buyScore >= d.sellScore ? { gates: d.buyGates || [] } : { gates: d.sellGates || [] };
   const failing = (lead.gates || []).filter(g => g.points < g.max).sort((a, b) => (b.max - b.points) - (a.max - a.points)).slice(0, 3);
-  let rows = failing.map(g => `<div class="gate"><span>${esc(g.name)}</span><span>${g.points}/${g.max} — ${esc(t('gateNotMet'))}</span></div>`).join('');
+  let rows = failing.map(g => { const pk = GATE_PLAIN[g.name]; return `<div class="gate"><span>${esc(g.name)}${pk ? ' — ' + esc(t(pk)) : ''}</span><span>${gateMark(g.points, g.max)} ${g.points}/${g.max} — ${esc(t('gateNotMet'))}</span></div>`; }).join('');
   if (d.smc && d.smc.score < 80) rows += `<div class="gate"><span>SMC Score</span><span>${d.smc.score}/100 — ${esc(t('smcBelowGate'))} (80%)</span></div>`;
   if (d.zoneBlocked) rows += `<div class="gate"><span>${esc(t('tradeZone'))}</span><span>${esc(t('zoneBlockedReason'))}</span></div>`;
   if (!rows) return '';
@@ -1509,8 +1672,7 @@ async function loadTerminal(fromPrice, force) {
       ${d.signalCode ? `<p class="fine">${t('signalCode')}: <b>${esc(d.signalCode)}</b> · ${t('validUntil')}: ${fmtPktTimeShort(d.validUntil)}</p>` : ''}
       <div class="sig-actions"><button class="btn-sig" onclick="copyCurrentSignal()">${esc(t('copySignal'))}</button> <button class="btn-sig" onclick="downloadCurrentSignal()">${esc(t('downloadSignal'))}</button> <button class="btn-sig" onclick="openShareCardTerminal()">${esc(t('shareCard'))}</button></div></div>`;
     };
-    const gatesHtml = (gates, title) => `<h4>${title}</h4>` + gates.map(g =>
-      `<div class="gate"><span>${esc(g.name)}</span><span>${g.points}/${g.max}</span></div>`).join('');
+    const gatesHtml = (gates, title) => `<h4>${title}</h4>` + gates.map(g => gateRowHtml(g.name, g.points, g.max)).join('');
     // Ek direction, ek trade: sirf wo direction dikhao jo gate paar kare.
     // WAIT me dono gates dikhao taake pata chale kyun koi gate paar nahi hua.
     const gatesSection = d.direction === 'BUY' ? gatesHtml(d.buyGates, t('buyGates'))
@@ -1533,11 +1695,14 @@ async function loadTerminal(fromPrice, force) {
     lastTerminalSig = termSig;
     el.innerHTML = `
       <h3>${esc(currentPair.replace('USD', '/USD'))} — <span class="${dirCls}">${d.direction}</span> ${d.direction === 'WAIT' ? t('noTrade') : ''}</h3>
+      <p class="fine">📌 ${esc(t('oneTradeLabel'))}</p>
       <p id="termPriceLine">${priceLineHtml(d)}</p>
       <p>PDH ${fmt(d.range.pdh, 2)} · PDL ${fmt(d.range.pdl, 2)} · Range ${fmt(d.range.pdl, 2)} – ${fmt(d.range.pdh, 2)}</p>
+      <p class="fine">${esc(t('gatesExplain'))}</p>
       ${gatesSection}
       <h4>${t('signalPlan')} — ${d.direction}</h4>
       ${activePlan ? planHtml(activePlan, d.direction) : '<p>' + esc(t('waitNoTrade')) + (d.zoneBlocked && d.zoneNote ? '<br>' + esc(d.zoneNote) : '') + '</p><div class="sig-actions"><button class="btn-sig" onclick="copyWaitAnalysis()">' + esc(t('copyWaitAnalysis')) + '</button></div>'}
+      ${activePlan ? whyTradeHtml(d) : ''}
       ${d.direction === 'WAIT' ? whyWaitHtml(d) : ''}
       ${oppDir ? `<p class="fine">${t('oppScenario')}: ${oppDir} ${oppScore}% — ${t('oppGateNotMet')} (${t('gate')} 85%)</p>` : ''}
       ${smcChecklistHtml(d)}
@@ -1588,8 +1753,9 @@ async function loadSmc() {
     if (d.disabled) { el.innerHTML = '<p>' + esc(d.message) + '</p>'; return; }
     if (d.error) { el.innerHTML = '<p>' + esc(t('smcNoData')) + '</p>'; return; }
     el.innerHTML = `
-      <p class="score">${t('smcScore')}: ${d.score} / 100 (${t('gate')} 80%) — ${d.score >= 80 ? '<span class="buy">' + esc(t('gatePass')) + '</span>' : '<span class="wait">' + esc(t('gateNotMet')) + '</span>'}</p>
-      ${d.parts.map(p => `<div class="gate"><span>${esc(p.name)}</span><span>${p.score}/${p.max}</span></div>`).join('')}
+      <p class="score">${t('smcScore')}: ${d.score} / 100 (${t('gate')} 80%) — ${d.score >= 80 ? '<span class="buy">' + esc(t('smcConfirmStrong')) + '</span>' : '<span class="wait">' + esc(t('smcConfirmWeak')) + '</span>'}</p>
+      <p class="fine">${esc(t('smcExplain'))}</p>
+      ${d.parts.map(p => gateRowHtml(p.name, p.score, p.max)).join('')}
       <h4>${t('swingLevels')}</h4><p>${t('swingHigh')}: ${fmt(d.swingHigh, 2)} · ${t('swingLow')}: ${fmt(d.swingLow, 2)}</p>
       <h4>${t('liqSweeps')}</h4><p>${esc(d.sweep)}</p>
       <h4>${t('orderBlocks')}</h4>
@@ -1667,7 +1833,7 @@ async function loadHistory() {
 // History per-row details — RECORDED gate breakdown (audit). Purane signals me gates save nahi hue.
 function histDetailsHtml(s) {
   let h = `<h4>${t('histDetails')}</h4><p>${t('signal')}: ${esc(s.id || '—')} · ${esc(s.engine)} · ${t('gate')} ${s.gate || '—'}% · Score ${s.score}%</p>`;
-  if (s.gates && s.gates.length) h += s.gates.map(g => `<div class="gate"><span>${esc(g.name)}</span><span>${g.points}/${g.max}</span></div>`).join('');
+  if (s.gates && s.gates.length) h += s.gates.map(g => gateRowHtml(g.name, g.points, g.max)).join('');
   else h += '<p>' + esc(t('gatesNotSaved')) + '</p>';
   if (s.smcScore != null) h += `<p>SMC Score: ${s.smcScore}/100</p>`;
   return h;
@@ -1721,8 +1887,8 @@ async function loadAcct() {
       // Ek direction, ek trade — sirf wo plan dikhao jo gate paar kare (Terminal jaisa)
       const p = d.direction === 'BUY' ? d.buyPlan : d.direction === 'SELL' ? d.sellPlan : null;
       el.innerHTML = d.error ? '<p>' + esc(d.message) + '</p>' : p
-        ? `<p><b>${d.direction}</b> — ${t('entryZone')} ${fmt(p.entryZone[0], 2)} – ${fmt(p.entryZone[1], 2)} · ${t('trigger')} ${fmt(p.trigger, 2)} · SL ${fmt(p.sl, 2)} · TP ${fmt(p.tp1, 2)} / ${fmt(p.tp2, 2)} / ${fmt(p.tp3, 2)} · ${t('confluence')} ${d.confluence}%</p>`
-        : '<p>' + esc(t('waitNoTrade')) + ' — ' + t('confluence') + ' ' + d.confluence + '%</p>';
+        ? `<p><b>${d.direction}</b> — ${t('entryZone')} ${fmt(p.entryZone[0], 2)} – ${fmt(p.entryZone[1], 2)} · ${t('trigger')} ${fmt(p.trigger, 2)} · SL ${fmt(p.sl, 2)} · TP ${fmt(p.tp1, 2)} / ${fmt(p.tp2, 2)} / ${fmt(p.tp3, 2)} · ${t('confluence')} ${d.confluence}%</p><p class="fine">📌 ${esc(t('oneTradeNote'))}</p>${whyTradeHtml(d)}`
+        : '<p>' + esc(t('waitNoTrade')) + ' — ' + t('confluence') + ' ' + d.confluence + '%</p><p class="fine">📌 ' + esc(t('oneTradeNote')) + '</p>';
     } else if (acctTab === 'signalHistory') {
       el.innerHTML = `<p>${esc(t('historyTabText'))}</p><button class="btn small gold" onclick="showTab('history')">${t('openHistory')}</button>`;
     } else if (acctTab === 'tfMatrix') {

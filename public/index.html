@@ -72,6 +72,13 @@
       <div class="pair-select" id="pairSelect"></div>
       <div id="signalBanner"></div>
       <div id="terminalCard" class="card"><p>Loading…</p></div>
+      <div class="card guide-box"><h3 data-i18n="guideTitle">Trade Kaise Lein? — 4 Asan Steps</h3>
+      <ol>
+        <li data-i18n="guideStep1"></li>
+        <li data-i18n="guideStep2"></li>
+        <li data-i18n="guideStep3"></li>
+        <li data-i18n="guideStep4"></li>
+      </ol></div>
       <div class="card"><h3 data-i18n="chartTitle">Price Chart — Candles + EMA 20/50/200</h3>
       <div class="chart-tf" id="chartTf"></div>
       <canvas id="chartCanvas" width="900" height="320"></canvas>
@@ -99,6 +106,7 @@
     <section id="tab-smc" class="tab" style="display:none">
       <div class="card"><h3 data-i18n="smcTitle">SMC (Smart Money Concepts)</h3>
       <p data-i18n="smcText">SMC ke levels asal 15M candles ke swing high/low se nikale jate hain — jahan bade kharidar/bechne wale aam tor par rukte hain. SMC score 5 hisse x 20 points se banta hai, gate <b>80%</b> hai. Terminal ka BUY/SELL is tab se nahi banta; wo Terminal ki apni 85% wali sharton se banta hai.</p>
+      <p class="notice-banner" data-i18n="smcNoSignalBanner">SMC signal NAHI deta — ye Terminal signal ki tasdeeq (confirmation) hai.</p>
       <div id="smcBody"></div></div>
       <div class="card"><h3 data-i18n="smcMacroTitle">15M Macro</h3><div id="smcMacro"></div></div>
       <div class="card"><h3 data-i18n="smcMicroTitle">5M Micro</h3><div id="smcMicro"></div></div>
@@ -106,12 +114,12 @@
       <div class="card"><h3 data-i18n="smcBacktestTitle">SMC Backtest</h3>
       <p><span data-i18n="smcBacktestNote">Asal 15M candles par SMC rule (score 80%+) — koi banaya hua number nahi.</span> <button class="btn small gold" data-i18n="smcBacktestBtn" onclick="runSmcBacktest()">SMC Backtest Chalayein (30 din)</button></p>
       <div id="smcBacktestBody"></div></div>
-      <div class="card"><h3 data-i18n="scannerTitle">Global Market Scanner (11 pairs, har 45 second)</h3><div id="scannerBody"></div></div>
+      <div class="card"><h3 data-i18n="scannerTitle">Global Market Scanner (11 pairs, har 45 second)</h3><p class="notice-banner" data-i18n="notASignalNote">Ye signal nahi hai — trade sirf Terminal signal par lein.</p><div id="scannerBody"></div></div>
     </section>
 
     <!-- SESSION -->
     <section id="tab-session" class="tab" style="display:none">
-      <div class="card"><h3 data-i18n="sessionTitle">Session Engine</h3><div id="sessionBody"></div></div>
+      <div class="card"><h3 data-i18n="sessionTitle">Session Engine</h3><p class="notice-banner" data-i18n="notASignalNote">Ye signal nahi hai — trade sirf Terminal signal par lein.</p><div id="sessionBody"></div></div>
       <div class="card"><h3 data-i18n="newsTitle">Fundamental News</h3>
       <p data-i18n="newsText">Taza forex/market headlines — FXStreet aur ForexLive ke free RSS feeds se.</p>
       <div id="newsBody"></div></div>
