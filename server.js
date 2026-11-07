@@ -28,6 +28,7 @@ function defaultDb() {
       defaultPair: 'XAUUSD',
     },
     lastPrices: {},     // pairId -> last good quote (backup)
+    telegramOffset: 0,  // Telegram getUpdates ka offset (poll karte waqt aage badhta hai)
     buildNote: 'Strategy Refiner ka cutoff sirf is build ke baad record hone wale signals par lagta hai, kyunke purane signals me gate score save nahi hua.',
   };
 }
@@ -823,47 +824,57 @@ function computeExtended(c1h, live, ema20, ema50, atr1h, dxy) {
 }
 
 // ---------------- Signal Engine: 6 gates / 100 points, BUY/SELL sirf 85%+ par ----------------
-function gateScore(candles, ind, livePrice, side) {
+function gateScore(candles, ind, livePrice, side, opts) {
   // side: 'buy' ya 'sell'. Har gate 0..points.
+  // Weights: wRsiRr re-weighting (2026-11-07, accuracy study out-of-sample winner):
+  // Trend 15, Structure 15, RSI 25, R/R 20, Macro 10, Freshness 15 = 100, gate 85.
+  // Candidate only — forward-validate on live signals; revert if live PF < 1.0.
   const gates = [];
   const price = livePrice || ind.lastPrice;
   const e20 = ind.ema20, e50 = ind.ema50, e200 = ind.ema200;
-  // 1) Indicator Trend — 20
+  // 1) Indicator Trend — 15
   let g1 = 0;
-  if (side === 'buy') { if (e20 && e50 && price > e20 && e20 > e50) g1 = 20; else if (e50 && price > e50) g1 = 10; }
-  else { if (e20 && e50 && price < e20 && e20 < e50) g1 = 20; else if (e50 && price < e50) g1 = 10; }
-  gates.push({ name: side === 'buy' ? 'Indicator Trend (BUY)' : 'Indicator Trend (SELL)', points: g1, max: 20 });
-  // 2) Structure Swing — 20
+  if (side === 'buy') { if (e20 && e50 && price > e20 && e20 > e50) g1 = 15; else if (e50 && price > e50) g1 = 8; }
+  else { if (e20 && e50 && price < e20 && e20 < e50) g1 = 15; else if (e50 && price < e50) g1 = 8; }
+  gates.push({ name: side === 'buy' ? 'Indicator Trend (BUY)' : 'Indicator Trend (SELL)', points: g1, max: 15 });
+  // 2) Structure Swing — 15
   const sw = findSwings(candles);
   let g2 = 0;
-  if (side === 'buy') { if (sw.low != null && price > sw.low) g2 = 20; else if (sw.low != null) g2 = 5; }
-  else { if (sw.high != null && price < sw.high) g2 = 20; else if (sw.high != null) g2 = 5; }
-  gates.push({ name: 'Structure Swing', points: g2, max: 20 });
-  // 3) RSI Recovery — 15
+  if (side === 'buy') { if (sw.low != null && price > sw.low) g2 = 15; else if (sw.low != null) g2 = 4; }
+  else { if (sw.high != null && price < sw.high) g2 = 15; else if (sw.high != null) g2 = 4; }
+  gates.push({ name: 'Structure Swing', points: g2, max: 15 });
+  // 3) RSI Recovery — 25
   let g3 = 0;
   const rsi = ind.rsi14;
   if (rsi != null) {
-    if (side === 'buy') { if (rsi >= 50 && rsi <= 70) g3 = 15; else if (rsi >= 45 && rsi < 50) g3 = 8; }
-    else { if (rsi >= 30 && rsi <= 50) g3 = 15; else if (rsi > 50 && rsi <= 55) g3 = 8; }
+    if (side === 'buy') { if (rsi >= 50 && rsi <= 70) g3 = 25; else if (rsi >= 45 && rsi < 50) g3 = 13; }
+    else { if (rsi >= 30 && rsi <= 50) g3 = 25; else if (rsi > 50 && rsi <= 55) g3 = 13; }
   }
-  gates.push({ name: 'RSI Recovery', points: g3, max: 15 });
-  // 4) R/R Geometry — 15
+  gates.push({ name: 'RSI Recovery', points: g3, max: 25 });
+  // 4) R/R Geometry — 20
   let g4 = 0;
   if (sw.high != null && sw.low != null) {
-    if (side === 'buy') { const rr = (sw.high - price) / Math.max(price - sw.low, 1e-9); if (rr >= 1.5) g4 = 15; else if (rr >= 1) g4 = 8; }
-    else { const rr = (price - sw.low) / Math.max(sw.high - price, 1e-9); if (rr >= 1.5) g4 = 15; else if (rr >= 1) g4 = 8; }
+    if (side === 'buy') { const rr = (sw.high - price) / Math.max(price - sw.low, 1e-9); if (rr >= 1.5) g4 = 20; else if (rr >= 1) g4 = 11; }
+    else { const rr = (price - sw.low) / Math.max(sw.high - price, 1e-9); if (rr >= 1.5) g4 = 20; else if (rr >= 1) g4 = 11; }
   }
-  gates.push({ name: 'R/R Geometry', points: g4, max: 15 });
-  // 5) Macro EMA200 — 15
+  gates.push({ name: 'R/R Geometry', points: g4, max: 20 });
+  // 5) Macro EMA200 — 10
   let g5 = 0;
-  if (side === 'buy') { if (e200 && price > e200 && e50 && e50 > e200) g5 = 15; else if (e200 && price > e200) g5 = 8; }
-  else { if (e200 && price < e200 && e50 && e50 < e200) g5 = 15; else if (e200 && price < e200) g5 = 8; }
-  gates.push({ name: 'Macro EMA200', points: g5, max: 15 });
+  if (side === 'buy') { if (e200 && price > e200 && e50 && e50 > e200) g5 = 10; else if (e200 && price > e200) g5 = 5; }
+  else { if (e200 && price < e200 && e50 && e50 < e200) g5 = 10; else if (e200 && price < e200) g5 = 5; }
+  gates.push({ name: 'Macro EMA200', points: g5, max: 10 });
   // 6) Data Freshness — 15
+  // Backtest me freshness hamesha 15 hoti hai, bilkul live jaisi: live candle hamesha
+  // fresh hoti hai, is liye live engine ko ye 15 points milte hain. Purane code me
+  // backtest ki har bar par freshness 0 thi (Date.now() se umar napna) — is bug se
+  // ghalat "88.2% win rate, PF 5.0" claim bana tha.
   let g6 = 0;
-  const lastT = candles.length ? candles[candles.length - 1].t : 0;
-  const ageMin = (Date.now() - lastT) / 60000;
-  if (ageMin <= 15) g6 = 15; else if (ageMin <= 45) g6 = 8;
+  if (opts && opts.backtest) { g6 = 15; }
+  else {
+    const lastT = candles.length ? candles[candles.length - 1].t : 0;
+    const ageMin = (Date.now() - lastT) / 60000;
+    if (ageMin <= 15) g6 = 15; else if (ageMin <= 45) g6 = 8;
+  }
   gates.push({ name: 'Data Freshness', points: g6, max: 15 });
   const total = gates.reduce((s, g) => s + g.points, 0);
   return { gates, total };
@@ -1017,15 +1028,28 @@ async function computeSignal(pairId, lang, force) {
   // taake History me har signal ki details (audit) dikh sake.
   if (direction !== 'WAIT') {
     const plan = direction === 'BUY' ? buyPlan : sellPlan;
-    const recentSame = db.signals.find(s => s.pair === pairId && s.direction === direction && Date.now() - s.createdAt < 3600000);
-    if (!recentSame) {
-      db.signals.unshift({ id: 'SIG-' + Date.now().toString(36).toUpperCase(), pair: pairId, direction, entry: plan.entry, sl: plan.sl, tp1: plan.tp1, tp2: plan.tp2, tp3: plan.tp3, score: confluence, gate: 85, engine: 'terminal', createdAt: Date.now(), outcome: null, outcomeAt: null, gates: direction === 'BUY' ? buy.gates : sell.gates, smcScore: smc.error ? null : smc.score, signalCode });
-      if (db.signals.length > 500) db.signals.length = 500;
-      logEvent(direction + ' signal: ' + pairId + ' @ ' + plan.entry.toFixed(2) + ' (' + confluence + '%)');
-      saveDb();
-    }
+    const res = recordTerminalSignal(pairId, direction, plan, confluence, direction === 'BUY' ? buy.gates : sell.gates, smc.error ? null : smc.score, signalCode);
+    if (res.recorded) { sendSignalAlert(res.signal); } // naya signal — Telegram alert (fire-and-forget)
+    else if (res.signal && res.signal.signalCode) { data.signalCode = res.signal.signalCode; } // display = recorded code
   }
   return data;
+}
+
+// Terminal signal record karna — user visit aur background recorder DONO isi ek raaste se.
+// Dedupe key: pair + direction + engine 'terminal' + 1H candle ka UTC ghanta (candleHour).
+// Isi ghante me dobara record nahi hota — user visit aur recorder ek hi record banate hain.
+// WAIT kabhi record nahi hota. Gates/weights ko nahi chhoota — sirf record karne ka waqt badalta hai.
+function recordTerminalSignal(pairId, direction, plan, score, gates, smcScore, signalCode) {
+  if (direction === 'WAIT') return { recorded: false, signal: null };
+  const candleHour = Math.floor(Date.now() / 3600000) * 3600000;
+  const existing = db.signals.find(s => s.pair === pairId && s.direction === direction && s.engine === 'terminal' && s.candleHour === candleHour);
+  if (existing) return { recorded: false, signal: existing };
+  const rec = { id: 'SIG-' + Date.now().toString(36).toUpperCase(), pair: pairId, direction, entry: plan.entry, sl: plan.sl, tp1: plan.tp1, tp2: plan.tp2, tp3: plan.tp3, score, gate: 85, engine: 'terminal', createdAt: Date.now(), candleHour, outcome: null, outcomeAt: null, gates, smcScore, signalCode, telegramSent: false };
+  db.signals.unshift(rec);
+  if (db.signals.length > 500) db.signals.length = 500;
+  logEvent(direction + ' signal: ' + pairId + ' @ ' + plan.entry.toFixed(2) + ' (' + score + '%)');
+  saveDb();
+  return { recorded: true, signal: rec };
 }
 
 // ---------------- SMC (asal 15M candles se) ----------------
@@ -1234,6 +1258,172 @@ function sessionQuality(ind, candles) {
   return { score, details };
 }
 
+// ---------------- Telegram alerts + background recorder (v9) ----------------
+// Bot token SIRF env var TELEGRAM_BOT_TOKEN se aata hai — kabhi file ya code me nahi likha jata.
+// Token na ho to Telegram ka kaam chup-chaap skip hota hai, baaki sab (recorder, website) chalta rehta hai.
+// Bot: @tradingforexprobot (getMe se verified: id 8435329849, "Forex trading pro alerts").
+// Alerts SIRF un buyers ko jate hain jinka plan Active hai — koi bhi Start dabane wala nahi.
+// Har buyer ka apna personal link hota hai: https://t.me/tradingforexprobot?start=<tgCode>
+// (Account tab aur Terminal card me dikhta hai). /start ka code buyer se jor kar uska
+// Telegram chat id save hota hai. Plan khatam ya suspend hone par alerts ruk jate hain,
+// chat id save rehta hai taake renew par alerts khud wapas shuru ho jayein.
+const TG_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '';
+const TG_DRY_RUN = process.env.TELEGRAM_DRY_RUN === '1';
+const TG_API = 'https://api.telegram.org';
+const TG_BOT_LINK = 'https://t.me/tradingforexprobot';
+const telegramDryRunSent = []; // sirf dry-run test ke liye — yahan kabhi asal message nahi jata
+
+// Buyer ka personal Telegram code — na ho to bana kar save karein (purane buyers ke liye bhi).
+function ensureTgCode(u) {
+  if (!u || u.role !== 'buyer') return u;
+  if (!u.tgCode) { u.tgCode = crypto.randomBytes(8).toString('hex'); saveDb(); }
+  return u;
+}
+// Buyer Active hai? Plan khatam ya suspend nahi.
+function buyerActive(u) {
+  return !!(u && u.role === 'buyer' && !u.suspended && (!u.expiresAt || u.expiresAt > Date.now()));
+}
+function tgDeepLink(u) { return TG_BOT_LINK + '?start=' + (u && u.tgCode ? u.tgCode : ''); }
+
+function fmtTgPrice(v) {
+  if (v == null || !isFinite(v)) return '—';
+  return v >= 100 ? Number(v).toFixed(2) : Number(v).toFixed(4);
+}
+function fmtTgTime(ms) {
+  try { return new Date(ms).toLocaleTimeString('en-GB', { timeZone: 'Asia/Karachi', hour: '2-digit', minute: '2-digit', hour12: true }) + ' PKT'; }
+  catch (e) { return new Date(ms).toLocaleTimeString(); }
+}
+function buildTelegramMessage(sig) {
+  const validUntil = sig.createdAt ? Math.floor(sig.createdAt / 3600000) * 3600000 + 3600000 : Date.now() + 3600000;
+  return [
+    '🔔 Forex Trading Pro — NAYA SIGNAL',
+    'Pair: ' + sig.pair,
+    'Direction: ' + sig.direction,
+    'Entry: ' + fmtTgPrice(sig.entry),
+    'SL: ' + fmtTgPrice(sig.sl),
+    'TP1: ' + fmtTgPrice(sig.tp1) + ' | TP2: ' + fmtTgPrice(sig.tp2) + ' | TP3: ' + fmtTgPrice(sig.tp3),
+    'Score: ' + sig.score + '/100',
+    'Code: ' + (sig.signalCode || sig.id || '—'),
+    'Valid until: ' + fmtTgTime(validUntil),
+    'Koi signal 100% profitable nahi hota.',
+  ].join('\n');
+}
+async function sendTelegramMessage(chatId, text) {
+  if (TG_DRY_RUN) { telegramDryRunSent.push({ chatId, text }); console.log('[Telegram dry-run] to ' + chatId + ': ' + String(text).split('\n')[0]); return { ok: true, dryRun: true }; }
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), 8000);
+  try {
+    const r = await fetch(TG_API + '/bot' + TG_TOKEN + '/sendMessage', { method: 'POST', headers: { 'Content-Type': 'application/json', 'User-Agent': 'ForexTradingPro/1.0' }, body: JSON.stringify({ chat_id: chatId, text }), signal: ctrl.signal });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok || !data.ok) throw new Error('Telegram HTTP ' + r.status + ' ' + (data.description || ''));
+    return data;
+  } finally { clearTimeout(t); }
+}
+// Naye signal par alert — sirf Active buyers ko, ek signal code par sirf ek dafa, WAIT par kabhi nahi.
+// Pehle claim karein (telegramSent=true), phir bhejein — taake dobara kabhi na jaye. Kabhi throw nahi karta.
+async function sendSignalAlert(sig) {
+  try {
+    if (!TG_TOKEN || !sig) return;
+    if (sig.telegramSent) return;
+    const targets = db.users.filter(u => u.tgChatId != null && buyerActive(u));
+    if (!targets.length) return;
+    sig.telegramSent = true; saveDb();
+    const text = buildTelegramMessage(sig);
+    for (const u of targets) {
+      try { await sendTelegramMessage(u.tgChatId, text); }
+      catch (e) { console.error('Telegram alert fail (' + u.username + '): ' + e.message); }
+    }
+  } catch (e) { console.error('Telegram alert fail: ' + e.message); }
+}
+// getUpdates ka jawab parse karein — ORDER barkarar (update_id ke hisaab se).
+// Har event: {type:'start', code, chatId} | {type:'plainStart', chatId} | {type:'stop', chatId}
+function parseTelegramUpdates(data) {
+  const events = [];
+  let nextOffset = null;
+  const updates = (data && data.result) || [];
+  for (const up of updates) {
+    if (typeof up.update_id === 'number') nextOffset = Math.max(nextOffset || 0, up.update_id + 1);
+    const msg = up.message || up.edited_message;
+    if (!msg || typeof msg.text !== 'string') continue;
+    const chatId = msg.chat && msg.chat.id;
+    if (chatId == null) continue;
+    const text = msg.text.trim();
+    if (text === '/stop' || text.startsWith('/stop ')) { events.push({ type: 'stop', chatId }); continue; }
+    const m = text.match(/^\/start(?:@[\w]+)?(?:\s+(.+))?$/);
+    if (m) {
+      const code = (m[1] || '').trim().split(/\s+/)[0] || '';
+      if (code) events.push({ type: 'start', code, chatId });
+      else events.push({ type: 'plainStart', chatId });
+    }
+  }
+  return { events, nextOffset };
+}
+// Parsed events lagayein: code se buyer jorein, /stop par unlink, plain /start par hidayat bhejein.
+async function applyTelegramUpdates(parsed) {
+  for (const ev of parsed.events || []) {
+    try {
+      if (ev.type === 'stop') {
+        const u = db.users.find(x => x.tgChatId === ev.chatId);
+        if (u) { u.tgChatId = null; saveDb(); }
+      } else if (ev.type === 'start') {
+        const u = db.users.find(x => x.tgCode === ev.code);
+        if (u) {
+          const prev = db.users.find(x => x !== u && x.tgChatId === ev.chatId);
+          if (prev) prev.tgChatId = null; // ek chat id sirf ek buyer se jurta hai
+          u.tgChatId = ev.chatId; saveDb();
+          await sendTelegramMessage(ev.chatId, '✅ Forex Trading Pro alerts ON hain! BUY/SELL signal aate hi aap ko yahan message mile ga. Alerts band karne ke liye /stop likhein.');
+        } else {
+          await sendTelegramMessage(ev.chatId, 'Ye link ghalat hai ya khatam ho gaya hai — apne Forex Trading Pro account se apna personal Telegram link lein (Account tab me milta hai).');
+        }
+      } else if (ev.type === 'plainStart') {
+        await sendTelegramMessage(ev.chatId, 'Signal alerts lene ke liye apne Forex Trading Pro account se apna personal Telegram link kholein aur Start dabayein. Link Account tab me milta hai.');
+      }
+    } catch (e) { console.error('Telegram update apply fail: ' + e.message); }
+  }
+}
+async function telegramPollUpdates() {
+  if (!TG_TOKEN) return;
+  try {
+    const url = TG_API + '/bot' + TG_TOKEN + '/getUpdates?timeout=0' + (db.telegramOffset ? '&offset=' + db.telegramOffset : '');
+    const data = await fetchJson(url, 8000);
+    if (!data || !data.ok) return;
+    const parsed = parseTelegramUpdates(data);
+    if (parsed.nextOffset) { db.telegramOffset = parsed.nextOffset; saveDb(); }
+    await applyTelegramUpdates(parsed);
+  } catch (e) { console.error('Telegram poll fail: ' + e.message); }
+}
+
+// ---------------- Background recorder (v9) ----------------
+// Server jab jaag raha ho, har 15 minute me main pairs ka Terminal signal khud
+// compute karke record karein — chahe koi user site khole ya na khole. Signal ka
+// hisaab bilkul wahi hai jo user visit par hota hai (computeSignal); sirf waqt
+// badalta hai, signal nahi. WAIT kabhi record nahi hota.
+const RECORDER_PAIRS = ['XAUUSD', 'EURUSD', 'GBPUSD', 'BTCUSD'];
+let recorderRunning = false;
+async function recorderTick(computeFn) {
+  if (recorderRunning) return { skipped: true };
+  recorderRunning = true;
+  try {
+    if (!db.settings.engines.terminal) return { skipped: true, reason: 'terminal_off' };
+    const fn = computeFn || computeSignal;
+    const results = [];
+    for (const pair of RECORDER_PAIRS) {
+      try { const d = await fn(pair, 'ur', true); results.push({ pair, direction: d.direction || d.error || null }); }
+      catch (e) { console.error('Recorder fail (' + pair + '): ' + e.message); results.push({ pair, error: e.message }); }
+    }
+    return { results };
+  } finally { recorderRunning = false; }
+}
+let lastRecorderAt = 0, tickRunning = false;
+async function backgroundTick() {
+  if (tickRunning) return;
+  tickRunning = true;
+  try {
+    await telegramPollUpdates();
+    if (Date.now() - lastRecorderAt >= 15 * 60 * 1000) { lastRecorderAt = Date.now(); await recorderTick(); }
+  } catch (e) { console.error('Background tick fail: ' + e.message); }
+}
+
 // ---------------- API routes ----------------
 app.get('/api/health', (req, res) => res.json({ ok: true, name: 'Forex Trading Pro', time: new Date().toISOString(), pairs: PAIRS.length }));
 
@@ -1289,8 +1479,9 @@ app.post('/api/auth/login', (req, res) => {
   if (u.role === 'buyer' && u.expiresAt && Date.now() > u.expiresAt) return res.status(403).json({ error: 'expired', message: 'Plan khatam ho gaya hai. Admin se renew karwayein.' });
   const token = makeToken();
   db.sessions.push({ token, username, createdAt: Date.now() });
+  ensureTgCode(u);
   saveDb();
-  res.json({ token, user: { username: u.username, role: u.role, plan: u.plan, expiresAt: u.expiresAt } });
+  res.json({ token, user: { username: u.username, role: u.role, plan: u.plan, expiresAt: u.expiresAt, tgCode: u.tgCode || null, tgLinked: !!u.tgChatId } });
 });
 app.post('/api/auth/logout', (req, res) => {
   const h = req.headers.authorization || '';
@@ -1300,7 +1491,8 @@ app.post('/api/auth/logout', (req, res) => {
   res.json({ ok: true });
 });
 app.get('/api/auth/me', requireAuth, (req, res) => {
-  res.json({ user: { username: req.user.username, role: req.user.role, plan: req.user.plan, expiresAt: req.user.expiresAt } });
+  ensureTgCode(req.user);
+  res.json({ user: { username: req.user.username, role: req.user.role, plan: req.user.plan, expiresAt: req.user.expiresAt, tgCode: req.user.tgCode || null, tgLinked: !!req.user.tgChatId } });
 });
 
 // Prices
@@ -1578,8 +1770,8 @@ app.get('/api/terminal/backtest', requireAuth, async (req, res) => {
       const window = slice.slice(i - 220, i + 1);
       const ind = computeIndicators(window);
       const live = window[window.length - 1].c;
-      const buy = gateScore(window, ind, live, 'buy');
-      const sell = gateScore(window, ind, live, 'sell');
+      const buy = gateScore(window, ind, live, 'buy', { backtest: true });
+      const sell = gateScore(window, ind, live, 'sell', { backtest: true });
       const dir = buy.total >= 85 ? 'BUY' : sell.total >= 85 ? 'SELL' : null;
       if (!dir) continue;
       const atr = ind.atr14 || live * 0.002;
@@ -1678,7 +1870,7 @@ app.post('/api/admin/users', requireAdmin, (req, res) => {
   if (findUser(username)) return res.status(400).json({ error: 'exists', message: 'Ye username pehle se hai.' });
   const salt = crypto.randomBytes(16).toString('hex');
   const days = PLAN_DAYS[plan];
-  db.users.push({ username, passHash: hashPassword(password, salt), salt, role: 'buyer', plan, createdAt: Date.now(), expiresAt: days ? Date.now() + days * 86400000 : null, suspended: false });
+  db.users.push({ username, passHash: hashPassword(password, salt), salt, role: 'buyer', plan, createdAt: Date.now(), expiresAt: days ? Date.now() + days * 86400000 : null, suspended: false, tgCode: crypto.randomBytes(8).toString('hex'), tgChatId: null });
   logEvent('Buyer banaya gaya: ' + username + ' (' + plan + ')');
   saveDb();
   res.json({ ok: true });
@@ -1724,4 +1916,15 @@ app.delete('/api/admin/users/:username', requireAdmin, (req, res) => {
 
 // ---------------- Start ----------------
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
+
+// Background kaam: Telegram poll har 5 minute, recorder har 15 minute (server jaag raha ho tab).
+// Pehla tick 60 second baad — deploy ke baad lambi der tak intezaar nahi.
+if (!TG_TOKEN) console.log('Telegram: TELEGRAM_BOT_TOKEN nahi mila — alerts band hain, baaki sab chal raha hai.');
+setTimeout(() => { backgroundTick().catch(() => {}); }, 60000);
+setInterval(() => { backgroundTick().catch(() => {}); }, 5 * 60 * 1000);
 app.listen(PORT, () => console.log('Forex Trading Pro chal raha hai: http://localhost:' + PORT));
+
+// Test ke liye (NODE_ENV=test) — production me kuch nahi badalta.
+if (process.env.NODE_ENV === 'test') {
+  module.exports = { recordTerminalSignal, sendSignalAlert, buildTelegramMessage, parseTelegramUpdates, applyTelegramUpdates, telegramPollUpdates, recorderTick, backgroundTick, ensureTgCode, buyerActive, gateScore, getDb: () => db, telegramDryRunSent };
+}
