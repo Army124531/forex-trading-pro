@@ -1316,7 +1316,7 @@ function buildTelegramMessage(sig) {
 async function sendTelegramMessage(chatId, text) {
   if (TG_DRY_RUN) { telegramDryRunSent.push({ chatId, text }); console.log('[Telegram dry-run] to ' + chatId + ': ' + String(text).split('\n')[0]); return { ok: true, dryRun: true }; }
   const ctrl = new AbortController();
-  const t = setTimeout(() => ctrl.abort(), 8000);
+  const t = setTimeout(() => ctrl.abort(), 25000);
   try {
     const r = await fetch(TG_API + '/bot' + TG_TOKEN + '/sendMessage', { method: 'POST', headers: { 'Content-Type': 'application/json', 'User-Agent': 'ForexTradingPro/1.0' }, body: JSON.stringify({ chat_id: chatId, text }), signal: ctrl.signal });
     const data = await r.json().catch(() => ({}));
@@ -1390,14 +1390,16 @@ async function applyTelegramUpdates(parsed) {
   }
 }
 async function telegramPollUpdates() {
-  if (!TG_TOKEN) return;
+  if (!TG_TOKEN) { console.log('Telegram poll skip: TELEGRAM_BOT_TOKEN nahi mila.'); return; }
   try {
     const url = TG_API + '/bot' + TG_TOKEN + '/getUpdates?timeout=0' + (db.telegramOffset ? '&offset=' + db.telegramOffset : '');
-    const data = await fetchJson(url, 8000);
-    if (!data || !data.ok) return;
+    const data = await fetchJson(url, 25000);
+    if (!data || !data.ok) { console.error('Telegram poll fail: Telegram se sahi jawab nahi mila (ok:false).'); return; }
+    const fetched = (data.result || []).length;
     const parsed = parseTelegramUpdates(data);
     if (parsed.nextOffset) { db.telegramOffset = parsed.nextOffset; saveDb(); }
     await applyTelegramUpdates(parsed);
+    console.log('Telegram poll ok: ' + fetched + ' update(s) mile, ' + (parsed.events || []).length + ' event(s) process kiye.');
   } catch (e) { console.error('Telegram poll fail: ' + e.message); }
 }
 
@@ -1438,14 +1440,25 @@ async function recorderTick(computeFn) {
     return { results };
   } finally { recorderRunning = false; }
 }
-let lastRecorderAt = 0, tickRunning = false;
+let lastRecorderAt = 0, tickRunning = false, tickStartedAt = 0, tickId = 0;
+// Ek tick kitni der me "phansa hua" mana jaye — is se zyada chalne par agla tick intezaar nahi karta.
+// (Sirf test ke liye env se badla ja sakta hai; production default 120s.)
+const TICK_STALE_MS = Math.max(10000, parseInt(process.env.TICK_STALE_MS || '120000', 10) || 120000);
 async function backgroundTick() {
-  if (tickRunning) return;
+  if (tickRunning) {
+    // Phansa hua tick (kabhi khatam na hone wala await) baad wale ticks ko hamesha ke liye rok na de —
+    // TICK_STALE_MS se zyada chalne par use stale maan kar naya tick chala dein.
+    if (Date.now() - tickStartedAt <= TICK_STALE_MS) return;
+    console.error('Background tick stale: pichla tick ' + Math.round((Date.now() - tickStartedAt) / 1000) + 's se phansa hua tha — naya tick chala rahe hain.');
+  }
+  const myId = ++tickId;
   tickRunning = true;
+  tickStartedAt = Date.now();
   try {
     await telegramPollUpdates();
     if (Date.now() - lastRecorderAt >= 15 * 60 * 1000) { lastRecorderAt = Date.now(); await recorderTick(); }
   } catch (e) { console.error('Background tick fail: ' + e.message); }
+  finally { if (myId === tickId) tickRunning = false; } // hamesha reset — ek tick ke fail/hang hone par agle ticks chalte rahein
 }
 
 // ---------------- API routes ----------------
