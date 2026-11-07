@@ -1135,13 +1135,18 @@ async function computeScanner() {
       const q = prices.pairs.find(p => p.id === id);
       price = q ? q.price : null;
     }
-    let score = null, dir = 'WAIT';
+    let score = null, dir = 'WAIT', smc = null;
     if (candles.length) {
-      const smc = computeSmc(candles, []);
+      smc = computeSmc(candles, []);
       score = smc.score;
       dir = score >= 80 ? (candles[candles.length - 1].c >= candles[candles.length - 1].o ? 'BUY' : 'SELL') : 'WAIT';
     }
-    rows.push({ pair: id, price, smcScore: score, direction: dir });
+    // v9.5: per-pair SMC tasdeeq cards ke liye — computeSmc se pehle se nikle hue fields
+    // (bias, OB, FVG) bhi row me bhejte hain. Koi naya engine nahi, sirf display data.
+    rows.push({ pair: id, price, smcScore: score, direction: dir,
+      bosDir: smc ? smc.bosDir : null, sweepCode: smc ? smc.sweepCode : null,
+      bullOB: smc ? smc.bullOB : null, bearOB: smc ? smc.bearOB : null,
+      fvgs: smc ? smc.fvgs : [] });
   }
   const data = { rows, cycleSec: 45, updatedAt: Date.now(), confirmedSignals: db.signals.filter(s => s.engine === 'smc').length };
   scannerCache = { at: Date.now(), data };
