@@ -1870,7 +1870,7 @@ app.post('/api/settings', requireAdmin, (req, res) => {
   saveDb();
   res.json({ settings: db.settings });
 });
-app.get('/api/logs', requireAuth, (req, res) => res.json({ logs: db.logs }));
+app.get('/api/logs', requireAdmin, (req, res) => res.json({ logs: db.logs })); // v9.3-sec: tracking logs me buyer usernames + admin activity hoti hai — sirf admin.
 app.get('/api/export.csv', requireAuth, async (req, res) => {
   // v9.3: engine filter — UI hamesha engine=terminal bhejta hai (Terminal-only).
   // Param na ho to purana all-engine export (backward compatible).
