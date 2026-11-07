@@ -7,6 +7,17 @@
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+<!-- v9.1: branded splash screen (once per browser session, overlay only) -->
+<div id="splash">
+  <div class="splash-inner">
+    <div class="splash-emblem">F</div>
+    <div class="splash-brand">FOREX TRADING PRO</div>
+    <div class="splash-tag">AI POWERED TRADING TERMINAL</div>
+    <div class="splash-bar"><div class="splash-fill" id="splashFill"></div></div>
+    <div class="splash-status" id="splashStatus">Analyzing Market...</div>
+    <button class="splash-skip" id="splashSkip" onclick="hideSplash(true)">SKIP ›</button>
+  </div>
+</div>
 <div id="app">
   <!-- LOGIN / SETUP -->
   <div id="authScreen" class="auth-wrap">
@@ -74,6 +85,7 @@
     <section id="tab-terminal" class="tab">
       <div class="pair-select" id="pairSelect"></div>
       <div id="signalBanner"></div>
+      <div class="tab-banner" data-i18n="bannerTerminal">SIGNAL SIRF YAHAN SE — BUY/SELL card par trade lein</div>
       <div id="terminalCard" class="card"><p>Loading…</p></div>
       <div class="card guide-box"><h3 data-i18n="guideTitle">Trade Kaise Lein? — 4 Asan Steps</h3>
       <ol>
@@ -89,6 +101,7 @@
       <div class="card"><h3 data-i18n="chartTitle">Price Chart — Candles + EMA 20/50/200</h3>
       <div class="chart-tf" id="chartTf"></div>
       <canvas id="chartCanvas" width="900" height="320"></canvas>
+      <p id="chartBidAsk" class="fine"></p>
       <p><span id="countdown"></span></p></div>
       <div class="card"><h3><span data-i18n="indStripTitle">Live Indicators</span> — <span id="indStripPair"></span></h3><div id="indStrip" class="price-grid"></div></div>
       <div class="card">
@@ -111,9 +124,18 @@
 
     <!-- SMC -->
     <section id="tab-smc" class="tab" style="display:none">
-      <div class="card"><h3 data-i18n="smcTitle">SMC (Smart Money Concepts)</h3>
+      <div class="card"><div class="tab-banner" data-i18n="bannerSmc">YE SIGNAL NAHI HAI — sirf tasdeeq (confirmation) hai</div><h3 data-i18n="smcEngineHeader">SMC ENGINE • ACTIVE</h3>
+      <p class="fine" data-i18n="smcEngineSub">Liquidity Sweeps · Order Blocks · FVGs · 15M Macro &amp; 5M Entry</p>
       <p data-i18n="smcText">SMC ke levels asal 15M candles ke swing high/low se nikale jate hain — jahan bade kharidar/bechne wale aam tor par rukte hain. SMC score 5 hisse x 20 points se banta hai, gate <b>80%</b> hai. Terminal ka BUY/SELL is tab se nahi banta; wo Terminal ki apni 85% wali sharton se banta hai.</p>
       <p class="notice-banner" data-i18n="smcNoSignalBanner">SMC signal NAHI deta — ye Terminal signal ki tasdeeq (confirmation) hai.</p>
+      <div class="smc-controls">
+        <select id="smcPairSel" aria-label="Pair" onchange="selectPair(this.value)"></select>
+        <span class="tf-pill" data-i18n="smcMacroTitle">15M Macro</span>
+        <span class="tf-pill" data-i18n="smcMicroTitle">5M Micro</span>
+        <button class="btn-sig" onclick="scanNow()">🔍 <span data-i18n="scanNow">Scan Now</span></button>
+        <span id="smcCountdown" class="fine"></span>
+      </div>
+      <div id="smcSetupCard"></div>
       <div id="smcBody"></div></div>
       <div class="card"><h3 data-i18n="smcMacroTitle">15M Macro</h3><div id="smcMacro"></div></div>
       <div class="card"><h3 data-i18n="smcMicroTitle">5M Micro</h3><div id="smcMicro"></div></div>
@@ -121,12 +143,12 @@
       <div class="card"><h3 data-i18n="smcBacktestTitle">SMC Backtest</h3>
       <p><span data-i18n="smcBacktestNote">Asal 15M candles par SMC rule (score 80%+) — koi banaya hua number nahi.</span> <button class="btn small gold" data-i18n="smcBacktestBtn" onclick="runSmcBacktest()">SMC Backtest Chalayein (30 din)</button></p>
       <div id="smcBacktestBody"></div></div>
-      <div class="card"><h3 data-i18n="scannerTitle">Global Market Scanner (11 pairs, har 45 second)</h3><p class="notice-banner" data-i18n="notASignalNote">Ye signal nahi hai — trade sirf Terminal signal par lein.</p><div id="scannerBody"></div></div>
+      <div class="card"><h3 data-i18n="scannerTitle">Global Market Scanner (11 pairs, har 45 second)</h3><p class="tab-banner" data-i18n="bannerScanner">YE SIRF DHOONDTA HAI — signal Terminal mein banta hai</p><p class="notice-banner" data-i18n="notASignalNote">Ye signal nahi hai — trade sirf Terminal signal par lein.</p><div id="scannerBody"></div></div>
     </section>
 
     <!-- SESSION -->
     <section id="tab-session" class="tab" style="display:none">
-      <div class="card"><h3 data-i18n="sessionTitle">Session Engine</h3><p class="notice-banner" data-i18n="notASignalNote">Ye signal nahi hai — trade sirf Terminal signal par lein.</p><div id="sessionBody"></div></div>
+      <div class="card"><div class="tab-banner" data-i18n="bannerSession">YE SIRF WAQT BATATA HAI — signal nahi deta</div><h3 data-i18n="sessionTitle">Session Engine</h3><p class="notice-banner" data-i18n="notASignalNote">Ye signal nahi hai — trade sirf Terminal signal par lein.</p><div id="sessionBody"></div></div>
       <div class="card"><h3 data-i18n="newsTitle">Fundamental News</h3>
       <p data-i18n="newsText">Taza forex/market headlines — FXStreet aur ForexLive ke free RSS feeds se.</p>
       <div id="newsBody"></div></div>
@@ -137,7 +159,7 @@
 
     <!-- HISTORY -->
     <section id="tab-history" class="tab" style="display:none">
-      <div class="card"><h3 data-i18n="historyTitle">Signal History</h3>
+      <div class="card"><div class="tab-banner" data-i18n="bannerHistory">YE PURANE SIGNALS HAIN — in par trade na lein, sirf nateeje dekhein</div><h3 data-i18n="historyTitle">Signal History</h3>
       <p data-i18n="historyText">Sirf asal record kiye gaye signals dikhaye jate hain — koi purani history banayi nahi gayi. Nateeja (Win/Loss/Break-Even/In-Flight) baad ki candles se check karke dikhaya jata hai.</p>
       <div class="filters">
         <select id="fOutcome" onchange="loadHistory()"><option value="" data-i18n="allOutcomes">Sab outcomes</option><option>Win</option><option>Loss</option><option>Break-Even</option><option>In-Flight</option></select>

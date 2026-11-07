@@ -23,8 +23,31 @@ function riskProfileText() {
   return riskProfile === 'conservative' ? t('riskConsText') : riskProfile === 'aggressive' ? t('riskAggText') : t('riskModText');
 }
 function fmtPktTimeShort(ms) {
-  try { return new Date(ms).toLocaleTimeString('en-GB', { timeZone: 'Asia/Karachi', hour: '2-digit', minute: '2-digit', hour12: true }); }
+  try { return new Date(ms).toLocaleTimeString('en-US', { timeZone: 'Asia/Karachi', hour: 'numeric', minute: '2-digit', hour12: true }); }
   catch (e) { return new Date(ms).toLocaleTimeString(); }
+}
+// 12-hour clock everywhere (user asked: "2:00" style, not "14:00") — AM/PM so
+// morning/night are never confused. Dates stay as they are (DD/MM/YYYY).
+function fmtPktTime12(ms) {
+  try { return new Date(ms).toLocaleTimeString('en-US', { timeZone: 'Asia/Karachi', hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true }); }
+  catch (e) { return new Date(ms).toLocaleTimeString(); }
+}
+function fmtPktDateTime(ms) {
+  try { return new Date(ms).toLocaleDateString('en-GB', { timeZone: 'Asia/Karachi' }) + ', ' + fmtPktTimeShort(ms); }
+  catch (e) { return new Date(ms).toLocaleString(); }
+}
+// "HH:MM" (24h, e.g. server session times) -> "2:00 PM"
+function fmtHm12(str) {
+  if (!str || typeof str !== 'string') return str || '—';
+  const m = str.match(/^(\d{1,2}):(\d{2})/);
+  if (!m) return str;
+  return fmtHour12(parseInt(m[1], 10), parseInt(m[2], 10));
+}
+function fmtHour12(h, min) {
+  const hh = ((h % 24) + 24) % 24, mm = min == null ? 0 : min;
+  const ap = hh >= 12 ? 'PM' : 'AM';
+  const h12 = hh % 12 === 0 ? 12 : hh % 12;
+  return h12 + ':' + String(mm).padStart(2, '0') + ' ' + ap;
 }
 // Clipboard helper (Copy Signal / WAIT / Share text sab isi se — ek hi code, fallback ke saath)
 async function copyTextToClipboard(text) {
@@ -297,6 +320,24 @@ ur: {
   smcConfirmWeak: 'Tasdeeq kamzor hai — 80+ par mazboot hoti hai',
   notASignalNote: 'Ye signal nahi hai — trade sirf Terminal signal par lein.',
   confirmationLbl: 'Tasdeeq',
+  smcEngineHeader: 'SMC ENGINE • ACTIVE',
+  smcEngineSub: 'Liquidity Sweeps · Order Blocks · FVGs · 15M Macro & 5M Entry',
+  smcSetupQuality: 'Setup Quality',
+  smcGradeStrong: 'A · Strong — Mazboot',
+  smcGradeModerate: 'B · Moderate — Darmiyani',
+  smcGradeDeveloping: 'C · Developing — Ban raha hai',
+  smcGradeWeak: 'D · Weak — Kamzor',
+  smcWaiting80: '80% confirmation ka intezar hai',
+  smcConfirmed80: '80% confirmation mil gaya — Terminal signal ki tasdeeq mazboot hai',
+  smcBias: 'SMC Bias (15M)',
+  smcBiasBullish: 'Bullish',
+  smcBiasBearish: 'Bearish',
+  smcBiasNeutral: 'Neutral',
+  smcLiveMove: 'Live move (entry se)',
+  smcGenerated: 'Generated',
+  smcBeTip: 'Break Even tip: +100 pips profit ke baad SL ko Entry par le jayein — sirf mashwara hai, auto nahi hota.',
+  smcTpNote: 'TP2/TP3: sirf TP1/SL ka nateeja record hota hai.',
+  smcInspectChart: 'Inspect Chart',
   tgTitle: 'Telegram Alerts — Signal Phone Par',
   tgText: 'BUY/SELL signal aate hi aap ke phone par Telegram message aa jaye ga — website band ho tab bhi. Neeche wala link kholein aur bot par Start dabayein.',
   tgButton: '📲 Telegram par Alerts Lein',
@@ -307,6 +348,44 @@ ur: {
   tgCopyLink: 'Link Copy Karein',
   tgLinkCopied: 'Aap ka personal Telegram link copy ho gaya — bot par Start dabayein.',
   marketCards: 'Live Market',
+  // v9.1 keys — new terminal layout (apne asal data ke saath)
+  pcMarketPrice: 'Market Price (Last)',
+  pcChange24h: 'Daily / 24H Change',
+  pcSpread: 'Spread',
+  pcKeyLevels: 'Historical Key Levels',
+  pcSources: 'Sources',
+  liveMarketPrice: 'LIVE MARKET PRICE',
+  awaitingConf: 'AWAITING CONFLUENCE',
+  scanningMarket: 'Market scan ho raha hai — 85% confluence ka intezar',
+  confirmedTitle: 'CONFIRMED INDICATORS',
+  passedLbl: 'PASSED',
+  awaitingTitle: 'AWAITING CONFIRMATION',
+  pendingLbl: 'PENDING',
+  needsGate: 'NEEDS 85%',
+  requiredTitle: 'REQUIRED BEFORE BUY OR SELL',
+  requiredBuy: 'FOR BUY CONFIRMATION',
+  requiredSell: 'FOR SELL CONFIRMATION',
+  reqBuyTpl: 'Bullish bounce off {a} — price reclaiming {b}',
+  reqSellTpl: 'Bearish rejection off {a} — price losing {b}',
+  analyzeNow: 'ANALYZE MARKET NOW',
+  inspectInd: 'INSPECT INDICATORS',
+  downloadCard: 'DOWNLOAD CARD',
+  liveTick: 'Real-time Tick Synced',
+  timeframeLbl: 'TIMEFRAME',
+  confidenceLbl: 'CONFIDENCE',
+  htfLbl: 'Higher Timeframe Alignment',
+  adxRanging: '20 se kam — trend nahi (ranging)',
+  adxTrend: '20 ya zyada — trend mazboot hai',
+  smcConfirmLbl: 'SMC Confirmation',
+  rsiNeedBuy: 'BUY ko 50–70 chahiye',
+  rsiNeedSell: 'SELL ko 30–50 chahiye',
+  rrNeed: 'R:R 1.5 chahiye',
+  // v9.1: one-line "ye tab kya hai" banners
+  bannerTerminal: 'SIGNAL SIRF YAHAN SE — BUY/SELL card par trade lein',
+  bannerSmc: 'YE SIGNAL NAHI HAI — sirf tasdeeq (confirmation) hai',
+  bannerSession: 'YE SIRF WAQT BATATA HAI — signal nahi deta',
+  bannerHistory: 'YE PURANE SIGNALS HAIN — in par trade na lein, sirf nateeje dekhein',
+  bannerScanner: 'YE SIRF DHOONDTA HAI — signal Terminal mein banta hai',
 },
 en: {
   tagline: 'Live signals for Gold, Bitcoin and Forex',
@@ -561,6 +640,24 @@ en: {
   smcConfirmWeak: 'Confirmation is weak — strong at 80+',
   notASignalNote: 'This is not a signal — trade only on the Terminal signal.',
   confirmationLbl: 'Confirmation',
+  smcEngineHeader: 'SMC ENGINE • ACTIVE',
+  smcEngineSub: 'Liquidity Sweeps · Order Blocks · FVGs · 15M Macro & 5M Entry',
+  smcSetupQuality: 'Setup Quality',
+  smcGradeStrong: 'A · Strong',
+  smcGradeModerate: 'B · Moderate',
+  smcGradeDeveloping: 'C · Developing',
+  smcGradeWeak: 'D · Weak',
+  smcWaiting80: 'Waiting for 80% confirmation',
+  smcConfirmed80: '80% confirmation reached — strong confirmation for the Terminal signal',
+  smcBias: 'SMC Bias (15M)',
+  smcBiasBullish: 'Bullish',
+  smcBiasBearish: 'Bearish',
+  smcBiasNeutral: 'Neutral',
+  smcLiveMove: 'Live move (from entry)',
+  smcGenerated: 'Generated',
+  smcBeTip: 'Break-even tip: after +100 pips profit, move SL to Entry — guidance only, not automatic.',
+  smcTpNote: 'TP2/TP3: only the TP1/SL outcome is recorded.',
+  smcInspectChart: 'Inspect Chart',
   tgTitle: 'Telegram Alerts — Signals on Your Phone',
   tgText: 'When a BUY/SELL signal appears, you get a Telegram message on your phone — even when the website is closed. Open the link below and press Start on the bot.',
   tgButton: '📲 Get Alerts on Telegram',
@@ -571,6 +668,44 @@ en: {
   tgCopyLink: 'Copy Link',
   tgLinkCopied: 'Your personal Telegram link is copied — press Start on the bot.',
   marketCards: 'Live Market',
+  // v9.1 keys — new terminal layout (with our own real data)
+  pcMarketPrice: 'Market Price (Last)',
+  pcChange24h: 'Daily / 24H Change',
+  pcSpread: 'Spread',
+  pcKeyLevels: 'Historical Key Levels',
+  pcSources: 'Sources',
+  liveMarketPrice: 'LIVE MARKET PRICE',
+  awaitingConf: 'AWAITING CONFLUENCE',
+  scanningMarket: 'Scanning market — awaiting 85% confluence',
+  confirmedTitle: 'CONFIRMED INDICATORS',
+  passedLbl: 'PASSED',
+  awaitingTitle: 'AWAITING CONFIRMATION',
+  pendingLbl: 'PENDING',
+  needsGate: 'NEEDS 85%',
+  requiredTitle: 'REQUIRED BEFORE BUY OR SELL',
+  requiredBuy: 'FOR BUY CONFIRMATION',
+  requiredSell: 'FOR SELL CONFIRMATION',
+  reqBuyTpl: 'Bullish bounce off {a} — price reclaiming {b}',
+  reqSellTpl: 'Bearish rejection off {a} — price losing {b}',
+  analyzeNow: 'ANALYZE MARKET NOW',
+  inspectInd: 'INSPECT INDICATORS',
+  downloadCard: 'DOWNLOAD CARD',
+  liveTick: 'Real-time Tick Synced',
+  timeframeLbl: 'TIMEFRAME',
+  confidenceLbl: 'CONFIDENCE',
+  htfLbl: 'Higher Timeframe Alignment',
+  adxRanging: 'below 20 — no trend (ranging)',
+  adxTrend: '20 or above — trend is strong',
+  smcConfirmLbl: 'SMC Confirmation',
+  rsiNeedBuy: 'BUY needs 50–70',
+  rsiNeedSell: 'SELL needs 30–50',
+  rrNeed: 'R:R 1.5 needed',
+  // v9.1: one-line "what is this tab" banners
+  bannerTerminal: 'SIGNALS COME ONLY FROM HERE — trade on the BUY/SELL card',
+  bannerSmc: 'THIS IS NOT A SIGNAL — it is only confirmation',
+  bannerSession: 'THIS ONLY TELLS THE TIME — it gives no signal',
+  bannerHistory: 'THESE ARE OLD SIGNALS — do not trade on them, only check the results',
+  bannerScanner: 'THIS ONLY SEARCHES — the signal is made in the Terminal',
 }};
 function t(k) { return (I18N[lang] && I18N[lang][k]) || I18N.ur[k] || k; }
 function setLang(l) { lang = l === 'en' ? 'en' : 'ur'; localStorage.setItem('ftp_lang', lang); applyLang(); }
@@ -640,7 +775,7 @@ function showToast(title, bodyHtml) {
 }
 function notifySignal(sig) {
   const title = t('newSignal') + ' ' + sig.pair + ' ' + sig.direction;
-  const body = 'Entry ' + fmt(sig.entry, 2) + ' · SL ' + fmt(sig.sl, 2) + ' · TP1 ' + fmt(sig.tp1, 2) + ' · ' + new Date(sig.createdAt).toLocaleTimeString();
+  const body = 'Entry ' + fmt(sig.entry, 2) + ' · SL ' + fmt(sig.sl, 2) + ' · TP1 ' + fmt(sig.tp1, 2) + ' · ' + fmtPktTimeShort(sig.createdAt);
   showToast(title, esc(body));
   playAlertSound();
   showSignalPopup(sig); // v7: bara pop-up (toast ke saath)
@@ -742,7 +877,8 @@ async function loadChart() {
   const cv = document.getElementById('chartCanvas'); if (!cv) return;
   try {
     const d = await api('/api/candles?pair=' + currentPair + '&tf=' + chartTf);
-    drawChart(cv, d.candles || []);
+    lastChartCandles = d.candles || [];
+    drawChart(cv, lastChartCandles);
   } catch (e) {
     fitChartCanvas(cv);
     const ctx = cv.getContext('2d'); ctx.clearRect(0, 0, cv.width, cv.height);
@@ -777,6 +913,16 @@ function drawChart(cv, candles) {
     ctx.stroke(); ctx.lineWidth = 1;
   };
   drawLine(e20s, '#f5c542'); drawLine(e50s, '#4da3ff'); drawLine(e200s, '#ff9a9a');
+  // v9.1: PDH/PDL horizontal lines (sirf jab range usi pair ki ho aur chart ke andar ho)
+  if (lastRange && lastRange.pair === currentPair) {
+    ctx.font = '11px sans-serif';
+    [['PDH', lastRange.pdh, '#f5c542'], ['PDL', lastRange.pdl, '#ff6b6b']].forEach(([lbl, v, col]) => {
+      if (v == null || v < lo || v > hi) return;
+      ctx.strokeStyle = col; ctx.setLineDash([6, 4]); ctx.beginPath();
+      ctx.moveTo(8, Y(v)); ctx.lineTo(W - 8, Y(v)); ctx.stroke(); ctx.setLineDash([]);
+      ctx.fillStyle = col; ctx.fillText(lbl + ' ' + fmt(v, 2), 10, Y(v) - 4);
+    });
+  }
   ctx.font = '11px sans-serif';
   ctx.fillStyle = '#f5c542'; ctx.fillText('— EMA 20', 10, 14);
   ctx.fillStyle = '#4da3ff'; ctx.fillText('— EMA 50', 90, 14);
@@ -807,17 +953,69 @@ async function loadNews() {
   try {
     const d = await api('/api/news');
     if (!d.available || !d.news.length) { el.innerHTML = '<p>' + esc(t('newsFail')) + '</p>'; return; }
-    el.innerHTML = d.news.map(n => `<div class="gate"><span><a href="${esc(n.link)}" target="_blank" rel="noopener" style="color:#e8ecf5">${esc(n.title)}</a><br><small style="color:#8ea0c2">${esc(n.source)} · ${new Date(n.time).toLocaleString()}</small></span></div>`).join('') +
-      `<p class="fine">${esc(t('newsUpdated'))}: ${new Date(d.updatedAt).toLocaleTimeString()} · ${d.sources.map(s => esc(s.name) + ': ' + esc(s.status)).join(' · ')}</p>`;
+    el.innerHTML = d.news.map(n => `<div class="gate"><span><a href="${esc(n.link)}" target="_blank" rel="noopener" style="color:#e8ecf5">${esc(n.title)}</a><br><small style="color:#8ea0c2">${esc(n.source)} · ${fmtPktTime(n.time)}</small></span></div>`).join('') +
+      `<p class="fine">${esc(t('newsUpdated'))}: ${fmtPktTimeShort(d.updatedAt)} · ${d.sources.map(s => esc(s.name) + ': ' + esc(s.status)).join(' · ')}</p>`;
   } catch (e) { el.innerHTML = '<p>' + esc(t('newsFail')) + '</p>'; }
 }
 
 // ---------------- SMC extras: feed + backtest ----------------
+// SMC confirmation card — recorded confirmation ko terminal-style card me dikhayein.
+// ENTRY ZONE server ke buildPlan wale formula se (entry ± 0.5R, R = |entry - SL|) — record me zone save nahi hota.
+// TP/SL badge sirf recorded outcome se (shareStatusOf jaisa hi): Win -> TP1 HIT, Loss -> SL HIT, baaki PENDING.
+function smcEntryZone(s) {
+  const R = Math.abs((s.entry ?? 0) - (s.sl ?? 0));
+  return [s.entry - 0.5 * R, s.entry + 0.5 * R];
+}
+function smcFeedCardHtml(s, i) {
+  const dirCls = s.direction === 'BUY' ? 'buy' : 'sell';
+  const zone = smcEntryZone(s);
+  const live = (lastPriceMap[s.pair] && lastPriceMap[s.pair].price) || null;
+  const move = live != null ? (s.direction === 'BUY' ? live - s.entry : s.entry - live) : null;
+  const slSt = shareStatusOf('sl', s), tp1St = shareStatusOf('tp1', s);
+  const badge = (st) => `<span class="badge-${st === t('hit') ? 'conf' : 'pend'}">${esc(st)}</span>`;
+  return `<div class="sig-card smc-feed-card">
+    <div class="sig-head">
+      <div><span class="sig-pair">${esc(s.pair.replace('USD', '/USD'))}</span> <span class="pair-badge">${esc(t('confirmationLbl'))}</span>
+      <div class="sig-dir ${dirCls}">${s.direction} (${esc(t('confirmationLbl'))})</div></div>
+      ${confRingHtml(s.score, 80)}
+    </div>
+    <div class="sig-meta">
+      <div><span class="pc-label">${t('signalCode')}</span><br><b>${esc(s.id || '—')}</b></div>
+      <div><span class="pc-label">${t('timeframeLbl')}</span><br><b>15m / 1H</b></div>
+      <div><span class="pc-label">${t('liveMarketPrice')}</span><br><b>${live == null ? '—' : fmt(live, 2)}</b><br><span class="fine">${t('smcLiveMove')}: ${move == null ? '—' : (move >= 0 ? '+' : '') + fmt(move, 4)}</span></div>
+      <div><span class="pc-label">${t('smcGenerated')}</span><br><b>${fmtPktTime(s.createdAt)}</b><br><span class="fine">${esc(s.outcome || 'In-Flight')}</span></div>
+    </div>
+    <div class="req-box">
+      <div class="req-buy"><b>${t('entryZone')}</b><br>${fmt(zone[0], 2)} – ${fmt(zone[1], 2)}</div>
+      <div class="req-sell"><b>${t('entry')}</b><br>${fmt(s.entry, 2)}</div>
+    </div>
+    <div class="tp-row">
+      <span>SL <b>${fmt(s.sl, 2)}</b> ${badge(slSt)}</span>
+      <span>TP1 <b>${fmt(s.tp1, 2)}</b> ${badge(tp1St)}</span>
+      <span>TP2 <b>${fmt(s.tp2, 2)}</b> <span class="badge-pend">${esc(t('pending'))}</span></span>
+      <span>TP3 <b>${fmt(s.tp3, 2)}</b> <span class="badge-pend">${esc(t('pending'))}</span></span>
+    </div>
+    <p class="fine">${esc(t('smcTpNote'))}</p>
+    <p class="fine">💡 ${esc(t('smcBeTip'))}</p>
+    <div class="sig-actions">
+      <button class="btn-sig-sm" onclick="copySmcFeedSignal(${i})">${esc(t('copySignal'))}</button>
+      <button class="btn-sig-sm" onclick="openSmcShareCard(${i})">${esc(t('shareCard'))}</button>
+      <button class="btn-sig-sm" onclick="downloadSmcFeedSignal(${i})">${esc(t('downloadSignal'))}</button>
+      <button class="btn-sig-sm" onclick="inspectSmcChart(${i})">${esc(t('smcInspectChart'))}</button>
+    </div>
+  </div>`;
+}
+function copySmcFeedSignal(i) { const s = smcFeedSignals[i]; if (s) copySignal(s); }
+function downloadSmcFeedSignal(i) { const s = smcFeedSignals[i]; if (s) downloadSignalImage(s); }
+function openSmcShareCard(i) { const s = smcFeedSignals[i]; if (s) openShareCard(s); }
+// Inspect Chart: us pair ka Terminal chart kholein (maujooda selectPair + showTab reuse).
+function inspectSmcChart(i) { const s = smcFeedSignals[i]; if (!s) return; selectPair(s.pair); showTab('terminal'); }
 async function loadSmcFeed() {
   const el = document.getElementById('smcFeed'); if (!el) return;
   try {
     const d = await api('/api/history?engine=smc');
-    el.innerHTML = d.signals.length ? d.signals.slice(0, 8).map(s => `<p>${esc(s.pair)} <span class="${s.direction === 'BUY' ? 'buy' : 'sell'}">${s.direction}</span> (${esc(t('confirmationLbl'))}) — Entry ${fmt(s.entry, 2)} · Score ${s.score}% · <b>${esc(s.outcome || 'In-Flight')}</b> · ${new Date(s.createdAt).toLocaleString()}</p>`).join('') : '<p>' + esc(t('noSmcSignals')) + '</p>';
+    smcFeedSignals = (d.signals || []).slice(0, 8);
+    el.innerHTML = smcFeedSignals.length ? smcFeedSignals.map((s, i) => smcFeedCardHtml(s, i)).join('') : '<p>' + esc(t('noSmcSignals')) + '</p>';
   } catch (e) { el.innerHTML = '<p>' + esc(e.message) + '</p>'; }
 }
 async function runSmcBacktest() {
@@ -859,6 +1057,42 @@ async function loadPublicPrices() {
     if (!d.pairs || !d.pairs.length) { el.innerHTML = ''; return; }
     el.innerHTML = '<p class="fine" style="grid-column:1/-1;margin:0">' + esc(t('marketCards')) + '</p>' + d.pairs.map(p => `<div class="price-cell"><div>${esc(p.label)} <span style="color:#8ea0c2;font-size:11px">${p.live ? 'LIVE' : ''}</span></div><b>${fmt(p.price, p.dec)}</b><div style="color:${(p.change24h || 0) >= 0 ? '#3ddc84' : '#ff6b6b'}">${p.change24h == null ? '—' : (p.change24h >= 0 ? '+' : '') + p.change24h.toFixed(2) + '%'}</div></div>`).join('');
   } catch (e) { el.innerHTML = ''; }
+}
+
+// v9.1: branded splash screen — once per browser session, overlay only.
+// It never blocks init(): the login/setup screen loads underneath while the
+// splash shows, and hiding it only removes the overlay (display:none).
+const SPLASH_LINES = ['Analyzing Market...', 'Scanning Liquidity & Order Blocks...', 'Checking Gold & Forex...', 'Loading Live Prices...'];
+let splashTimers = [];
+function splashSeen() { try { return sessionStorage.getItem('ftp_splash_seen') === '1'; } catch (e) { return false; } }
+function splashMarkSeen() { try { sessionStorage.setItem('ftp_splash_seen', '1'); } catch (e) {} }
+function showSplash() {
+  const el = document.getElementById('splash');
+  if (!el || splashSeen()) { if (el) el.style.display = 'none'; return; }
+  const fill = document.getElementById('splashFill');
+  const status = document.getElementById('splashStatus');
+  const started = Date.now();
+  const DUR = 2500;
+  if (status) status.textContent = SPLASH_LINES[0];
+  splashTimers.push(setInterval(() => {
+    const p = Math.min(100, (Date.now() - started) / DUR * 100);
+    if (fill) fill.style.width = p + '%';
+    if (p >= 100) hideSplash(false);
+  }, 50));
+  let i = 0;
+  splashTimers.push(setInterval(() => {
+    i = (i + 1) % SPLASH_LINES.length;
+    if (status) status.textContent = SPLASH_LINES[i];
+  }, 650));
+}
+function hideSplash(now) {
+  splashTimers.forEach(clearInterval); splashTimers = [];
+  const el = document.getElementById('splash');
+  if (!el) return;
+  splashMarkSeen();
+  if (now) { el.style.display = 'none'; return; }
+  el.classList.add('hide');
+  setTimeout(() => { el.style.display = 'none'; }, 420);
 }
 
 async function init() {
@@ -950,18 +1184,27 @@ function showTab(t) {
   if (t === 'account') buildAcctSubtabs();
   if (t === 'admin') loadAdmin();
 }
+let lastPriceMap = {}; // pairId -> {change24h, source, live, type, label} (price card ke liye)
+let lastSourcesText = ''; // "Kraken: CONNECTED · Yahoo Finance: RETRY ..." (price card sync line)
+let lastKrakenAgeSec = null; // freshness detail ke liye
+let lastTfRows = null, lastTfAt = 0, lastTfPair = ''; // /api/tfmatrix cache (HTF + ADX, 60s)
+let lastRange = null; // {pdh, pdl} — chart par PDH/PDL lines ke liye
 async function refreshPrices(manual, force) {
   const btn = document.getElementById('refreshBtn');
   if (manual) { btn.disabled = true; btn.textContent = t('refreshing'); }
   try {
     const d = await api('/api/prices' + (force ? '?fresh=1' : ''));
     lastUpdateAt = Date.now();
+    (d.pairs || []).forEach(p => { lastPriceMap[p.id] = { change24h: p.change24h, source: p.source, live: p.live, type: p.type, label: p.label, price: p.price }; });
+    const kr = (d.sources || []).find(s => s.name === 'Kraken');
+    lastKrakenAgeSec = kr && kr.ageSec != null ? kr.ageSec : null;
     updatePriceGrid(d.pairs); // v7 perf: cells sirf ek dafa bante hain, phir sirf values update hoti hain
     const lc = document.getElementById('liveCount');
     const lcTxt = 'LIVE ' + d.pairs.filter(p => p.live).length + '/' + d.pairs.length;
     if (lc && lc.textContent !== lcTxt) lc.textContent = lcTxt;
     const ah = document.getElementById('apiHealth');
     const ahTxt = d.sources.map(s => s.name + ': ' + s.status + (s.ageSec != null ? ' (' + s.ageSec + 's)' : '')).join(' · ');
+    lastSourcesText = ahTxt;
     if (ah && ah.textContent !== ahTxt) ah.textContent = ahTxt;
     if (currentTab === 'terminal') loadTerminal(true, force);
   } catch (e) { const ah = document.getElementById('apiHealth'); if (ah) ah.textContent = t('priceLoadFail') + ' ' + e.message; }
@@ -1001,6 +1244,12 @@ function tickLastUpdate() {
   const lu = document.getElementById('lastUpdate');
   const luTxt = t('lastUpdate') + ' · ' + s + ' ' + t('secAgo');
   if (lu && lu.textContent !== luTxt) lu.textContent = luTxt;
+  // v9.1: price card ki sync line bhi har second taaza rakhein (age + sources)
+  const pc = document.getElementById('pcSync');
+  if (pc) {
+    const pcTxt = t('lastUpdate') + ' · ' + s + ' ' + t('secAgo') + (lastSourcesText ? ' · ' + t('pcSources') + ': ' + lastSourcesText : '');
+    if (pc.textContent !== pcTxt) pc.textContent = pcTxt;
+  }
   // Countdown: monitoring interval ke hisaab se (5/10/15/30s) — sirf tab jab text badle
   let cdTxt = '';
   if (!monitoringOn) cdTxt = t('monitoringOff');
@@ -1012,6 +1261,9 @@ function tickLastUpdate() {
   if (cd && cd.textContent !== cdTxt) cd.textContent = cdTxt;
   const mc = document.getElementById('monCountdown');
   if (mc && mc.textContent !== cdTxt) mc.textContent = cdTxt;
+  // v9.1 SMC: countdown SMC tab par bhi dikhayein (wahi monitoring countdown)
+  const sc = document.getElementById('smcCountdown');
+  if (sc && sc.textContent !== cdTxt) sc.textContent = cdTxt;
 }
 // ---------------- Big BUY/SELL banner (sirf tab dikhata hai jab gate paar ho — logic nahi badalta) ----------------
 // v7 perf: banner bhi sirf tab dobara banta hai jab direction/levels badlein.
@@ -1179,7 +1431,6 @@ function extendedConfluenceHtml(d) {
   const mark = (st) => st === true ? `<span class="chk-ok">${esc(t('chkYes'))}</span>` : st === false ? `<span class="chk-no">${esc(t('chkNo'))}</span>` : `<span class="chk-na">${esc(t('chkNa'))}</span>`;
   const row = (label, plainKey, st, detail) => `<div class="gate"><span>${esc(label)}${plainKey ? ' — ' + esc(t(plainKey)) : ''}</span><span>${mark(st)} ${detail}</span></div>`;
   const dirMatch = (sigDir) => (chkDir === 'WAIT' || !sigDir) ? null : sigDir === chkDir;
-  const pkt = (h) => String((h + 5) % 24).padStart(2, '0') + ':00';
   let html = `<h4>${t('extTitle')}</h4>`;
   // 1. Candlestick pattern (1H)
   let cSt = null, cDetail = esc(t('noPattern'));
@@ -1245,8 +1496,8 @@ function extendedConfluenceHtml(d) {
   let kzDetail = '—';
   if (x.killzone) {
     const kzName = (code) => code === 'asian' ? t('kzAsian') : code === 'london' ? t('kzLondon') : t('kzNewYork');
-    if (x.killzone.active) kzDetail = esc(t('killActive') + ': ' + kzName(x.killzone.active) + ' ' + String(x.killzone.activeStart).padStart(2, '0') + ':00–' + String(x.killzone.activeEnd).padStart(2, '0') + ':00 UTC (' + pkt(x.killzone.activeStart) + '–' + pkt(x.killzone.activeEnd) + ' PKT)');
-    else kzDetail = esc(t('killNext') + ': ' + kzName(x.killzone.next) + ' ' + String(x.killzone.nextStart).padStart(2, '0') + ':00 UTC (' + pkt(x.killzone.nextStart) + ' PKT) — ' + x.killzone.nextInMin + ' min');
+    if (x.killzone.active) kzDetail = esc(t('killActive') + ': ' + kzName(x.killzone.active) + ' ' + fmtHour12(x.killzone.activeStart) + '–' + fmtHour12(x.killzone.activeEnd) + ' UTC (' + fmtHour12((x.killzone.activeStart + 5) % 24) + '–' + fmtHour12((x.killzone.activeEnd + 5) % 24) + ' PKT)');
+    else kzDetail = esc(t('killNext') + ': ' + kzName(x.killzone.next) + ' ' + fmtHour12(x.killzone.nextStart) + ' UTC (' + fmtHour12((x.killzone.nextStart + 5) % 24) + ' PKT) — ' + x.killzone.nextInMin + ' min');
   }
   html += row(t('chkKillzone'), 'extLblKillzone', null, kzDetail);
   // 11. Asian range
@@ -1292,14 +1543,15 @@ function riskBoxHtml(plan) {
   ${esc(t('riskTp1'))}<br>${esc(t('riskSize'))}<br>${esc(t('riskDd'))}<br>${esc(t('riskProfileLine'))}: ${esc(riskProfileText())}</div>`;
 }
 
-// ---------------- Copy Signal + Download Signal Image (WealthMind-style share) ----------------
+// ---------------- Copy Signal + Download Signal Image (branded share) ----------------
 // Signal ka ek standard shape: Terminal plan aur History row dono isi me convert hote hain.
 // Copy text aur card image hamesha dikhaye gaye asal Entry/SL/TP/score/time se bante hain — koi value banayi nahi jati.
 let currentSignal = null; // Terminal ka active signal (sirf jab BUY/SELL plan ho, WAIT par null)
 let histSignals = []; // History ke recorded signals (loadHistory se bharta hai)
+let smcFeedSignals = []; // SMC feed ke recorded confirmations (loadSmcFeed se bharta hai)
 
 function fmtPktTime(ms) {
-  try { return new Date(ms).toLocaleString('en-GB', { timeZone: 'Asia/Karachi', day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true }); }
+  try { return new Date(ms).toLocaleString('en-US', { timeZone: 'Asia/Karachi', day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true }); }
   catch (e) { return new Date(ms).toLocaleString(); }
 }
 function signalToShare(sig) {
@@ -1507,7 +1759,7 @@ function renderSharePreview() {
   const tp = document.getElementById('shareTextPreview');
   if (tp) tp.textContent = buildFormattedShareText(s);
 }
-// Portrait share card 1080x1350 (v5 ke square card se lamba — WealthMind-style, lekin asal data se)
+// Portrait share card 1080x1350 (v5 ke square card se lamba — asal data se)
 function drawShareCardPng(s) {
   const W = 1080, H = 1350;
   const cv = document.createElement('canvas');
@@ -1624,16 +1876,15 @@ async function copyShareCardText() {
 }
 
 // ---------------- v7: Terminal helpers (price line / Why Wait / Sentiment Wave / Copy WAIT) ----------------
-function priceLineHtml(d) {
-  return `${t('price')}: <b>${fmt(d.price, 2)}</b> · Bid ${fmt(d.bid, 2)} · Ask ${fmt(d.ask, 2)} · Spread ${fmt(d.spread, 2)} · ${t('confluence')}: <b>${d.confluence}%</b> (${t('gate')} 85%)`;
-}
 // "Why Wait?" — asal gate breakdown se top failing gates (koi wajah banayi nahi jati)
+// WHY WAIT? — adhoore gates ki asal wajah (asal numbers ke saath), zyada se zyada 3 + SMC + zone + HTF/ADX.
 function whyWaitHtml(d) {
-  const lead = d.buyScore >= d.sellScore ? { gates: d.buyGates || [] } : { gates: d.sellGates || [] };
+  const lead = leadGates(d);
   const failing = (lead.gates || []).filter(g => g.points < g.max).sort((a, b) => (b.max - b.points) - (a.max - a.points)).slice(0, 3);
-  let rows = failing.map(g => { const pk = GATE_PLAIN[g.name]; return `<div class="gate"><span>${esc(g.name)}${pk ? ' — ' + esc(t(pk)) : ''}</span><span>${gateMark(g.points, g.max)} ${g.points}/${g.max} — ${esc(t('gateNotMet'))}</span></div>`; }).join('');
+  let rows = failing.map(g => { const pk = GATE_PLAIN[g.name]; return `<div class="gate"><span>${esc(g.name)}${pk ? ' — ' + esc(t(pk)) : ''}</span><span>${gateMark(g.points, g.max)} ${g.points}/${g.max} — ${esc(t('gateNotMet'))}<br><small>${esc(gateDetail(g.name, d, lead.dir, false))}</small></span></div>`; }).join('');
   if (d.smc && d.smc.score < 80) rows += `<div class="gate"><span>SMC Score</span><span>${d.smc.score}/100 — ${esc(t('smcBelowGate'))} (80%)</span></div>`;
   if (d.zoneBlocked) rows += `<div class="gate"><span>${esc(t('tradeZone'))}</span><span>${esc(t('zoneBlockedReason'))}</span></div>`;
+  rows += htfAdxRows().rows;
   if (!rows) return '';
   return `<h4>${t('whyWait')}</h4>${rows}`;
 }
@@ -1684,6 +1935,216 @@ function sentimentWaveHtml(d) {
   <p class="fine">${t('sentimentWaveNote')}</p>`;
 }
 
+// ---------------- v9.1: new terminal layout — apne asal data ke saath ----------------
+// TF Matrix cache (HTF state + ADX) — sirf terminal render par, zyada se zyada 60s me ek dafa.
+function tfRow(tf) { return (lastTfRows || []).find(r => r.tf === tf) || null; }
+async function ensureTfData() {
+  const now = Date.now();
+  if (lastTfRows && lastTfPair === currentPair && now - lastTfAt < 60000) return;
+  try {
+    const d = await api('/api/tfmatrix?pair=' + currentPair);
+    lastTfRows = d.rows || []; lastTfAt = now; lastTfPair = currentPair;
+    // HTF/ADX aa gaya — terminal dobara render karein (termSig me tfSig hai, is liye sirf tabhi dobara banta hai jab output badle)
+    if (currentTab === 'terminal') loadTerminal();
+  } catch (e) { /* TF data na mile to awaiting list uske baghair dikhti hai */ }
+}
+function tfSig() {
+  if (!lastTfRows || lastTfPair !== currentPair) return 'notf';
+  return lastTfRows.map(r => r.tf + ':' + (r.signal || '') + ':' + (r.adx == null ? '' : r.adx)).join(',');
+}
+// Pair type badge (GOLD/CRYPTO/FOREX) — /api/prices ke type se, warna pair se andaza.
+function pairBadge() {
+  const tp = (lastPriceMap[currentPair] && lastPriceMap[currentPair].type) || '';
+  if (tp === 'gold') return 'GOLD';
+  if (tp === 'crypto') return 'CRYPTO';
+  if (tp === 'forex') return 'FOREX';
+  if (/^XA/.test(currentPair)) return 'GOLD';
+  if (/^(BTC|ETH|SOL|BNB|XRP|DOGE|ADA)/.test(currentPair)) return 'CRYPTO';
+  return 'FOREX';
+}
+// Har gate ke peeche asal number (koi wajah banayi nahi jati) — confirmed/awaiting + Why Wait dono isi se bante hain.
+function gateDetail(gName, d, dir, passed) {
+  const s = d.smc || {};
+  if (gName.indexOf('Indicator Trend') === 0) {
+    return 'EMA20 ' + fmt(d.ema20, 2) + ' · EMA50 ' + fmt(d.ema50, 2) + ' · ' + t('price') + ' ' + fmt(d.price, 2);
+  }
+  if (gName === 'Structure Swing') {
+    return t('swingHigh') + ' ' + fmt(s.swingHigh, 2) + ' · ' + t('swingLow') + ' ' + fmt(s.swingLow, 2);
+  }
+  if (gName === 'RSI Recovery') {
+    if (passed) return 'RSI 14: ' + fmt(d.rsi14, 1) + ' (' + (dir === 'BUY' ? '50–70' : '30–50') + ')';
+    return 'RSI 14: ' + fmt(d.rsi14, 1) + ' — ' + t(dir === 'BUY' ? 'rsiNeedBuy' : 'rsiNeedSell');
+  }
+  if (gName === 'R/R Geometry') {
+    let rr = null;
+    if (s.swingHigh != null && s.swingLow != null) {
+      rr = dir === 'BUY' ? (s.swingHigh - d.price) / Math.max(d.price - s.swingLow, 1e-9) : (d.price - s.swingLow) / Math.max(s.swingHigh - d.price, 1e-9);
+    }
+    if (rr == null || !isFinite(rr)) return 'R:R —';
+    return passed ? 'R:R ' + rr.toFixed(2) + ' (1.5+)' : 'R:R ' + rr.toFixed(2) + ' — ' + t('rrNeed');
+  }
+  if (gName === 'Macro EMA200') {
+    return 'EMA200 ' + fmt(d.ema200, 2) + ' · ' + t('price') + ' ' + fmt(d.price, 2);
+  }
+  if (gName === 'Data Freshness') {
+    return lastKrakenAgeSec != null ? 'Kraken: ' + lastKrakenAgeSec + 's' : t('gateLblFresh');
+  }
+  return '';
+}
+function leadGates(d) {
+  if (d.direction === 'BUY') return { dir: 'BUY', gates: d.buyGates || [] };
+  if (d.direction === 'SELL') return { dir: 'SELL', gates: d.sellGates || [] };
+  return d.buyScore >= d.sellScore ? { dir: 'BUY', gates: d.buyGates || [] } : { dir: 'SELL', gates: d.sellGates || [] };
+}
+// CONFIRMED INDICATORS — poore points wale gates (+pts) + SMC 80+ ho to uski tasdeeq.
+function confirmedHtml(d) {
+  const lead = leadGates(d);
+  const passed = (lead.gates || []).filter(g => g.points >= g.max);
+  let rows = passed.map(g => {
+    const pk = GATE_PLAIN[g.name];
+    const lbl = pk ? t(pk) : g.name;
+    return `<div class="gate"><span>✓ ${esc(lbl)} — <b>+${g.points} pts</b></span><span>${esc(gateDetail(g.name, d, lead.dir, true))}</span></div>`;
+  }).join('');
+  let count = passed.length;
+  if (d.smc && d.smc.score >= 80) {
+    rows += `<div class="gate"><span>✓ ${esc(t('smcConfirmLbl'))} — <b>${d.smc.score}/100</b></span><span>SMC ${d.smc.score}/100 (${t('gate')} 80%)</span></div>`;
+    count += 1;
+  }
+  if (!rows) return '';
+  return `<h4>${t('confirmedTitle')} <span class="badge-conf">${count} ${t('passedLbl')}</span></h4>${rows}`;
+}
+// HTF + ADX ki rows (tfmatrix se) — awaiting list aur Why Wait dono me istemal hoti hain.
+function htfAdxRows() {
+  let rows = '', count = 0;
+  const r4 = tfRow('4H'), r1 = tfRow('1D');
+  const conflict = (r4 && r4.signal === 'WAIT') || (r1 && r1.signal === 'WAIT');
+  if ((r4 || r1) && conflict) {
+    rows += `<div class="gate"><span>◐ ${esc(t('htfLbl'))} — <b>${t('needsGate')}</b></span><span>4H: ${r4 ? esc(r4.signal) : '—'} · 1D: ${r1 ? esc(r1.signal) : '—'}</span></div>`;
+    count += 1;
+  }
+  const r1h = tfRow('1H');
+  if (r1h && r1h.adx != null && r1h.adx < 20) {
+    rows += `<div class="gate"><span>◐ ADX 14</span><span>ADX 14: ${r1h.adx} — ${esc(t('adxRanging'))}</span></div>`;
+    count += 1;
+  }
+  return { rows, count };
+}
+// AWAITING CONFIRMATION — adhoore gates (NEEDS 85%) + SMC 80 se kam + HTF/ADX.
+function awaitingHtml(d) {
+  const lead = leadGates(d);
+  const failing = (lead.gates || []).filter(g => g.points < g.max).sort((a, b) => (b.max - b.points) - (a.max - a.points));
+  let rows = failing.map(g => {
+    const pk = GATE_PLAIN[g.name];
+    const lbl = pk ? t(pk) : g.name;
+    return `<div class="gate"><span>${gateMark(g.points, g.max)} ${esc(lbl)} — <b>${t('needsGate')}</b></span><span>${g.points}/${g.max} · ${esc(gateDetail(g.name, d, lead.dir, false))}</span></div>`;
+  }).join('');
+  let count = failing.length;
+  if (d.smc && d.smc.score < 80) {
+    rows += `<div class="gate"><span>✗ SMC Score — <b>${t('needsGate')}</b></span><span>${d.smc.score}/100 (${t('gate')} 80%)</span></div>`;
+    count += 1;
+  }
+  const extra = htfAdxRows();
+  rows += extra.rows; count += extra.count;
+  if (!rows) return '';
+  return `<h4>${t('awaitingTitle')} <span class="badge-pend">${count} ${t('pendingLbl')}</span></h4>${rows}`;
+}
+// REQUIRED BEFORE BUY OR SELL — demand/supply zone se (koi level banaya nahi jata).
+function requiredBoxHtml(d) {
+  const s = d.smc || {};
+  const dz = s.demandZone || (d.sentiment && d.sentiment.demandZone);
+  const sz = s.supplyZone || (d.sentiment && d.sentiment.supplyZone);
+  const buyTxt = dz ? t('reqBuyTpl').replace('{a}', fmt(dz[0], 2)).replace('{b}', fmt(dz[1], 2)) : '—';
+  const sellTxt = sz ? t('reqSellTpl').replace('{a}', fmt(sz[1], 2)).replace('{b}', fmt(sz[0], 2)) : '—';
+  return `<h4>${t('requiredTitle')}</h4><div class="req-box">
+    <div class="req-buy"><b>▲ ${t('requiredBuy')}</b><br>${esc(buyTxt)}</div>
+    <div class="req-sell"><b>▼ ${t('requiredSell')}</b><br>${esc(sellTxt)}</div>
+  </div>`;
+}
+// PRICE CARD — MARKET PRICE (LAST) + Bid/Ask · 24H CHANGE · Spread · PDH/PDL/Range · sync line.
+function priceCardHtml(d) {
+  const info = lastPriceMap[currentPair] || {};
+  const chg = info.change24h;
+  const chgHtml = chg == null ? '—' : '<span class="' + (chg >= 0 ? 'up' : 'down') + '">' + (chg >= 0 ? '+' : '') + chg.toFixed(2) + '%</span>';
+  const age = lastUpdateAt ? Math.floor((Date.now() - lastUpdateAt) / 1000) : null;
+  const syncTxt = t('lastUpdate') + ' · ' + (age == null ? '—' : age + ' ' + t('secAgo')) + (lastSourcesText ? ' · ' + t('pcSources') + ': ' + lastSourcesText : '');
+  return `<div class="price-card">
+    <div class="pc-col"><div class="pc-label">${t('pcMarketPrice')}</div><div class="pc-big" id="pcPrice">${fmt(d.price, 2)}</div><div class="pc-sub">Bid <b id="pcBid">${fmt(d.bid, 2)}</b> · Ask <b id="pcAsk">${fmt(d.ask, 2)}</b></div></div>
+    <div class="pc-col"><div class="pc-label">${t('pcChange24h')}</div><div class="pc-big" id="pcChg">${chgHtml}</div><div class="pc-sub">${esc(currentPair.replace('USD', '/USD'))}</div></div>
+    <div class="pc-col"><div class="pc-label">${t('pcSpread')}</div><div class="pc-big" id="pcSpread">${fmt(d.spread, 2)}</div><div class="pc-sub">Ask − Bid</div></div>
+    <div class="pc-col"><div class="pc-label">${t('pcKeyLevels')}</div><div class="pc-sub">PDH <b>${fmt(d.range.pdh, 2)}</b> · PDL <b>${fmt(d.range.pdl, 2)}</b></div><div class="pc-sub">Range ${fmt(d.range.pdl, 2)} – ${fmt(d.range.pdh, 2)}</div></div>
+    <div class="pc-sync" id="pcSync">${esc(syncTxt)}</div>
+  </div>`;
+}
+// Confidence ring (SVG) — confluence % (wahi number jo pehle se dikhta hai).
+// greenAt: jis score par ring hari ho (Terminal 85, SMC 80 — apna gate).
+function confRingHtml(pct, greenAt) {
+  const p = Math.max(0, Math.min(100, pct || 0));
+  const ga = greenAt || 85;
+  const C = 2 * Math.PI * 52;
+  const off = C * (1 - p / 100);
+  return `<div class="conf-ring"><svg viewBox="0 0 120 120" width="110" height="110" aria-hidden="true"><circle cx="60" cy="60" r="52" fill="none" stroke="#22304d" stroke-width="10"/><circle cx="60" cy="60" r="52" fill="none" stroke="${p >= ga ? '#3ddc84' : '#f5c542'}" stroke-width="10" stroke-linecap="round" stroke-dasharray="${C.toFixed(1)}" stroke-dashoffset="${off.toFixed(1)}"/></svg><div class="ring-num">${p}%</div></div>`;
+}
+// SIGNAL CARD header — pair + badge, direction, confidence ring, code/timeframe/live price.
+function signalCardHeadHtml(d) {
+  const dirCls = d.direction === 'BUY' ? 'buy' : d.direction === 'SELL' ? 'sell' : 'wait';
+  const ageSec = d.updatedAt ? Math.floor((Date.now() - d.updatedAt) / 1000) : null;
+  const liveLine = ageSec != null && ageSec <= 60
+    ? '<span class="up">● ' + esc(t('liveTick')) + '</span>'
+    : esc(t('lastUpdate')) + ' · ' + (ageSec == null ? '—' : ageSec + ' ' + t('secAgo'));
+  return `<div class="sig-card">
+    <div class="sig-head">
+      <div><span class="sig-pair">${esc(currentPair.replace('USD', '/USD'))}</span> <span class="pair-badge">${esc(pairBadge())}</span>
+      <div class="sig-dir ${dirCls}">${d.direction}${d.direction === 'WAIT' ? ' (' + esc(t('awaitingConf')) + ')' : ''}</div></div>
+      ${confRingHtml(d.confluence)}
+    </div>
+    <div class="sig-meta">
+      <div><span class="pc-label">${t('confidenceLbl')}</span><br><b>${d.confluence}%</b> (${t('gate')} 85%)</div>
+      <div><span class="pc-label">${t('signalCode')}</span><br><b>${d.signalCode ? esc(d.signalCode) : '—'}</b>${d.signalCode ? '<br><span class="fine">' + t('validUntil') + ': ' + fmtPktTimeShort(d.validUntil) + '</span>' : ''}</div>
+      <div><span class="pc-label">${t('timeframeLbl')}</span><br><b>1H</b><br><span class="fine">15M entry</span></div>
+      <div><span class="pc-label">${t('liveMarketPrice')}</span><br><b id="sigLivePrice">${fmt(d.price, 2)}</b><br><span class="fine" id="sigLiveSync">${liveLine}</span></div>
+    </div>
+    ${d.direction === 'WAIT' ? `<p class="scan-line">● ${esc(t('scanningMarket'))}</p>` : ''}
+  </div>`;
+}
+// ACTION BUTTONS ROW — maujooda handlers reuse hote hain (koi feature duplicate nahi).
+function actionRowHtml(d) {
+  const copyBtn = d.direction === 'WAIT'
+    ? `<button class="btn-sig" onclick="copyWaitAnalysis()">${esc(t('copyWaitAnalysis'))}</button>`
+    : `<button class="btn-sig" onclick="copyCurrentSignal()">${esc(t('copySignal'))}</button>`;
+  return `<div class="action-row">
+    <button class="btn-sig btn-analyze" onclick="scanNow()">⟳ ${esc(t('analyzeNow'))}</button>
+    <button class="btn-sig" onclick="showTab('indicators')">${esc(t('inspectInd'))}</button>
+    ${copyBtn}
+    <button class="btn-sig" onclick="downloadCardAction()">⬇ ${esc(t('downloadCard'))}</button>
+  </div>`;
+}
+function downloadCardAction() {
+  if (currentSignal) { downloadCurrentSignal(); return; }
+  showToast(t('downloadCard'), esc(t('waitNoTrade')));
+}
+// Price tick par price card + signal card ki live values update karein (poora card dobara nahi banta).
+function updateTickValues(d) {
+  const set = (id, txt) => { const el = document.getElementById(id); if (el && el.textContent !== txt) el.textContent = txt; };
+  set('pcPrice', fmt(d.price, 2));
+  set('pcBid', fmt(d.bid, 2));
+  set('pcAsk', fmt(d.ask, 2));
+  set('pcSpread', fmt(d.spread, 2));
+  const info = lastPriceMap[currentPair] || {};
+  if (info.change24h != null) {
+    const chgEl = document.getElementById('pcChg');
+    if (chgEl) {
+      const chgTxt = (info.change24h >= 0 ? '+' : '') + info.change24h.toFixed(2) + '%';
+      if (chgEl.textContent !== chgTxt) { chgEl.textContent = chgTxt; chgEl.className = info.change24h >= 0 ? 'up' : 'down'; }
+    }
+  }
+  set('sigLivePrice', fmt(d.price, 2));
+  const cba = document.getElementById('chartBidAsk');
+  if (cba) {
+    const cbaTxt = 'Bid ' + fmt(d.bid, 2) + ' · Ask ' + fmt(d.ask, 2) + ' · ' + t('pcSpread') + ' ' + fmt(d.spread, 2);
+    if (cba.textContent !== cbaTxt) cba.textContent = cbaTxt;
+  }
+}
+
 async function loadTerminal(fromPrice, force) {
   const el = document.getElementById('terminalCard');
   try {
@@ -1693,7 +2154,6 @@ async function loadTerminal(fromPrice, force) {
     lastSignalAt = Date.now();
     lastSignalData = d;
     renderSignalBanner(d);
-    const dirCls = d.direction === 'BUY' ? 'buy' : d.direction === 'SELL' ? 'sell' : 'wait';
     const planHtml = (plan, label) => {
       // R:R asal numbers se: risk = |trigger - SL|, reward = |TP - trigger|
       const risk = Math.abs(plan.trigger - plan.sl);
@@ -1712,45 +2172,47 @@ async function loadTerminal(fromPrice, force) {
       ${d.signalCode ? `<p class="fine">${t('signalCode')}: <b>${esc(d.signalCode)}</b> · ${t('validUntil')}: ${fmtPktTimeShort(d.validUntil)}</p>` : ''}
       <div class="sig-actions"><button class="btn-sig" onclick="copyCurrentSignal()">${esc(t('copySignal'))}</button> <button class="btn-sig" onclick="downloadCurrentSignal()">${esc(t('downloadSignal'))}</button> <button class="btn-sig" onclick="openShareCardTerminal()">${esc(t('shareCard'))}</button></div></div>`;
     };
-    const gatesHtml = (gates, title) => `<h4>${title}</h4>` + gates.map(g => gateRowHtml(g.name, g.points, g.max)).join('');
-    // Ek direction, ek trade: sirf wo direction dikhao jo gate paar kare.
-    // WAIT me dono gates dikhao taake pata chale kyun koi gate paar nahi hua.
-    const gatesSection = d.direction === 'BUY' ? gatesHtml(d.buyGates, t('buyGates'))
-      : d.direction === 'SELL' ? gatesHtml(d.sellGates, t('sellGates'))
-      : gatesHtml(d.buyGates, t('buyGates')) + ' ' + gatesHtml(d.sellGates, t('sellGates'));
     const activePlan = d.direction === 'BUY' ? d.buyPlan : d.direction === 'SELL' ? d.sellPlan : null;
     // Terminal ka active signal — sirf jab BUY/SELL plan ho (WAIT par null, to Copy/Download buttons nahi bante)
     currentSignal = activePlan ? { pair: currentPair, direction: d.direction, entry: activePlan.trigger, sl: activePlan.sl, tp1: activePlan.tp1, tp2: activePlan.tp2, tp3: activePlan.tp3, score: d.confluence, rr: activePlan.rr || '', time: d.updatedAt, signalCode: d.signalCode || null, smcScore: d.smc ? d.smc.score : null } : null;
     const oppDir = d.direction === 'BUY' ? 'SELL' : d.direction === 'SELL' ? 'BUY' : null;
     const oppScore = d.direction === 'BUY' ? d.sellScore : d.direction === 'SELL' ? d.buyScore : null;
     // v7 perf: price tick par poora card dobara na banayein — sirf tab jab signal ki asal values badlein.
-    // Badli hui price sirf price line me update hoti hai (ek chhota <p>), baaki card waisa ka waisa rehta hai.
-    const termSig = [d.direction, d.confluence, d.buyScore, d.sellScore, activePlan ? activePlan.trigger : '', activePlan ? activePlan.sl : '', activePlan ? activePlan.tp1 : '', activePlan ? activePlan.tp2 : '', activePlan ? activePlan.tp3 : '', d.smc ? d.smc.score : '', d.zoneBlocked, d.signalCode || ''].join('|');
+    // Badli hui price sirf price card + signal card ki live values me update hoti hai (ids se), baaki card waisa ka waisa rehta hai.
+    // termSig me bid/ask/spread/price nahi — wo har tick badalte hain, inhe tick update se handle karte hain.
+    const termSig = [d.direction, d.confluence, d.buyScore, d.sellScore, activePlan ? activePlan.trigger : '', activePlan ? activePlan.sl : '', activePlan ? activePlan.tp1 : '', activePlan ? activePlan.tp2 : '', activePlan ? activePlan.tp3 : '', d.smc ? d.smc.score : '', d.zoneBlocked, d.signalCode || '', d.smc && d.smc.demandZone ? d.smc.demandZone.join(',') : '', d.smc && d.smc.supplyZone ? d.smc.supplyZone.join(',') : '', lastPriceMap[currentPair] ? lastPriceMap[currentPair].change24h : '', tfSig()].join('|');
     if (fromPrice && lastTerminalSig === termSig) {
-      const pl = document.getElementById('termPriceLine');
-      if (pl) pl.innerHTML = priceLineHtml(d);
+      updateTickValues(d);
       renderSignalBanner(d);
       return;
     }
     lastTerminalSig = termSig;
     el.innerHTML = `
-      <h3>${esc(currentPair.replace('USD', '/USD'))} — <span class="${dirCls}">${d.direction}</span> ${d.direction === 'WAIT' ? t('noTrade') : ''}</h3>
       <p class="fine">📌 ${esc(t('oneTradeLabel'))}</p>
-      <p id="termPriceLine">${priceLineHtml(d)}</p>
-      <p>PDH ${fmt(d.range.pdh, 2)} · PDL ${fmt(d.range.pdl, 2)} · Range ${fmt(d.range.pdl, 2)} – ${fmt(d.range.pdh, 2)}</p>
+      ${priceCardHtml(d)}
+      ${signalCardHeadHtml(d)}
+      ${confirmedHtml(d)}
+      ${awaitingHtml(d)}
       <p class="fine">${esc(t('gatesExplain'))}</p>
-      ${gatesSection}
       <h4>${t('signalPlan')} — ${d.direction}</h4>
-      ${activePlan ? planHtml(activePlan, d.direction) : '<p>' + esc(t('waitNoTrade')) + (d.zoneBlocked && d.zoneNote ? '<br>' + esc(d.zoneNote) : '') + '</p><div class="sig-actions"><button class="btn-sig" onclick="copyWaitAnalysis()">' + esc(t('copyWaitAnalysis')) + '</button></div>'}
+      ${activePlan ? planHtml(activePlan, d.direction) : '<p>' + esc(t('waitNoTrade')) + (d.zoneBlocked && d.zoneNote ? '<br>' + esc(d.zoneNote) : '') + '</p>'}
       ${activePlan ? whyTradeHtml(d) : ''}
       ${d.direction === 'WAIT' ? whyWaitHtml(d) : ''}
+      ${d.direction === 'WAIT' ? requiredBoxHtml(d) : ''}
+      ${actionRowHtml(d)}
       ${oppDir ? `<p class="fine">${t('oppScenario')}: ${oppDir} ${oppScore}% — ${t('oppGateNotMet')} (${t('gate')} 85%)</p>` : ''}
       ${smcChecklistHtml(d)}
       ${extendedConfluenceHtml(d)}
       ${sentimentWaveHtml(d)}
       <h4>${t('liveComments')}</h4>
       <ul>${d.comments.map(c => '<li>' + esc(c) + '</li>').join('')}</ul>
-      <p>${t('nextCheck')} ${d.nextCheckInSec}${t('nextCheckSuffix')} · ${t('signalUpdated')}: ${new Date(d.updatedAt).toLocaleTimeString()}</p>`;
+      <p>${t('nextCheck')} ${d.nextCheckInSec}${t('nextCheckSuffix')} · ${t('signalUpdated')}: ${fmtPktTimeShort(d.updatedAt)}</p>`;
+    // v9.1: PDH/PDL range — chart par lines (agar chart pehle se load hai to dobara draw karein)
+    lastRange = { pdh: d.range.pdh, pdl: d.range.pdl, pair: currentPair };
+    const cv = document.getElementById('chartCanvas');
+    if (cv && lastChartCandles.length) drawChart(cv, lastChartCandles);
+    updateTickValues(d);
+    ensureTfData(); // HTF/ADX (60s cache) — aa jaye to awaiting list taaza ho jati hai
   } catch (e) { if (!fromPrice) el.innerHTML = '<p>' + t('signalLoadFail') + ' ' + esc(e.message) + '</p>'; }
 }
 
@@ -1783,15 +2245,66 @@ async function loadFearGreed() {
   try {
     const d = await api('/api/feargreed');
     if (!d.available || d.value == null) { el.innerHTML = '<p>' + esc(t('fearGreedNa')) + '</p>'; return; }
-    el.innerHTML = `<p><b>${d.value}/100</b> — ${esc(d.classification || '')} · ${new Date(d.updatedAt).toLocaleTimeString()}</p><div class="sent-bar"><div class="sent-bull" style="width:${d.value}%"></div></div>`;
+    el.innerHTML = `<p><b>${d.value}/100</b> — ${esc(d.classification || '')} · ${fmtPktTimeShort(d.updatedAt)}</p><div class="sent-bar"><div class="sent-bull" style="width:${d.value}%"></div></div>`;
   } catch (e) { el.innerHTML = '<p>' + esc(t('fearGreedNa')) + '</p>'; }
+}
+// SMC tab ka pair select — Terminal wale selectPair se jura hai (ek hi currentPair).
+function buildSmcPairSelect() {
+  const sel = document.getElementById('smcPairSel'); if (!sel) return;
+  if (!sel.options.length) sel.innerHTML = PAIR_IDS.map(p => `<option value="${p}">${p.replace('USD', '/USD')}</option>`).join('');
+  sel.value = currentPair;
+}
+// Setup Quality — sirf apne SMC score se (90+ Strong, 80+ Moderate, 60+ Developing, warna Weak).
+function smcGradeOf(score) {
+  if (score >= 90) return t('smcGradeStrong');
+  if (score >= 80) return t('smcGradeModerate');
+  if (score >= 60) return t('smcGradeDeveloping');
+  return t('smcGradeWeak');
+}
+// SMC Bias (15M structure se): BOS direction, phir sweep side, phir fresh order block.
+function smcBiasOf(d) {
+  if (d.bosDir === 'up') return t('smcBiasBullish');
+  if (d.bosDir === 'down') return t('smcBiasBearish');
+  if (d.sweepCode === 'SSL') return t('smcBiasBullish');
+  if (d.sweepCode === 'BSL') return t('smcBiasBearish');
+  const bullFresh = d.bullOB && !d.bullOB.mitigated, bearFresh = d.bearOB && !d.bearOB.mitigated;
+  if (bullFresh && !bearFresh) return t('smcBiasBullish');
+  if (bearFresh && !bullFresh) return t('smcBiasBearish');
+  return t('smcBiasNeutral');
+}
+// WAIT / setup card — score, quality, live price, spread, bias (sab asal values).
+function smcSetupCardHtml(d, sig) {
+  const info = lastPriceMap[currentPair] || {};
+  const price = sig && sig.price != null ? sig.price : info.price;
+  const spread = sig && sig.spread != null ? sig.spread : null;
+  const ok = d.score >= 80;
+  return `<div class="sig-card">
+    <div class="sig-head">
+      <div><span class="sig-pair">${esc(currentPair.replace('USD', '/USD'))}</span> <span class="pair-badge">SMC</span>
+      <div class="sig-dir ${ok ? 'buy' : 'wait'}">${ok ? esc(t('smcConfirmStrong')) : 'WAIT (' + esc(t('awaitingConf')) + ')'}</div></div>
+      ${confRingHtml(d.score, 80)}
+    </div>
+    <div class="sig-meta">
+      <div><span class="pc-label">${t('smcSetupQuality')}</span><br><b>${esc(smcGradeOf(d.score))}</b></div>
+      <div><span class="pc-label">${t('liveMarketPrice')}</span><br><b>${price == null ? '—' : fmt(price, 2)}</b></div>
+      <div><span class="pc-label">${t('pcSpread')}</span><br><b>${spread == null ? '—' : fmt(spread, 2)}</b></div>
+      <div><span class="pc-label">${t('smcBias')}</span><br><b>${esc(smcBiasOf(d))}</b></div>
+    </div>
+    ${ok ? `<p class="scan-line" style="color:#3ddc84">✓ ${esc(t('smcConfirmed80'))}</p>` : `<p class="scan-line">● ${esc(t('smcWaiting80'))} — ${d.score}% / 80%</p>`}
+  </div>`;
 }
 async function loadSmc() {
   const el = document.getElementById('smcBody');
+  buildSmcPairSelect();
+  const setupEl = document.getElementById('smcSetupCard');
   try {
     const d = await api('/api/smc?pair=' + currentPair);
-    if (d.disabled) { el.innerHTML = '<p>' + esc(d.message) + '</p>'; return; }
-    if (d.error) { el.innerHTML = '<p>' + esc(t('smcNoData')) + '</p>'; return; }
+    if (d.disabled) { el.innerHTML = '<p>' + esc(d.message) + '</p>'; if (setupEl) setupEl.innerHTML = ''; return; }
+    if (d.error) { el.innerHTML = '<p>' + esc(t('smcNoData')) + '</p>'; if (setupEl) setupEl.innerHTML = ''; return; }
+    // Live price/spread setup card ke liye (best-effort — na mile to lastPriceMap se price, spread '—')
+    let sig = null;
+    try { sig = await api('/api/signal?pair=' + currentPair + '&lang=' + lang); } catch (e) { sig = null; }
+    if (setupEl) setupEl.innerHTML = smcSetupCardHtml(d, sig);
     el.innerHTML = `
       <p class="score">${t('smcScore')}: ${d.score} / 100 (${t('gate')} 80%) — ${d.score >= 80 ? '<span class="buy">' + esc(t('smcConfirmStrong')) + '</span>' : '<span class="wait">' + esc(t('smcConfirmWeak')) + '</span>'}</p>
       <p class="fine">${esc(t('smcExplain'))}</p>
@@ -1826,12 +2339,12 @@ async function loadSession() {
     const d = await api('/api/sessions');
     if (d.disabled) { el.innerHTML = '<p>' + esc(d.message) + '</p>'; return; }
     el.innerHTML = `
-      <p><b>${esc(d.active.name)}</b> ${t('sessionActive')} — ${d.active.startPKT} – ${d.active.endPKT} PKT · ${t('nowPkt')}: ${d.nowPKT}</p>
+      <p><b>${esc(d.active.name)}</b> ${t('sessionActive')} — ${fmtHm12(d.active.startPKT)} – ${fmtHm12(d.active.endPKT)} PKT · ${t('nowPkt')}: ${fmtHm12(d.nowPKT)}</p>
       <p>${t('nextSession')}: ${esc(d.next.name)} — ${d.next.inMin} ${t('minutes')}</p>
       <p>${t('newsBlackout')}: <b>${t('notAvailable')}</b> — ${esc(d.newsBlackout.note)}</p>
       <h4>${t('allSessions')}</h4>
       <div class="table-wrap"><table><tr><th>${t('session')}</th><th>${t('pktTime')}</th><th>${t('status')}</th></tr>
-      ${d.all.map(s => `<tr><td>${esc(s.name)}</td><td>${s.startPKT} – ${s.endPKT}</td><td>${s.isActive ? '<span class="buy">' + esc(t('sessionActive')) + '</span>' : '—'}</td></tr>`).join('')}</table></div>
+      ${d.all.map(s => `<tr><td>${esc(s.name)}</td><td>${fmtHm12(s.startPKT)} – ${fmtHm12(s.endPKT)}</td><td>${s.isActive ? '<span class="buy">' + esc(t('sessionActive')) + '</span>' : '—'}</td></tr>`).join('')}</table></div>
       <div class="table-wrap"><table><tr><th>${t('pair')}</th><th>${t('price')}</th><th>${t('quality')}</th><th>${t('direction')}</th><th>${t('entry')}</th><th>SL</th><th>TP1</th></tr>
       ${d.pairs.map(p => `<tr><td>${esc(p.pair)}</td><td>${fmt(p.price, 2)}</td><td>${p.quality}/100</td><td>${esc(p.direction)}</td><td>${fmt(p.entry, 2)}</td><td>${fmt(p.sl, 2)}</td><td>${fmt(p.tp1, 2)}</td></tr>`).join('')}</table></div>
       <p>${t('sessionStats')} — ${t('total')}: ${d.stats.total} · BUY: ${d.stats.buy} · SELL: ${d.stats.sell} · WAIT: ${d.stats.wait}</p>
@@ -1844,7 +2357,7 @@ async function loadSessionHistory() {
   const el = document.getElementById('sessionHistory');
   try {
     const d = await api('/api/history?engine=session');
-    el.innerHTML = d.signals.length ? d.signals.map(s => `<p>${esc(s.pair)} ${s.direction} — ${t('entry')} ${fmt(s.entry, 2)} · ${esc(s.outcome || 'In-Flight')} · ${new Date(s.createdAt).toLocaleString()}</p>`).join('') : '<p>' + esc(t('noSessionSignals')) + '</p>';
+    el.innerHTML = d.signals.length ? d.signals.map(s => `<p>${esc(s.pair)} ${s.direction} — ${t('entry')} ${fmt(s.entry, 2)} · ${esc(s.outcome || 'In-Flight')} · ${fmtPktTime(s.createdAt)}</p>`).join('') : '<p>' + esc(t('noSessionSignals')) + '</p>';
   } catch (e) { el.innerHTML = '<p>' + esc(e.message) + '</p>'; }
 }
 async function runBacktest() {
@@ -1867,7 +2380,7 @@ async function loadHistory() {
   try {
     const d = await api('/api/history?outcome=' + o + '&engine=' + en);
     histSignals = d.signals || [];
-    el.innerHTML = d.signals.length ? d.signals.map((s, i) => `<div class="price-cell hist-row" style="margin:6px 0" onclick="toggleHistDetails(${i})"><b>${esc(s.pair)}</b> <span class="${s.direction === 'BUY' ? 'buy' : 'sell'}">${s.direction}</span> · ${new Date(s.createdAt).toLocaleString()}<br>${t('entry')} ${fmt(s.entry, 2)} · SL ${fmt(s.sl, 2)} · TP1 ${fmt(s.tp1, 2)} · TP2 ${fmt(s.tp2, 2)} · TP3 ${fmt(s.tp3, 2)} · Score ${s.score}% · ${esc(s.engine)} · <b>${esc(s.outcome || 'In-Flight')}</b><br><button class="btn-sig-sm" onclick="event.stopPropagation();copyHistorySignal(${i})">${esc(t('copySignal'))}</button> <button class="btn-sig-sm" onclick="event.stopPropagation();downloadHistorySignal(${i})">${esc(t('downloadSignal'))}</button> <button class="btn-sig-sm" onclick="event.stopPropagation();openShareCard(histSignals[${i}])">${esc(t('shareCard'))}</button> <button class="btn-sig-sm" onclick="event.stopPropagation();toggleHistDetails(${i})">${esc(t('detailsBtn'))}</button><div id="hist-det-${i}" style="display:${histOpenDetails[i] ? 'block' : 'none'}">${histDetailsHtml(s)}</div></div>`).join('') : '<p>' + esc(t('noSignals')) + '</p>';
+    el.innerHTML = d.signals.length ? d.signals.map((s, i) => `<div class="price-cell hist-row" style="margin:6px 0" onclick="toggleHistDetails(${i})"><b>${esc(s.pair)}</b> <span class="${s.direction === 'BUY' ? 'buy' : 'sell'}">${s.direction}</span> · ${fmtPktTime(s.createdAt)}<br>${t('entry')} ${fmt(s.entry, 2)} · SL ${fmt(s.sl, 2)} · TP1 ${fmt(s.tp1, 2)} · TP2 ${fmt(s.tp2, 2)} · TP3 ${fmt(s.tp3, 2)} · Score ${s.score}% · ${esc(s.engine)} · <b>${esc(s.outcome || 'In-Flight')}</b><br><button class="btn-sig-sm" onclick="event.stopPropagation();copyHistorySignal(${i})">${esc(t('copySignal'))}</button> <button class="btn-sig-sm" onclick="event.stopPropagation();downloadHistorySignal(${i})">${esc(t('downloadSignal'))}</button> <button class="btn-sig-sm" onclick="event.stopPropagation();openShareCard(histSignals[${i}])">${esc(t('shareCard'))}</button> <button class="btn-sig-sm" onclick="event.stopPropagation();toggleHistDetails(${i})">${esc(t('detailsBtn'))}</button><div id="hist-det-${i}" style="display:${histOpenDetails[i] ? 'block' : 'none'}">${histDetailsHtml(s)}</div></div>`).join('') : '<p>' + esc(t('noSignals')) + '</p>';
   } catch (e) { el.innerHTML = '<p>' + esc(e.message) + '</p>'; }
 }
 // History per-row details — RECORDED gate breakdown (audit). Purane signals me gates save nahi hue.
@@ -1936,7 +2449,7 @@ async function loadAcct() {
       await loadTfMatrix();
     } else if (acctTab === 'trackingLogs') {
       const d = await api('/api/logs');
-      el.innerHTML = d.logs.length ? d.logs.map(l => `<p>${new Date(l.at).toLocaleTimeString()} — ${esc(l.text)}</p>`).join('') : '<p>' + esc(t('noSignals')) + '</p>';
+      el.innerHTML = d.logs.length ? d.logs.map(l => `<p>${fmtPktTimeShort(l.at)} — ${esc(l.text)}</p>`).join('') : '<p>' + esc(t('noSignals')) + '</p>';
     } else if (acctTab === 'exportCsv') {
       el.innerHTML = `<p>${esc(t('exportText'))}</p><button class="btn small gold" onclick="exportCsv()">${t('exportBtn')}</button>`;
     } else if (acctTab === 'aiAgent') {
@@ -2040,4 +2553,5 @@ async function adminDelete(username) {
 }
 
 applyLang();
+showSplash();
 init();

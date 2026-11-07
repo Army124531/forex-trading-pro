@@ -190,11 +190,14 @@ body.light .sent-bar,body.light .corr-track{background:#dfe6f2}
 .guide-box ol{margin:8px 0 0;padding-left:22px;line-height:1.9;font-size:15px}
 .guide-box li{margin-bottom:4px}
 .notice-banner{border:1px dashed #f5c542;background:#0d1526;border-radius:10px;padding:10px;font-weight:700;line-height:1.6}
+/* v9.1: one-line "what is this tab" banners — small calm strip, same gold/dark language as .notice-banner */
+.tab-banner{border:1px solid #f5c542;border-left:5px solid #f5c542;background:#141b2e;border-radius:10px;padding:10px 12px;font-weight:700;line-height:1.6;text-align:center;margin:0 0 10px}
 .why-box{border:1px solid #3ddc84;border-radius:10px;padding:12px;margin:10px 0;background:#0d1f16;line-height:1.7}
 .why-box h4{margin:0 0 6px;color:#3ddc84}
 .why-box ul{margin:0;padding-left:22px}
 .why-box li{margin-bottom:4px}
 body.light .notice-banner{background:#fff8e1;border-color:#8a6d00}
+body.light .tab-banner{background:#fff8e1;border-color:#8a6d00}
 body.light .why-box{background:#eef7f0;border-color:#2e9e5b}
 body.light .why-box h4{color:#2e9e5b}
 
@@ -209,3 +212,63 @@ body.light .why-box h4{color:#2e9e5b}
 .tg-card .btn{display:inline-block;min-height:44px;line-height:1.5;padding:12px 18px;text-decoration:none}
 .tg-card p{line-height:1.7}
 body.light .tg-card .btn{color:#111}
+
+/* v9.1: branded splash screen (overlay only, CSS only, no images) */
+#splash{position:fixed;inset:0;z-index:9999;background:#0a0f1e;display:flex;align-items:center;justify-content:center;padding:20px;text-align:center;transition:opacity .4s ease}
+#splash.hide{opacity:0;pointer-events:none}
+.splash-inner{width:100%;max-width:420px;display:flex;flex-direction:column;align-items:center}
+.splash-emblem{width:76px;height:76px;border:2px solid #f5c542;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#f5c542;font-size:42px;font-weight:800;margin-bottom:18px;animation:splashPulse 1.6s ease-in-out infinite}
+@keyframes splashPulse{0%,100%{box-shadow:0 0 0 0 rgba(245,197,66,.35)}50%{box-shadow:0 0 0 12px rgba(245,197,66,0)}}
+.splash-brand{color:#f5c542;font-size:clamp(26px,7vw,34px);font-weight:800;letter-spacing:2px;line-height:1.2}
+.splash-tag{color:#9fb0d0;font-size:12px;font-weight:600;letter-spacing:3px;margin:10px 0 26px}
+.splash-bar{width:100%;max-width:280px;height:8px;background:#22304d;border-radius:4px;overflow:hidden}
+.splash-fill{height:100%;width:0;background:#f5c542;border-radius:4px;transition:width .12s linear}
+.splash-status{color:#8ea0c2;font-size:14px;min-height:20px;margin-top:12px}
+.splash-skip{margin-top:20px;min-height:44px;min-width:100px;padding:10px 22px;background:transparent;color:#f5c542;border:1px solid #f5c542;border-radius:22px;font-size:15px;font-weight:700;cursor:pointer}
+@media (prefers-reduced-motion:reduce){.splash-emblem{animation:none}.splash-fill{transition:none}}
+
+/* ---- v9.1: new terminal layout (price card, signal card, action row) ---- */
+.price-card{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;background:#16223a;border:1px solid #22304d;border-radius:10px;padding:14px;margin:10px 0}
+.pc-col{min-width:0}
+.pc-label{color:#8ea0c2;font-size:11px;letter-spacing:.5px;text-transform:uppercase}
+.pc-big{font-size:22px;font-weight:800;color:#e8ecf5;line-height:1.2;word-break:break-all}
+.pc-sub{color:#8ea0c2;font-size:12px;margin-top:2px}
+.pc-sync{grid-column:1/-1;color:#8ea0c2;font-size:12px;border-top:1px solid #22304d;padding-top:8px}
+.sig-card{background:#16223a;border:1px solid #22304d;border-radius:10px;padding:14px;margin:10px 0}
+.sig-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.sig-pair{font-size:20px;font-weight:800;color:#e8ecf5}
+.pair-badge{background:#f5c542;color:#111;border-radius:4px;padding:2px 8px;font-size:11px;font-weight:800;vertical-align:middle}
+.sig-dir{font-size:22px;font-weight:800;margin-top:6px}
+.sig-dir.buy{color:#3ddc84}.sig-dir.sell{color:#ff6b6b}.sig-dir.wait{color:#f5c542}
+.conf-ring{position:relative;width:110px;height:110px;flex:0 0 auto}
+.conf-ring svg{display:block;transform:rotate(-90deg)}
+.ring-num{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:800;color:#e8ecf5}
+.sig-meta{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:12px;border-top:1px solid #22304d;padding-top:10px}
+.sig-meta>div{min-width:0;font-size:13px;color:#e8ecf5;word-break:break-word}
+.scan-line{color:#f5c542;font-weight:700;margin:10px 0 0}
+.badge-conf{background:#3ddc84;color:#111;border-radius:12px;padding:2px 8px;font-size:11px;font-weight:800}
+.badge-pend{background:#f5c542;color:#111;border-radius:12px;padding:2px 8px;font-size:11px;font-weight:800}
+.req-box{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:8px 0}
+.req-buy,.req-sell{border:1px solid #22304d;border-radius:8px;padding:10px;font-size:13px;line-height:1.5}
+.req-buy b{color:#3ddc84}.req-sell b{color:#ff6b6b}
+.action-row{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:12px 0}
+.action-row .btn-sig{min-height:44px;font-size:13px}
+.btn-analyze{background:#f5c542;color:#111;font-weight:800}
+@media (max-width:600px){
+  .price-card{grid-template-columns:repeat(2,1fr)}
+  .sig-meta{grid-template-columns:repeat(2,1fr)}
+  .req-box{grid-template-columns:1fr}
+  .action-row{grid-template-columns:repeat(2,1fr)}
+  .pc-big{font-size:19px}
+  .sig-dir{font-size:19px}
+  .smc-controls select{flex:1 1 100%}
+  .tp-row{flex-direction:column;gap:6px}
+}
+/* ---- v9.1: SMC tab card style (terminal wali card language, SMC ke asal data ke sath) ---- */
+.smc-controls{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:10px 0}
+.smc-controls select{min-height:44px;font-size:16px;background:#0a0f1e;color:#e8ecf5;border:1px solid #22304d;border-radius:8px;padding:8px}
+.smc-controls .btn-sig{min-height:44px}
+.tf-pill{background:#16223a;border:1px solid #22304d;border-radius:12px;padding:6px 10px;font-size:12px;font-weight:700;color:#e8ecf5;white-space:nowrap}
+.smc-feed-card{margin:10px 0}
+.tp-row{display:flex;flex-wrap:wrap;gap:12px;margin:8px 0;font-size:13px;color:#e8ecf5}
+.tp-row>span{white-space:nowrap}
