@@ -98,9 +98,11 @@ const I18N = {
     allPairsTitle: "Tamam Pairs — Live Prices",
     indCenterTitle: "Indicators Center",
     indCenterText: "Ye tamam numbers asal Kraken candles se hisaab karke nikale gaye hain — EMA 20/50 trend batata hai, RSI 14 momentum, aur ATR 14 ye batata hai ke price aam tor par kitna hilta hai.",
+    indTfNote: "Neeche ki values 1H timeframe ki hain — 15M aur Daily alag se neeche likhe hain",
     smcTitle: "SMC (Smart Money Concepts)",
     smcText: "SMC ke levels asal 15M candles ke swing high/low se nikale jate hain — jahan bade kharidar/bechne wale aam tor par rukte hain. SMC score 5 hisse x 20 points se banta hai, gate 80% hai. Terminal ka BUY/SELL is tab se nahi banta; wo Terminal ki apni 85% wali sharton se banta hai.",
     scannerTitle: "Global Market Scanner (11 pairs, har 45 second)",
+    smcPairCardsTitle: "SMC Tasdeeq — Har Pair",
     sessionTitle: "Session Engine",
     backtestTitle: "Session Backtest Simulator",
     backtestText: "Asal 1H candles par session rule chala kar dekhein.",
@@ -312,6 +314,10 @@ const I18N = {
     username: "Username",
     role: "Role",
     plan: "Plan",
+    planExpiry: "Plan ki expiry",
+    daysLeft: "din baqi hain",
+    lifetimeNever: "Lifetime — kabhi khatam nahi hota",
+    managePlan: "Plan badalna ho to admin se rabta karein",
     signals: "Signals",
     engines: "Engines",
     engineOffNote: "OFF wala engine asal me band ho jata hai — uske signals nahi bante. Test Push sirf app ke andar test message hai, asal push notification nahi.",
@@ -341,6 +347,13 @@ const I18N = {
     noBuyers: "Abhi koi buyer nahi hai.",
     buyerCreated: "Buyer ban gaya",
     passChanged: "Password badal gaya.",
+    ownPassTitle: "Apna password badlein",
+    phNewPass: "Naya password (kam se kam 6 harf)",
+    phConfirmPass: "Password dobara likhein",
+    passTooShort: "Password kam se kam 6 harf ka ho",
+    passMismatch: "Dono password aik jaise nahi hain",
+    saveBtn: "Save karein",
+    cancelBtn: "Cancel karein",
     newPassPrompt: "Naya password (kam se kam 6 harf):",
     deleteConfirm: "ko delete karein?",
     serverUnreachable: "Server se rabta nahi ho raha:",
@@ -353,6 +366,7 @@ const I18N = {
     scannerFail: "Scanner load nahi hua:",
     sessionLoadFail: "Session load nahi hua:",
     newsFail: "News abhi nahi mil rahi — thodi der baad dobara koshish karein.",
+    newsFallbackNote: "Ek feed band hai — jo headlines dikh rahi hain wo chalti hui feed se hain",
     newsUpdated: "Updated",
     newSignal: "Naya Signal!",
     alertsNote: "Alerts sirf tab kaam karte hain jab site khuli ho — band tab ya band phone par nahi.",
@@ -624,9 +638,11 @@ const I18N = {
     allPairsTitle: "All Pairs — Live Prices",
     indCenterTitle: "Indicators Center",
     indCenterText: "All these numbers are calculated from real Kraken candles — EMA 20/50 shows trend, RSI 14 shows momentum, and ATR 14 shows how much price usually moves.",
+    indTfNote: "Values below are 1H timeframe — 15M and Daily are listed separately below",
     smcTitle: "SMC (Smart Money Concepts)",
     smcText: "SMC levels come from real 15M candle swing highs/lows — where big buyers and sellers usually wait. The SMC score is 5 parts × 20 points, gate 80%. Terminal BUY/SELL does not come from this tab; it uses the Terminal’s own 85% conditions.",
     scannerTitle: "Global Market Scanner (11 pairs, every 45 seconds)",
+    smcPairCardsTitle: "SMC Confirmation — Every Pair",
     sessionTitle: "Session Engine",
     backtestTitle: "Session Backtest Simulator",
     backtestText: "Run the session rule on real 1H candles.",
@@ -838,6 +854,10 @@ const I18N = {
     username: "Username",
     role: "Role",
     plan: "Plan",
+    planExpiry: "Plan expiry",
+    daysLeft: "days left",
+    lifetimeNever: "Lifetime — never expires",
+    managePlan: "To change your plan, contact the admin",
     signals: "Signals",
     engines: "Engines",
     engineOffNote: "An OFF engine is really turned off — it makes no signals. Test Push is only an in-app test message, not a real push notification.",
@@ -867,6 +887,13 @@ const I18N = {
     noBuyers: "No buyers yet.",
     buyerCreated: "Buyer created",
     passChanged: "Password changed.",
+    ownPassTitle: "Change your password",
+    phNewPass: "New password (at least 6 characters)",
+    phConfirmPass: "Type the password again",
+    passTooShort: "Password must be at least 6 characters",
+    passMismatch: "The two passwords do not match",
+    saveBtn: "Save",
+    cancelBtn: "Cancel",
     newPassPrompt: "New password (at least 6 characters):",
     deleteConfirm: " — delete this user?",
     serverUnreachable: "Cannot reach server:",
@@ -879,6 +906,7 @@ const I18N = {
     scannerFail: "Scanner did not load:",
     sessionLoadFail: "Session did not load:",
     newsFail: "News is not available right now — please try again shortly.",
+    newsFallbackNote: "One feed is down — headlines shown are from the working feed",
     newsUpdated: "Updated",
     newSignal: "New Signal!",
     alertsNote: "Alerts only work while this site is open — not on a closed tab or phone.",
@@ -1150,9 +1178,11 @@ const I18N = {
     allPairsTitle: "كل الأزواج — الأسعار المباشرة",
     indCenterTitle: "مركز المؤشرات",
     indCenterText: "كل هذه الأرقام محسوبة من شموع Kraken الحقيقية — EMA 20/50 يوضح الاتجاه، وRSI 14 يوضح الزخم، وATR 14 يوضح مقدار تحرك السعر عادةً.",
+    indTfNote: "القيم أدناه بإطار الساعة الواحدة — وإطارا 15 دقيقة واليومي مذكوران أدناه بشكل منفصل",
     smcTitle: "SMC (مفاهيم المال الذكي)",
     smcText: "مستويات SMC مأخوذة من قمم وقيعان شموع 15M الحقيقية — حيث ينتظر عادةً كبار المشترين والبائعين. تتكون نتيجة SMC من 5 أجزاء × 20 نقطة، والبوابة 80%. BUY/SELL في الطرفية لا تأتي من هذا التبويب؛ بل من شروط الطرفية الخاصة بنسبة 85%.",
     scannerTitle: "ماسح السوق العالمي (11 زوجاً، كل 45 ثانية)",
+    smcPairCardsTitle: "تأكيد SMC — كل زوج",
     sessionTitle: "محرك الجلسات",
     backtestTitle: "محاكي الاختبار الرجعي للجلسة",
     backtestText: "شغّل قاعدة الجلسة على شموع 1H الحقيقية.",
@@ -1364,6 +1394,10 @@ const I18N = {
     username: "اسم المستخدم",
     role: "الدور",
     plan: "الخطة",
+    planExpiry: "انتهاء الخطة",
+    daysLeft: "أيام متبقية",
+    lifetimeNever: "مدى الحياة — لا ينتهي أبداً",
+    managePlan: "لتغيير خطتك، تواصل مع المسؤول",
     signals: "الإشارات",
     engines: "المحركات",
     engineOffNote: "المحرك المطفأ متوقف فعلاً — لا يصنع إشارات. اختبار الدفع هو رسالة اختبار داخل التطبيق فقط، وليس إشعار دفع حقيقياً.",
@@ -1393,6 +1427,13 @@ const I18N = {
     noBuyers: "لا يوجد مشترون بعد.",
     buyerCreated: "تم إنشاء المشتري",
     passChanged: "تم تغيير كلمة المرور.",
+    ownPassTitle: "تغيير كلمة المرور الخاصة بك",
+    phNewPass: "كلمة مرور جديدة (6 أحرف على الأقل)",
+    phConfirmPass: "أعد كتابة كلمة المرور",
+    passTooShort: "يجب أن تتكون كلمة المرور من 6 أحرف على الأقل",
+    passMismatch: "كلمتا المرور غير متطابقتين",
+    saveBtn: "حفظ",
+    cancelBtn: "إلغاء",
     newPassPrompt: "كلمة المرور الجديدة (6 أحرف على الأقل):",
     deleteConfirm: " — حذف هذا المستخدم؟",
     serverUnreachable: "تعذّر الوصول إلى الخادم:",
@@ -1405,6 +1446,7 @@ const I18N = {
     scannerFail: "لم يتم تحميل الماسح:",
     sessionLoadFail: "لم يتم تحميل الجلسة:",
     newsFail: "الأخبار غير متاحة الآن — حاول مرة أخرى قريباً.",
+    newsFallbackNote: "أحد المصدرين متوقف — العناوين المعروضة من المصدر العامل",
     newsUpdated: "تم التحديث",
     newSignal: "إشارة جديدة!",
     alertsNote: "التنبيهات تعمل فقط أثناء فتح الموقع — وليس على تبويب مغلق أو هاتف مغلق.",
@@ -1676,9 +1718,11 @@ const I18N = {
     allPairsTitle: "सभी Pairs — Live Prices",
     indCenterTitle: "Indicators Center",
     indCenterText: "ये सभी numbers असली Kraken candles से हिसाब करके निकाले गए हैं — EMA 20/50 trend बताता है, RSI 14 momentum, और ATR 14 ये बताता है कि price आम तौर पर कितना हिलता है।",
+    indTfNote: "नीचे की values 1H timeframe की हैं — 15M और Daily अलग से नीचे लिखे हैं",
     smcTitle: "SMC (Smart Money Concepts)",
     smcText: "SMC के levels असली 15M candles के swing high/low से निकाले जाते हैं — जहाँ बड़े खरीदार/बेचने वाले आम तौर पर रुकते हैं। SMC score 5 हिस्से × 20 points से बनता है, gate 80% है। Terminal का BUY/SELL इस tab से नहीं बनता; वो Terminal की अपनी 85% वाली शर्तों से बनता है।",
     scannerTitle: "Global Market Scanner (11 pairs, हर 45 सेकंड)",
+    smcPairCardsTitle: "SMC Tasdeeq — Har Pair",
     sessionTitle: "Session Engine",
     backtestTitle: "Session Backtest Simulator",
     backtestText: "असली 1H candles पर session rule चला कर देखें।",
@@ -1890,6 +1934,10 @@ const I18N = {
     username: "Username",
     role: "Role",
     plan: "Plan",
+    planExpiry: "प्लान की समाप्ति",
+    daysLeft: "दिन बाकी हैं",
+    lifetimeNever: "Lifetime — कभी खत्म नहीं होता",
+    managePlan: "प्लान बदलना हो तो admin से संपर्क करें",
     signals: "Signals",
     engines: "Engines",
     engineOffNote: "OFF वाला engine असल में बंद हो जाता है — उसके signals नहीं बनते। Test Push सिर्फ app के अंदर test message है, असली push notification नहीं।",
@@ -1919,6 +1967,13 @@ const I18N = {
     noBuyers: "अभी कोई buyer नहीं है।",
     buyerCreated: "Buyer बन गया",
     passChanged: "Password बदल गया।",
+    ownPassTitle: "अपना password बदलें",
+    phNewPass: "Naya password (कम से कम 6 अक्षर)",
+    phConfirmPass: "Password dobara likhein",
+    passTooShort: "Password कम से कम 6 अक्षर का हो",
+    passMismatch: "Dono password aik jaise nahi hain",
+    saveBtn: "Save karein",
+    cancelBtn: "Cancel karein",
     newPassPrompt: "नया password (कम से कम 6 अक्षर):",
     deleteConfirm: "को delete करें?",
     serverUnreachable: "Server से राब्ता नहीं हो रहा:",
@@ -1931,6 +1986,7 @@ const I18N = {
     scannerFail: "Scanner load नहीं हुआ:",
     sessionLoadFail: "Session load नहीं हुआ:",
     newsFail: "News अभी नहीं मिल रही — थोड़ी देर बाद दोबारा कोशिश करें।",
+    newsFallbackNote: "Ek feed band hai — jo headlines dikh rahi hain wo chalti hui feed se hain",
     newsUpdated: "Updated",
     newSignal: "नया Signal!",
     alertsNote: "Alerts सिर्फ तब काम करते हैं जब site खुली हो — बंद tab या बंद phone पर नहीं।",
@@ -2202,9 +2258,11 @@ const I18N = {
     allPairsTitle: "সব Pairs — Live Prices",
     indCenterTitle: "Indicators Center",
     indCenterText: "এই সব সংখ্যা আসল Kraken candle থেকে হিসাব করে বের করা হয়েছে — EMA 20/50 trend দেখায়, RSI 14 momentum, আর ATR 14 দেখায় price সাধারণত কতটা নড়ে।",
+    indTfNote: "নিচের মানগুলো 1H টাইমফ্রেমের — 15M ও Daily আলাদাভাবে নিচে দেওয়া আছে",
     smcTitle: "SMC (Smart Money Concepts)",
     smcText: "SMC-র level আসল 15M candle-এর swing high/low থেকে নেওয়া হয় — যেখানে বড় ক্রেতা/বিক্রেতারা সাধারণত অপেক্ষা করে। SMC score ৫ অংশ × ২০ পয়েন্টে তৈরি, gate ৮০%। Terminal-এর BUY/SELL এই tab থেকে তৈরি হয় না; এটা Terminal-এর নিজের ৮৫% শর্ত থেকে তৈরি হয়।",
     scannerTitle: "Global Market Scanner (১১ pairs, প্রতি ৪৫ সেকেন্ড)",
+    smcPairCardsTitle: "SMC নিশ্চিতকরণ — প্রতিটি Pair",
     sessionTitle: "Session Engine",
     backtestTitle: "Session Backtest Simulator",
     backtestText: "আসল 1H candle-এ session rule চালিয়ে দেখুন।",
@@ -2416,6 +2474,10 @@ const I18N = {
     username: "Username",
     role: "Role",
     plan: "Plan",
+    planExpiry: "প্ল্যানের মেয়াদ",
+    daysLeft: "দিন বাকি আছে",
+    lifetimeNever: "Lifetime — কখনও শেষ হয় না",
+    managePlan: "প্ল্যান বদলাতে চাইলে admin-এর সঙ্গে যোগাযোগ করুন",
     signals: "Signals",
     engines: "Engines",
     engineOffNote: "OFF engine আসলে বন্ধ হয়ে যায় — তার signals তৈরি হয় না। Test Push শুধু app-এর ভিতরে test message, আসল push notification নয়।",
@@ -2445,6 +2507,13 @@ const I18N = {
     noBuyers: "এখনো কোনো buyer নেই।",
     buyerCreated: "Buyer তৈরি হয়েছে",
     passChanged: "Password বদলে গেছে।",
+    ownPassTitle: "নিজের password বদলান",
+    phNewPass: "নতুন password (কমপক্ষে ৬ অক্ষর)",
+    phConfirmPass: "Password আবার লিখুন",
+    passTooShort: "Password কমপক্ষে ৬ অক্ষরের হতে হবে",
+    passMismatch: "দুটো password এক নয়",
+    saveBtn: "Save করুন",
+    cancelBtn: "Cancel করুন",
     newPassPrompt: "নতুন password (কমপক্ষে ৬ অক্ষর):",
     deleteConfirm: "কে delete করবেন?",
     serverUnreachable: "Server-এর সাথে যোগাযোগ হচ্ছে না:",
@@ -2457,6 +2526,7 @@ const I18N = {
     scannerFail: "Scanner load হয়নি:",
     sessionLoadFail: "Session load হয়নি:",
     newsFail: "News এখন পাওয়া যাচ্ছে না — একটু পরে আবার চেষ্টা করুন।",
+    newsFallbackNote: "একটি ফিড বন্ধ — দেখানো শিরোনামগুলো চালু ফিড থেকে",
     newsUpdated: "Updated",
     newSignal: "নতুন Signal!",
     alertsNote: "Alerts শুধু তখনই কাজ করে যখন site খোলা থাকে — বন্ধ tab বা বন্ধ phone-এ নয়।",
@@ -2728,9 +2798,11 @@ const I18N = {
     allPairsTitle: "Todos los pares — Precios en vivo",
     indCenterTitle: "Centro de indicadores",
     indCenterText: "Todos estos números se calculan a partir de velas reales de Kraken — EMA 20/50 muestra la tendencia, RSI 14 el impulso, y ATR 14 cuánto suele moverse el precio.",
+    indTfNote: "Los valores siguientes son de 1H — 15M y Diario están aparte abajo",
     smcTitle: "SMC (Smart Money Concepts)",
     smcText: "Los niveles de SMC provienen de los máximos y mínimos reales de las velas de 15M — donde suelen esperar los grandes compradores y vendedores. La puntuación de SMC se compone de 5 partes × 20 puntos, puerta 80%. El BUY/SELL de la Terminal no proviene de esta pestaña; usa las propias condiciones del 85% de la Terminal.",
     scannerTitle: "Escáner global de mercado (11 pares, cada 45 segundos)",
+    smcPairCardsTitle: "Confirmación SMC — Cada par",
     sessionTitle: "Motor de sesiones",
     backtestTitle: "Simulador de backtest de sesión",
     backtestText: "Ejecuta la regla de sesión en velas reales de 1H.",
@@ -2942,6 +3014,10 @@ const I18N = {
     username: "Nombre de usuario",
     role: "Rol",
     plan: "Plan",
+    planExpiry: "Vencimiento del plan",
+    daysLeft: "días restantes",
+    lifetimeNever: "De por vida — nunca caduca",
+    managePlan: "Para cambiar de plan, contacta con el administrador",
     signals: "Señales",
     engines: "Motores",
     engineOffNote: "Un motor en OFF está realmente apagado — no genera señales. El Test Push es solo un mensaje de prueba dentro de la app, no una notificación push real.",
@@ -2971,6 +3047,13 @@ const I18N = {
     noBuyers: "Aún no hay compradores.",
     buyerCreated: "Comprador creado",
     passChanged: "Contraseña cambiada.",
+    ownPassTitle: "Cambiar tu contraseña",
+    phNewPass: "Nueva contraseña (mínimo 6 caracteres)",
+    phConfirmPass: "Repite la contraseña",
+    passTooShort: "La contraseña debe tener al menos 6 caracteres",
+    passMismatch: "Las dos contraseñas no coinciden",
+    saveBtn: "Guardar",
+    cancelBtn: "Cancelar",
     newPassPrompt: "Nueva contraseña (mín. 6 caracteres):",
     deleteConfirm: " — ¿eliminar este usuario?",
     serverUnreachable: "No se puede contactar al servidor:",
@@ -2983,6 +3066,7 @@ const I18N = {
     scannerFail: "No se cargó el escáner:",
     sessionLoadFail: "No se cargó la sesión:",
     newsFail: "Las noticias no están disponibles ahora — inténtalo de nuevo en breve.",
+    newsFallbackNote: "Una fuente no funciona — los titulares mostrados son de la fuente activa",
     newsUpdated: "Actualizado",
     newSignal: "¡Nueva señal!",
     alertsNote: "Las alertas solo funcionan mientras el sitio está abierto — no con una pestaña cerrada ni con el teléfono apagado.",
@@ -3254,9 +3338,11 @@ const I18N = {
     allPairsTitle: "Toutes les paires — Prix en direct",
     indCenterTitle: "Centre des indicateurs",
     indCenterText: "Tous ces chiffres sont calculés à partir de vraies bougies Kraken — EMA 20/50 montre la tendance, RSI 14 le momentum, et ATR 14 de combien le prix bouge habituellement.",
+    indTfNote: "Les valeurs ci-dessous sont en 1H — 15M et Journalier sont listés séparément ci-dessous",
     smcTitle: "SMC (Smart Money Concepts)",
     smcText: "Les niveaux SMC proviennent des plus hauts et plus bas réels des bougies 15M — là où les gros acheteurs et vendeurs attendent habituellement. Le score SMC est composé de 5 parties × 20 points, porte 80 %. Le BUY/SELL du Terminal ne vient pas de cet onglet ; il utilise les propres conditions à 85 % du Terminal.",
     scannerTitle: "Scanner de marché mondial (11 paires, toutes les 45 secondes)",
+    smcPairCardsTitle: "Confirmation SMC — Chaque paire",
     sessionTitle: "Moteur de sessions",
     backtestTitle: "Simulateur de backtest de session",
     backtestText: "Lancez la règle de session sur de vraies bougies 1H.",
@@ -3468,6 +3554,10 @@ const I18N = {
     username: "Nom d'utilisateur",
     role: "Rôle",
     plan: "Plan",
+    planExpiry: "Expiration du plan",
+    daysLeft: "jours restants",
+    lifetimeNever: "À vie — n'expire jamais",
+    managePlan: "Pour changer de forfait, contactez l'administrateur",
     signals: "Signaux",
     engines: "Moteurs",
     engineOffNote: "Un moteur OFF est vraiment éteint — il ne crée aucun signal. Le Test Push est seulement un message de test dans l'app, pas une vraie notification push.",
@@ -3497,6 +3587,13 @@ const I18N = {
     noBuyers: "Aucun acheteur pour le moment.",
     buyerCreated: "Acheteur créé",
     passChanged: "Mot de passe modifié.",
+    ownPassTitle: "Changer votre mot de passe",
+    phNewPass: "Nouveau mot de passe (6 caractères minimum)",
+    phConfirmPass: "Retapez le mot de passe",
+    passTooShort: "Le mot de passe doit contenir au moins 6 caractères",
+    passMismatch: "Les deux mots de passe ne correspondent pas",
+    saveBtn: "Enregistrer",
+    cancelBtn: "Annuler",
     newPassPrompt: "Nouveau mot de passe (6 caractères min.) :",
     deleteConfirm: " — supprimer cet utilisateur ?",
     serverUnreachable: "Impossible de joindre le serveur :",
@@ -3509,6 +3606,7 @@ const I18N = {
     scannerFail: "Le scanner ne s'est pas chargé :",
     sessionLoadFail: "La session ne s'est pas chargée :",
     newsFail: "Actualités indisponibles pour le moment — réessayez bientôt.",
+    newsFallbackNote: "Un flux est en panne — les titres affichés proviennent du flux actif",
     newsUpdated: "Mis à jour",
     newSignal: "Nouveau signal !",
     alertsNote: "Les alertes ne fonctionnent que lorsque le site est ouvert — pas sur un onglet fermé ni un téléphone éteint.",
@@ -3780,9 +3878,11 @@ const I18N = {
     allPairsTitle: "Alle Paare — Live-Preise",
     indCenterTitle: "Indikatoren-Center",
     indCenterText: "Alle diese Zahlen werden aus echten Kraken-Kerzen berechnet — EMA 20/50 zeigt den Trend, RSI 14 das Momentum, und ATR 14, wie stark sich der Preis normalerweise bewegt.",
+    indTfNote: "Die Werte unten sind 1H — 15M und Tageswerte stehen separat darunter",
     smcTitle: "SMC (Smart Money Concepts)",
     smcText: "SMC-Level stammen aus echten 15M-Kerzen-Swing-Hochs/Tiefs — wo große Käufer und Verkäufer normalerweise warten. Der SMC-Score besteht aus 5 Teilen × 20 Punkten, Gate 80 %. Terminal-BUY/SELL kommt nicht aus diesem Tab; es nutzt die eigenen 85 %-Bedingungen des Terminals.",
     scannerTitle: "Globaler Markt-Scanner (11 Paare, alle 45 Sekunden)",
+    smcPairCardsTitle: "SMC-Bestätigung — Jedes Paar",
     sessionTitle: "Session-Engine",
     backtestTitle: "Session-Backtest-Simulator",
     backtestText: "Führe die Session-Regel auf echten 1H-Kerzen aus.",
@@ -3994,6 +4094,10 @@ const I18N = {
     username: "Benutzername",
     role: "Rolle",
     plan: "Plan",
+    planExpiry: "Ablauf des Plans",
+    daysLeft: "Tage übrig",
+    lifetimeNever: "Lebenslang — läuft nie ab",
+    managePlan: "Um den Plan zu ändern, wenden Sie sich an den Admin",
     signals: "Signale",
     engines: "Engines",
     engineOffNote: "Eine OFF-Engine ist wirklich ausgeschaltet — sie erzeugt keine Signale. Test Push ist nur eine In-App-Testnachricht, keine echte Push-Benachrichtigung.",
@@ -4023,6 +4127,13 @@ const I18N = {
     noBuyers: "Noch keine Käufer.",
     buyerCreated: "Käufer erstellt",
     passChanged: "Passwort geändert.",
+    ownPassTitle: "Eigenes Passwort ändern",
+    phNewPass: "Neues Passwort (mindestens 6 Zeichen)",
+    phConfirmPass: "Passwort erneut eingeben",
+    passTooShort: "Das Passwort muss mindestens 6 Zeichen haben",
+    passMismatch: "Die beiden Passwörter stimmen nicht überein",
+    saveBtn: "Speichern",
+    cancelBtn: "Abbrechen",
     newPassPrompt: "Neues Passwort (mind. 6 Zeichen):",
     deleteConfirm: " — diesen Benutzer löschen?",
     serverUnreachable: "Server nicht erreichbar:",
@@ -4035,6 +4146,7 @@ const I18N = {
     scannerFail: "Scanner konnte nicht geladen werden:",
     sessionLoadFail: "Session konnte nicht geladen werden:",
     newsFail: "News sind gerade nicht verfügbar — bitte bald erneut versuchen.",
+    newsFallbackNote: "Ein Feed ist ausgefallen — die angezeigten Schlagzeilen stammen aus dem funktionierenden Feed",
     newsUpdated: "Aktualisiert",
     newSignal: "Neues Signal!",
     alertsNote: "Alerts funktionieren nur, solange die Seite offen ist — nicht bei geschlossenem Tab oder Telefon.",
@@ -4306,9 +4418,11 @@ const I18N = {
     allPairsTitle: "Tüm Pariteler — Canlı Fiyatlar",
     indCenterTitle: "Gösterge Merkezi",
     indCenterText: "Bu sayıların tamamı gerçek Kraken mumlarından hesaplanır — EMA 20/50 trendi, RSI 14 momentumu ve ATR 14 fiyatın genellikle ne kadar hareket ettiğini gösterir.",
+    indTfNote: "Aşağıdaki değerler 1H zaman dilimindedir — 15M ve Günlük ayrıca aşağıda listelenmiştir",
     smcTitle: "SMC (Smart Money Concepts)",
     smcText: "SMC seviyeleri gerçek 15M mumlarının swing high/low değerlerinden alınır — büyük alıcıların/satıcıların genellikle beklediği yerlerdir. SMC skoru 5 bölüm × 20 puandan oluşur, kapı %80'dir. Terminal BUY/SELL bu sekmeden gelmez; Terminal'in kendi %85 koşullarını kullanır.",
     scannerTitle: "Küresel Piyasa Tarayıcı (11 parite, her 45 saniyede)",
+    smcPairCardsTitle: "SMC Onayı — Her Parite",
     sessionTitle: "Seans Motoru",
     backtestTitle: "Seans Backtest Simülatörü",
     backtestText: "Seans kuralını gerçek 1H mumlarında çalıştırın.",
@@ -4520,6 +4634,10 @@ const I18N = {
     username: "Kullanıcı adı",
     role: "Rol",
     plan: "Plan",
+    planExpiry: "Plan bitiş tarihi",
+    daysLeft: "gün kaldı",
+    lifetimeNever: "Ömür boyu — asla bitmez",
+    managePlan: "Planı değiştirmek için yöneticiyle iletişime geçin",
     signals: "Sinyaller",
     engines: "Motorlar",
     engineOffNote: "KAPALI motor gerçekten kapalıdır — sinyal üretmez. Test Push yalnızca uygulama içi test mesajıdır, gerçek push bildirimi değildir.",
@@ -4549,6 +4667,13 @@ const I18N = {
     noBuyers: "Henüz alıcı yok.",
     buyerCreated: "Alıcı oluşturuldu",
     passChanged: "Şifre değiştirildi.",
+    ownPassTitle: "Kendi şifreni değiştir",
+    phNewPass: "Yeni şifre (en az 6 karakter)",
+    phConfirmPass: "Şifreyi tekrar yazın",
+    passTooShort: "Şifre en az 6 karakter olmalı",
+    passMismatch: "İki şifre eşleşmiyor",
+    saveBtn: "Kaydet",
+    cancelBtn: "İptal",
     newPassPrompt: "Yeni şifre (en az 6 karakter):",
     deleteConfirm: " — bu kullanıcıyı silmek istiyor musunuz?",
     serverUnreachable: "Sunucuya ulaşılamıyor:",
@@ -4561,6 +4686,7 @@ const I18N = {
     scannerFail: "Tarayıcı yüklenemedi:",
     sessionLoadFail: "Seans yüklenemedi:",
     newsFail: "Haberler şu anda mevcut değil — birazdan tekrar deneyin.",
+    newsFallbackNote: "Bir akış kapalı — gösterilen başlıklar çalışan akıştandır",
     newsUpdated: "Güncellendi",
     newSignal: "Yeni Sinyal!",
     alertsNote: "Uyarılar yalnızca site açıkken çalışır — kapalı sekmede veya kapalı telefonda çalışmaz.",
@@ -4832,9 +4958,11 @@ const I18N = {
     allPairsTitle: "Todos os pares — Preços ao vivo",
     indCenterTitle: "Centro de indicadores",
     indCenterText: "Todos esses números são calculados a partir de velas reais da Kraken — EMA 20/50 mostra a tendência, RSI 14 o momentum, e ATR 14 o quanto o preço geralmente se move.",
+    indTfNote: "Os valores abaixo são de 1H — 15M e Diário estão listados separadamente abaixo",
     smcTitle: "SMC (Smart Money Concepts)",
     smcText: "Os níveis de SMC vêm dos máximos e mínimos reais das velas de 15M — onde os grandes compradores e vendedores costumam esperar. A pontuação SMC é composta por 5 partes × 20 pontos, porta 80%. O BUY/SELL do Terminal não vem desta aba; usa as próprias condições de 85% do Terminal.",
     scannerTitle: "Scanner global de mercado (11 pares, a cada 45 segundos)",
+    smcPairCardsTitle: "Confirmação SMC — Cada par",
     sessionTitle: "Motor de sessões",
     backtestTitle: "Simulador de backtest de sessão",
     backtestText: "Execute a regra de sessão em velas reais de 1H.",
@@ -5046,6 +5174,10 @@ const I18N = {
     username: "Nome de usuário",
     role: "Função",
     plan: "Plano",
+    planExpiry: "Validade do plano",
+    daysLeft: "dias restantes",
+    lifetimeNever: "Vitalício — nunca expira",
+    managePlan: "Para mudar de plano, fale com o administrador",
     signals: "Sinais",
     engines: "Motores",
     engineOffNote: "Um motor OFF está realmente desligado — não gera sinais. O Test Push é apenas uma mensagem de teste dentro do app, não uma notificação push real.",
@@ -5075,6 +5207,13 @@ const I18N = {
     noBuyers: "Ainda não há compradores.",
     buyerCreated: "Comprador criado",
     passChanged: "Senha alterada.",
+    ownPassTitle: "Alterar sua senha",
+    phNewPass: "Nova senha (mínimo 6 caracteres)",
+    phConfirmPass: "Digite a senha novamente",
+    passTooShort: "A senha deve ter pelo menos 6 caracteres",
+    passMismatch: "As duas senhas não coincidem",
+    saveBtn: "Salvar",
+    cancelBtn: "Cancelar",
     newPassPrompt: "Nova senha (mín. 6 caracteres):",
     deleteConfirm: " — excluir este usuário?",
     serverUnreachable: "Não foi possível alcançar o servidor:",
@@ -5087,6 +5226,7 @@ const I18N = {
     scannerFail: "O scanner não foi carregado:",
     sessionLoadFail: "A sessão não foi carregada:",
     newsFail: "As notícias não estão disponíveis agora — tente novamente em breve.",
+    newsFallbackNote: "Um feed está fora do ar — as manchetes exibidas são do feed ativo",
     newsUpdated: "Atualizado",
     newSignal: "Novo sinal!",
     alertsNote: "Os alertas só funcionam enquanto o site está aberto — não com uma aba fechada ou telefone desligado.",
@@ -5358,9 +5498,11 @@ const I18N = {
     allPairsTitle: "Все пары — живые цены",
     indCenterTitle: "Центр индикаторов",
     indCenterText: "Все эти числа рассчитаны по реальным свечам Kraken — EMA 20/50 показывает тренд, RSI 14 — импульс, а ATR 14 — насколько обычно движется цена.",
+    indTfNote: "Значения ниже — таймфрейм 1H; 15M и дневные указаны отдельно ниже",
     smcTitle: "SMC (Smart Money Concepts)",
     smcText: "Уровни SMC берутся из реальных максимумов/минимумов свингов на свечах 15M — там, где обычно ждут крупные покупатели и продавцы. Оценка SMC состоит из 5 частей × 20 баллов, гейт 80%. BUY/SELL терминала не берётся из этой вкладки; он использует собственные условия терминала на 85%.",
     scannerTitle: "Глобальный сканер рынка (11 пар, каждые 45 секунд)",
+    smcPairCardsTitle: "Подтверждение SMC — каждая пара",
     sessionTitle: "Движок сессий",
     backtestTitle: "Симулятор бэктеста сессии",
     backtestText: "Запустите правило сессии на реальных свечах 1H.",
@@ -5572,6 +5714,10 @@ const I18N = {
     username: "Имя пользователя",
     role: "Роль",
     plan: "План",
+    planExpiry: "Срок действия плана",
+    daysLeft: "дней осталось",
+    lifetimeNever: "Пожизненный — никогда не истекает",
+    managePlan: "Чтобы сменить план, свяжитесь с администратором",
     signals: "Сигналы",
     engines: "Движки",
     engineOffNote: "Выключенный движок действительно выключен — он не создаёт сигналов. Test Push — это только тестовое сообщение в приложении, а не настоящее push-уведомление.",
@@ -5601,6 +5747,13 @@ const I18N = {
     noBuyers: "Покупателей пока нет.",
     buyerCreated: "Покупатель создан",
     passChanged: "Пароль изменён.",
+    ownPassTitle: "Сменить свой пароль",
+    phNewPass: "Новый пароль (минимум 6 символов)",
+    phConfirmPass: "Введите пароль ещё раз",
+    passTooShort: "Пароль должен быть не менее 6 символов",
+    passMismatch: "Пароли не совпадают",
+    saveBtn: "Сохранить",
+    cancelBtn: "Отмена",
     newPassPrompt: "Новый пароль (мин. 6 символов):",
     deleteConfirm: " — удалить этого пользователя?",
     serverUnreachable: "Нет связи с сервером:",
@@ -5613,6 +5766,7 @@ const I18N = {
     scannerFail: "Сканер не загрузился:",
     sessionLoadFail: "Сессия не загрузилась:",
     newsFail: "Новости сейчас недоступны — попробуйте позже.",
+    newsFallbackNote: "Один источник недоступен — показаны заголовки из работающего источника",
     newsUpdated: "Обновлено",
     newSignal: "Новый сигнал!",
     alertsNote: "Оповещения работают, только пока сайт открыт — не при закрытой вкладке или выключенном телефоне.",
@@ -5884,9 +6038,11 @@ const I18N = {
     allPairsTitle: "全部品种——实时价格",
     indCenterTitle: "指标中心",
     indCenterText: "所有这些数值均由真实的Kraken K线计算得出——EMA 20/50显示趋势，RSI 14显示动量，ATR 14显示价格通常波动多少。",
+    indTfNote: "以下数值为1小时周期 — 15分钟和日线在下方单独列出",
     smcTitle: "SMC（聪明钱概念）",
     smcText: "SMC水平来自真实15M K线的摆动高点/低点——大买家和大卖家通常等待的地方。SMC评分由5部分×20分组成，关口为80%。终端的BUY/SELL不来自此标签页；它使用终端自身的85%条件。",
     scannerTitle: "全球市场扫描器（11个品种，每45秒）",
+    smcPairCardsTitle: "SMC确认 — 每个品种",
     sessionTitle: "时段引擎",
     backtestTitle: "时段回测模拟器",
     backtestText: "在真实1H K线上运行此时段规则。",
@@ -6098,6 +6254,10 @@ const I18N = {
     username: "用户名",
     role: "角色",
     plan: "套餐",
+    planExpiry: "套餐到期",
+    daysLeft: "天剩余",
+    lifetimeNever: "终身 — 永不过期",
+    managePlan: "如需更改套餐，请联系管理员",
     signals: "信号",
     engines: "引擎",
     engineOffNote: "关闭的引擎确实已关闭——不会产生信号。Test Push仅是应用内测试消息，不是真正的推送通知。",
@@ -6127,6 +6287,13 @@ const I18N = {
     noBuyers: "暂无买家。",
     buyerCreated: "买家已创建",
     passChanged: "密码已更改。",
+    ownPassTitle: "更改您的密码",
+    phNewPass: "新密码（至少6个字符）",
+    phConfirmPass: "再次输入密码",
+    passTooShort: "密码至少需要6个字符",
+    passMismatch: "两次输入的密码不一致",
+    saveBtn: "保存",
+    cancelBtn: "取消",
     newPassPrompt: "新密码（至少6个字符）：",
     deleteConfirm: " — 删除此用户？",
     serverUnreachable: "无法连接服务器：",
@@ -6139,6 +6306,7 @@ const I18N = {
     scannerFail: "扫描器加载失败：",
     sessionLoadFail: "时段加载失败：",
     newsFail: "新闻暂时不可用——请稍后再试。",
+    newsFallbackNote: "一个信息源不可用 — 显示的标题来自正常的信息源",
     newsUpdated: "已更新",
     newSignal: "新信号！",
     alertsNote: "提醒仅在网站打开时有效——关闭的标签页或关机的手机上无效。",
@@ -6410,9 +6578,11 @@ const I18N = {
     allPairsTitle: "Semua Pair — Harga Live",
     indCenterTitle: "Pusat Indikator",
     indCenterText: "Semua angka ini dihitung dari candle Kraken asli — EMA 20/50 menunjukkan tren, RSI 14 menunjukkan momentum, dan ATR 14 menunjukkan seberapa jauh harga biasanya bergerak.",
+    indTfNote: "Nilai di bawah ini timeframe 1H — 15M dan Harian tercantum terpisah di bawah",
     smcTitle: "SMC (Smart Money Concepts)",
     smcText: "Level SMC berasal dari swing high/low candle 15M asli — tempat pembeli/penjual besar biasanya menunggu. Skor SMC terdiri dari 5 bagian × 20 poin, gate 80%. BUY/SELL Terminal tidak berasal dari tab ini; ia menggunakan syarat 85% Terminal sendiri.",
     scannerTitle: "Pemindai Pasar Global (11 pair, setiap 45 detik)",
+    smcPairCardsTitle: "Konfirmasi SMC — Setiap Pair",
     sessionTitle: "Mesin Sesi",
     backtestTitle: "Simulator Backtest Sesi",
     backtestText: "Jalankan aturan sesi pada candle 1H asli.",
@@ -6624,6 +6794,10 @@ const I18N = {
     username: "Username",
     role: "Peran",
     plan: "Paket",
+    planExpiry: "Masa berlaku paket",
+    daysLeft: "hari tersisa",
+    lifetimeNever: "Seumur hidup — tidak pernah kedaluwarsa",
+    managePlan: "Untuk mengubah paket, hubungi admin",
     signals: "Sinyal",
     engines: "Engine",
     engineOffNote: "Engine yang OFF benar-benar mati — tidak membuat sinyal. Test Push hanya pesan tes di dalam app, bukan notifikasi push sungguhan.",
@@ -6653,6 +6827,13 @@ const I18N = {
     noBuyers: "Belum ada pembeli.",
     buyerCreated: "Pembeli dibuat",
     passChanged: "Password diubah.",
+    ownPassTitle: "Ubah kata sandi Anda",
+    phNewPass: "Kata sandi baru (minimal 6 karakter)",
+    phConfirmPass: "Ketik ulang kata sandi",
+    passTooShort: "Kata sandi minimal 6 karakter",
+    passMismatch: "Kedua kata sandi tidak sama",
+    saveBtn: "Simpan",
+    cancelBtn: "Batal",
     newPassPrompt: "Password baru (min. 6 karakter):",
     deleteConfirm: " — hapus pengguna ini?",
     serverUnreachable: "Tidak dapat terhubung ke server:",
@@ -6665,6 +6846,7 @@ const I18N = {
     scannerFail: "Scanner gagal dimuat:",
     sessionLoadFail: "Sesi gagal dimuat:",
     newsFail: "Berita tidak tersedia saat ini — coba lagi sebentar lagi.",
+    newsFallbackNote: "Satu feed tidak aktif — headline yang ditampilkan berasal dari feed yang berjalan",
     newsUpdated: "Diperbarui",
     newSignal: "Sinyal Baru!",
     alertsNote: "Alert hanya bekerja saat situs terbuka — tidak pada tab tertutup atau ponsel mati.",
@@ -6936,9 +7118,11 @@ const I18N = {
     allPairsTitle: "همه جفت‌ها — قیمت‌های زنده",
     indCenterTitle: "مرکز اندیکاتورها",
     indCenterText: "همه این اعداد از کندل‌های واقعی Kraken محاسبه می‌شوند — EMA 20/50 روند را نشان می‌دهد، RSI 14 مومنتوم را، و ATR 14 نشان می‌دهد قیمت معمولاً چقدر حرکت می‌کند.",
+    indTfNote: "مقادیر زیر در تایم‌فریم ۱ ساعته هستند — ۱۵ دقیقه و روزانه جداگانه در زیر آمده‌اند",
     smcTitle: "SMC (مفاهیم پول هوشمند)",
     smcText: "سطوح SMC از سقف/کف‌های واقعی کندل‌های 15M گرفته می‌شوند — جایی که خریداران/فروشندگان بزرگ معمولاً منتظر می‌مانند. امتیاز SMC از ۵ بخش × ۲۰ امتیاز ساخته می‌شود، گیت ۸۰٪ است. BUY/SELL ترمینال از این تب نمی‌آید؛ از شرایط ۸۵٪ خود ترمینال استفاده می‌کند.",
     scannerTitle: "اسکنر جهانی بازار (۱۱ جفت، هر ۴۵ ثانیه)",
+    smcPairCardsTitle: "تأیید SMC — هر جفت",
     sessionTitle: "موتور سشن",
     backtestTitle: "شبیه‌ساز بک‌تست سشن",
     backtestText: "قانون سشن را روی کندل‌های واقعی 1H اجرا کنید.",
@@ -7150,6 +7334,10 @@ const I18N = {
     username: "نام کاربری",
     role: "نقش",
     plan: "طرح",
+    planExpiry: "انقضای طرح",
+    daysLeft: "روز باقی مانده",
+    lifetimeNever: "مادام‌العمر — هرگز منقضی نمی‌شود",
+    managePlan: "برای تغییر طرح با مدیر تماس بگیرید",
     signals: "سیگنال‌ها",
     engines: "موتورها",
     engineOffNote: "موتور خاموش واقعاً خاموش است — سیگنالی نمی‌سازد. Test Push فقط یک پیام آزمایشی داخل برنامه است، نه اعلان پوش واقعی.",
@@ -7179,6 +7367,13 @@ const I18N = {
     noBuyers: "هنوز خریداری نیست.",
     buyerCreated: "خریدار ساخته شد",
     passChanged: "رمز عبور تغییر کرد.",
+    ownPassTitle: "گذرواژه خود را تغییر دهید",
+    phNewPass: "گذرواژه جدید (حداقل ۶ حرف)",
+    phConfirmPass: "گذرواژه را دوباره بنویسید",
+    passTooShort: "گذرواژه باید حداقل ۶ حرف باشد",
+    passMismatch: "دو گذرواژه یکسان نیستند",
+    saveBtn: "ذخیره",
+    cancelBtn: "لغو",
     newPassPrompt: "رمز عبور جدید (حداقل ۶ حرف):",
     deleteConfirm: " — این کاربر حذف شود؟",
     serverUnreachable: "ارتباط با سرور برقرار نمی‌شود:",
@@ -7191,6 +7386,7 @@ const I18N = {
     scannerFail: "اسکنر بارگذاری نشد:",
     sessionLoadFail: "سشن بارگذاری نشد:",
     newsFail: "اخبار در حال حاضر در دسترس نیست — به‌زودی دوباره تلاش کنید.",
+    newsFallbackNote: "یک فید قطع است — تیترهای نمایش داده شده از فید فعال هستند",
     newsUpdated: "به‌روز شد",
     newSignal: "سیگنال جدید!",
     alertsNote: "هشدارها فقط وقتی سایت باز است کار می‌کنند — نه در تب بسته یا گوشی خاموش.",
@@ -7687,6 +7883,8 @@ async function loadNews() {
     const d = await api('/api/news');
     if (!d.available || !d.news.length) { el.innerHTML = '<p>' + esc(t('newsFail')) + '</p>'; return; }
     el.innerHTML = d.news.map(n => `<div class="gate"><span><a href="${esc(n.link)}" target="_blank" rel="noopener" style="color:#e8ecf5">${esc(n.title)}</a><br><small style="color:#8ea0c2">${esc(n.source)} · ${fmtPktTime(n.time)}</small></span></div>`).join('') +
+      // v9.5: ek feed band ho to sirf "RETRY" na dikhayein — saaf bataein ke headlines chalti hui feed se hain.
+      (d.sources && d.sources.some(s => s.status === 'RETRY') ? `<p class="fine">${esc(t('newsFallbackNote'))}</p>` : '') +
       `<p class="fine">${esc(t('newsUpdated'))}: ${fmtPktTimeShort(d.updatedAt)} · ${d.sources.map(s => esc(s.name) + ': ' + esc(s.status)).join(' · ')}</p>`;
   } catch (e) { el.innerHTML = '<p>' + esc(t('newsFail')) + '</p>'; }
 }
@@ -8690,14 +8888,14 @@ function pairBadge() {
 function gateDetail(gName, d, dir, passed) {
   const s = d.smc || {};
   if (gName.indexOf('Indicator Trend') === 0) {
-    return 'EMA20 ' + fmt(d.ema20, 2) + ' · EMA50 ' + fmt(d.ema50, 2) + ' · ' + t('price') + ' ' + fmt(d.price, 2);
+    return 'EMA20 ' + fmt(d.ema20, 2) + ' · EMA50 ' + fmt(d.ema50, 2) + ' · ' + t('price') + ' ' + fmt(d.price, 2) + ' (1H)';
   }
   if (gName === 'Structure Swing') {
-    return t('swingHigh') + ' ' + fmt(s.swingHigh, 2) + ' · ' + t('swingLow') + ' ' + fmt(s.swingLow, 2);
+    return t('swingHigh') + ' ' + fmt(s.swingHigh, 2) + ' · ' + t('swingLow') + ' ' + fmt(s.swingLow, 2) + ' (15M)';
   }
   if (gName === 'RSI Recovery') {
-    if (passed) return 'RSI 14: ' + fmt(d.rsi14, 1) + ' (' + (dir === 'BUY' ? '50–70' : '30–50') + ')';
-    return 'RSI 14: ' + fmt(d.rsi14, 1) + ' — ' + t(dir === 'BUY' ? 'rsiNeedBuy' : 'rsiNeedSell');
+    if (passed) return 'RSI 14: ' + fmt(d.rsi14, 1) + ' (' + (dir === 'BUY' ? '50–70' : '30–50') + ') (1H)';
+    return 'RSI 14: ' + fmt(d.rsi14, 1) + ' — ' + t(dir === 'BUY' ? 'rsiNeedBuy' : 'rsiNeedSell') + ' (1H)';
   }
   if (gName === 'R/R Geometry') {
     let rr = null;
@@ -8705,10 +8903,10 @@ function gateDetail(gName, d, dir, passed) {
       rr = dir === 'BUY' ? (s.swingHigh - d.price) / Math.max(d.price - s.swingLow, 1e-9) : (d.price - s.swingLow) / Math.max(s.swingHigh - d.price, 1e-9);
     }
     if (rr == null || !isFinite(rr)) return 'R:R —';
-    return passed ? 'R:R ' + rr.toFixed(2) + ' (1.5+)' : 'R:R ' + rr.toFixed(2) + ' — ' + t('rrNeed');
+    return passed ? 'R:R ' + rr.toFixed(2) + ' (1.5+) (15M)' : 'R:R ' + rr.toFixed(2) + ' — ' + t('rrNeed') + ' (15M)';
   }
   if (gName === 'Macro EMA200') {
-    return 'EMA200 ' + fmt(d.ema200, 2) + ' · ' + t('price') + ' ' + fmt(d.price, 2);
+    return 'EMA200 ' + fmt(d.ema200, 2) + ' · ' + t('price') + ' ' + fmt(d.price, 2) + ' (1H)';
   }
   if (gName === 'Data Freshness') {
     return lastKrakenAgeSec != null ? 'Kraken: ' + lastKrakenAgeSec + 's' : t('gateLblFresh');
@@ -8952,13 +9150,14 @@ async function loadIndicators() {
     if (!tf || tf.error) { body.innerHTML = '<p>' + esc(t('indNoData')) + '</p>'; return; }
     const row = (k, v) => `<div class="gate"><span>${k}</span><span>${v}</span></div>`;
     body.innerHTML = `
-      <h4>${t('trend')}</h4>${row('EMA 20', fmt(tf.ema20, 2))}${row('EMA 50', fmt(tf.ema50, 2))}${row('EMA 200', fmt(tf.ema200, 2))}${row('MACD', fmt(tf.macd, 2) + ' / Signal ' + fmt(tf.macdSignal, 2) + ' / Hist ' + fmt(tf.macdHist, 2))}${row('ADX 14', fmt(tf.adx14, 1))}
-      <h4>${t('momentum')}</h4>${row('RSI 14', fmt(tf.rsi14, 1))}${row('Stochastic K/D', fmt(tf.stochK, 1) + ' / ' + fmt(tf.stochD, 1))}${row('CCI 20', fmt(tf.cci, 1))}${row('Williams %R', fmt(tf.williamsR, 1))}
-      <h4>${t('volatility')}</h4>${row('ATR 14', fmt(tf.atr14, 2))}${row('Bollinger Upper', fmt(tf.bbUpper, 2))}${row('Bollinger Middle', fmt(tf.bbMiddle, 2))}${row('Bollinger Lower', fmt(tf.bbLower, 2))}
-      <h4>${t('volume')}</h4>${row('OBV', fmt(tf.obv, 0))}${row('CMF', fmt(tf.cmf, 2))}${row('MFI 14', fmt(tf.mfi, 1))}
-      <h4>${t('structure')}</h4>${row('Support', fmt(tf.support, 2))}${row('Resistance', fmt(tf.resistance, 2))}${row('Fibonacci 38.2%', fmt(tf.fib['38.2'], 2))}${row('Fibonacci 61.8%', fmt(tf.fib['61.8'], 2))}
-      <h4>${t('ichimoku')}</h4>${row('Tenkan', fmt(tf.tenkan, 2))}${row('Kijun', fmt(tf.kijun, 2))}${row('Span A', fmt(tf.spanA, 2))}${row('Span B', fmt(tf.spanB, 2))}${row('Chikou', fmt(tf.chikou, 2))}
-      <h4>${t('vwapSar')}</h4>${row('VWAP', fmt(tf.vwap, 2))}${row('Parabolic SAR', fmt(tf.sar, 2))}
+      <p class="fine">${esc(t('indTfNote'))}</p>
+      <h4>${t('trend')}</h4>${row('EMA 20 (1H)', fmt(tf.ema20, 2))}${row('EMA 50 (1H)', fmt(tf.ema50, 2))}${row('EMA 200 (1H)', fmt(tf.ema200, 2))}${row('MACD (1H)', fmt(tf.macd, 2) + ' / Signal ' + fmt(tf.macdSignal, 2) + ' / Hist ' + fmt(tf.macdHist, 2))}${row('ADX 14 (1H)', fmt(tf.adx14, 1))}
+      <h4>${t('momentum')}</h4>${row('RSI 14 (1H)', fmt(tf.rsi14, 1))}${row('Stochastic K/D (1H)', fmt(tf.stochK, 1) + ' / ' + fmt(tf.stochD, 1))}${row('CCI 20 (1H)', fmt(tf.cci, 1))}${row('Williams %R (1H)', fmt(tf.williamsR, 1))}
+      <h4>${t('volatility')}</h4>${row('ATR 14 (1H)', fmt(tf.atr14, 2))}${row('Bollinger Upper (1H)', fmt(tf.bbUpper, 2))}${row('Bollinger Middle (1H)', fmt(tf.bbMiddle, 2))}${row('Bollinger Lower (1H)', fmt(tf.bbLower, 2))}
+      <h4>${t('volume')}</h4>${row('OBV (1H)', fmt(tf.obv, 0))}${row('CMF (1H)', fmt(tf.cmf, 2))}${row('MFI 14 (1H)', fmt(tf.mfi, 1))}
+      <h4>${t('structure')}</h4>${row('Support (1H)', fmt(tf.support, 2))}${row('Resistance (1H)', fmt(tf.resistance, 2))}${row('Fibonacci 38.2% (1H)', fmt(tf.fib['38.2'], 2))}${row('Fibonacci 61.8% (1H)', fmt(tf.fib['61.8'], 2))}
+      <h4>${t('ichimoku')}</h4>${row('Tenkan (1H)', fmt(tf.tenkan, 2))}${row('Kijun (1H)', fmt(tf.kijun, 2))}${row('Span A (1H)', fmt(tf.spanA, 2))}${row('Span B (1H)', fmt(tf.spanB, 2))}${row('Chikou (1H)', fmt(tf.chikou, 2))}
+      <h4>${t('vwapSar')}</h4>${row('VWAP (1H)', fmt(tf.vwap, 2))}${row('Parabolic SAR (1H)', fmt(tf.sar, 2))}
       <h4>${t('tf15d')}</h4>
       <p>15M — RSI ${fmt(d.timeframes['15m'].rsi14, 1)} · EMA20 ${fmt(d.timeframes['15m'].ema20, 2)} · ATR ${fmt(d.timeframes['15m'].atr14, 2)}</p>
       <p>Daily — RSI ${fmt(d.timeframes['1D'].rsi14, 1)} · EMA20 ${fmt(d.timeframes['1D'].ema20, 2)} · ATR ${fmt(d.timeframes['1D'].atr14, 2)}</p>
@@ -9056,8 +9255,35 @@ async function loadScanner() {
     const d = await api('/api/scanner');
     el.innerHTML = `<div class="table-wrap"><table><tr><th>${t('pair')}</th><th>${t('price')}</th><th>${t('smcScore')}</th><th>${t('direction')}</th></tr>` +
       d.rows.map(r => `<tr><td>${esc(r.pair)}</td><td>${fmt(r.price, 2)}</td><td>${r.smcScore == null ? '—' : r.smcScore + '/100'}</td><td>${esc(r.direction)}</td></tr>`).join('') + `</table></div>
-      <p>${t('confirmedSignals')}: ${d.confirmedSignals} · ${t('cycleEvery')} ${d.cycleSec} ${t('cycleSec')}</p>`;
+      <p>${t('confirmedSignals')}: ${d.confirmedSignals} · ${t('cycleEvery')} ${d.cycleSec} ${t('cycleSec')}</p>` +
+      smcPairCardsHtml(d.rows);
   } catch (e) { el.innerHTML = '<p>' + t('scannerFail') + ' ' + esc(e.message) + '</p>'; }
+}
+// v9.5: SMC per-pair tasdeeq cards — scanner ke rows se (koi naya engine nahi, koi signal nahi).
+// Sirf score ring, bias, OB/FVG zones. Koi Entry/SL/TP, koi trade button, koi Copy/Share nahi.
+function smcPairCardHtml(r) {
+  const obLine = (ob) => ob ? fmt(ob.low, 2) + ' – ' + fmt(ob.high, 2) + ' (' + (ob.mitigated ? t('mitigated') : t('fresh')) + ')' : '—';
+  const fvgLine = r.fvgs && r.fvgs.length
+    ? r.fvgs.slice(0, 2).map(f => esc(f.type) + ': ' + fmt(f.low, 2) + ' – ' + fmt(f.high, 2)).join('<br>')
+    : esc(t('noFvg'));
+  return `<div class="sig-card smc-pair-card">
+    <div class="sig-head">
+      <div><span class="sig-pair">${esc(r.pair.replace('USD', '/USD'))}</span> <span class="pair-badge">SMC</span>
+      <div class="sig-dir wait">${esc(t('smcBias'))}: ${esc(smcBiasOf(r))}</div></div>
+      ${r.smcScore == null ? '' : confRingHtml(r.smcScore, 80)}
+    </div>
+    <div class="sig-meta">
+      <div><span class="pc-label">${t('liveMarketPrice')}</span><br><b>${r.price == null ? '—' : fmt(r.price, 2)}</b></div>
+      <div><span class="pc-label">${t('bullOB')}</span><br><b>${obLine(r.bullOB)}</b></div>
+      <div><span class="pc-label">${t('bearOB')}</span><br><b>${obLine(r.bearOB)}</b></div>
+      <div><span class="pc-label">${t('fvg')}</span><br><b>${fvgLine}</b></div>
+    </div>
+    <p class="fine">${esc(t('bannerSmc'))}</p>
+  </div>`;
+}
+function smcPairCardsHtml(rows) {
+  if (!rows || !rows.length) return '';
+  return `<h4>${esc(t('smcPairCardsTitle'))}</h4><div class="smc-pair-cards">` + rows.map(smcPairCardHtml).join('') + `</div>`;
 }
 async function loadSession() {
   const el = document.getElementById('sessionBody');
@@ -9138,6 +9364,32 @@ function buildAcctSubtabs() {
   document.getElementById('acctSubtabs').innerHTML = keys.map(k => `<button class="${k === acctTab ? 'active' : ''}" onclick="acctTab='${k}';buildAcctSubtabs();loadAcct()">${t(k)}</button>`).join('');
   loadAcct();
 }
+// v9.5: Plan expiry — asal /api/auth/me se (plan + expiresAt). Lifetime ka koi expiry nahi.
+// Plan badalna admin-side hai — buyer ko sirf bataya jata hai ke admin se rabta karein.
+function planExpiryHtml() {
+  if (!me) return '';
+  if (!me.plan || me.plan === 'Lifetime' || !me.expiresAt) return `<p>${t('planExpiry')}: <b>Lifetime</b> — ${esc(t('lifetimeNever'))}</p>`;
+  const days = Math.max(0, Math.ceil((me.expiresAt - Date.now()) / 86400000));
+  return `<p>${t('planExpiry')}: ${fmtPktDateTime(me.expiresAt)} · <b>${days} ${esc(t('daysLeft'))}</b></p>` +
+    (me.role === 'buyer' ? `<p class="fine">${esc(t('managePlan'))}</p>` : '');
+}
+// v9.5: Admin apna password khud badle — Account → Overview (sirf admin).
+// Endpoint wahi hai jo buyer password ke liye hai (POST /api/admin/users/:username/password,
+// requireAdmin — logged-in admin ki token session use hoti hai). Session token-based hai,
+// password badalne se logout nahi hota.
+async function changeOwnPass() {
+  const p = (document.getElementById('selfPassNew') || {}).value || '';
+  const c = (document.getElementById('selfPassConf') || {}).value || '';
+  const msg = document.getElementById('selfPassMsg');
+  if (p.length < 6) { if (msg) msg.textContent = t('passTooShort'); return; }
+  if (p !== c) { if (msg) msg.textContent = t('passMismatch'); return; }
+  try {
+    await api('/api/admin/users/' + encodeURIComponent(me.username) + '/password', { method: 'POST', body: JSON.stringify({ password: p }) });
+    if (msg) msg.textContent = t('passChanged');
+    const a = document.getElementById('selfPassNew'); if (a) a.value = '';
+    const b = document.getElementById('selfPassConf'); if (b) b.value = '';
+  } catch (e) { if (msg) msg.textContent = e.message; }
+}
 async function loadAcct() {
   const el = document.getElementById('acctBody');
   // v9.3-sec: purani admin session se acctTab 'trackingLogs' reh gaya ho to buyer ko wapas overview par bhej dein.
@@ -9149,8 +9401,15 @@ async function loadAcct() {
       const p = await loadTerminalPerf() || { total: 0, wins: 0, losses: 0, inFlight: 0 };
       el.innerHTML = `<p>${t('username')}: <b>${esc(me.username)}</b> · ${t('role')}: ${esc(me.role)} · ${t('plan')}: ${esc(me.plan || '—')}</p>
       <p>${t('engines')}: Terminal ${s.settings.engines.terminal ? 'ON' : 'OFF'} · SMC ${s.settings.engines.smc ? 'ON' : 'OFF'} · Session ${s.settings.engines.session ? 'ON' : 'OFF'}</p>
-      <p>${t('signals')}: ${t('total')} ${p.total} · ${t('wins')} ${p.wins} · ${t('losses')} ${p.losses} · ${t('inFlight')} ${p.inFlight}</p>` +
-      (me.tgCode ? `<p><b>${esc(t('tgPersonalTitle'))}</b><br><a class="btn gold" href="https://t.me/tradingforexprobot?start=${esc(me.tgCode || '')}" target="_blank" rel="noopener">${esc(t('tgButton'))}</a> <button class="btn small" onclick="copyTgLink()">${esc(t('tgCopyLink'))}</button><br><span class="fine">${esc(t('tgPersonalText'))}</span><br><span class="fine">${esc(me.tgLinked ? t('tgLinked') : t('tgNotLinked'))}</span></p>` : '');
+      <p>${t('signals')}: ${t('total')} ${p.total} · ${t('wins')} ${p.wins} · ${t('losses')} ${p.losses} · ${t('inFlight')} ${p.inFlight}</p>` + planExpiryHtml() +
+      (me.tgCode ? `<p><b>${esc(t('tgPersonalTitle'))}</b><br><a class="btn gold" href="https://t.me/tradingforexprobot?start=${esc(me.tgCode || '')}" target="_blank" rel="noopener">${esc(t('tgButton'))}</a> <button class="btn small" onclick="copyTgLink()">${esc(t('tgCopyLink'))}</button><br><span class="fine">${esc(t('tgPersonalText'))}</span><br><span class="fine">${esc(me.tgLinked ? t('tgLinked') : t('tgNotLinked'))}</span></p>` : '') +
+      // v9.5: Admin apna password khud badle — sirf admin ko dikhta hai (buyer ko nahi).
+      (me.role === 'admin' ? `<h4>${esc(t('ownPassTitle'))}</h4>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+      <input type="password" id="selfPassNew" data-i18n-ph="phNewPass" placeholder="${esc(t('phNewPass'))}" autocomplete="new-password" style="width:170px">
+      <input type="password" id="selfPassConf" data-i18n-ph="phConfirmPass" placeholder="${esc(t('phConfirmPass'))}" autocomplete="new-password" style="width:170px">
+      <button class="btn small gold" onclick="changeOwnPass()">${esc(t('saveBtn'))}</button>
+      <span id="selfPassMsg" class="fine"></span></div>` : '');
     } else if (acctTab === 'engineControls') {
       const s = await api('/api/settings');
       const engLabel = (k) => k === 'terminal' ? t('mainTerminal') : k === 'smc' ? t('smcEngine') : k === 'session' ? t('sessionEngine') : t('newsIntel');
@@ -9260,7 +9519,8 @@ async function loadAdmin() {
       <button class="btn small" onclick="adminAction('${esc(u.username)}','extend')">${t('extend30')}</button>
       <button class="btn small" onclick="adminAction('${esc(u.username)}','${u.suspended ? 'reopen' : 'suspend'}')">${u.suspended ? t('reopen') : t('suspend')}</button>
       <button class="btn small" onclick="adminPass('${esc(u.username)}')">${t('changePass')}</button>
-      <button class="btn small" onclick="adminDelete('${esc(u.username)}')">${t('delete')}</button></div>` : ''}</div>`).join('') : '<p>' + esc(t('noBuyers')) + '</p>';
+      <button class="btn small" onclick="adminDelete('${esc(u.username)}')">${t('delete')}</button></div>
+      <div id="passForm-${esc(u.username)}"></div>` : ''}</div>`).join('') : '<p>' + esc(t('noBuyers')) + '</p>';
   } catch (e) { el.innerHTML = '<p>' + esc(e.message) + '</p>'; }
 }
 async function createBuyer() {
@@ -9274,11 +9534,35 @@ async function adminAction(username, action) {
   try { await api('/api/admin/users/' + encodeURIComponent(username) + '/' + action, { method: 'POST' }); loadAdmin(); }
   catch (e) { alert(e.message); }
 }
-async function adminPass(username) {
-  const p = prompt(t('newPassPrompt'));
-  if (!p) return;
-  try { await api('/api/admin/users/' + encodeURIComponent(username) + '/password', { method: 'POST', body: JSON.stringify({ password: p }) }); alert(t('passChanged')); }
-  catch (e) { alert(e.message); }
+// v9.5: window.prompt headless/mobile browser me block ho jata hai — button dabane par
+// kuch nahi khulta tha (yehi bug tha). Ab button dabate hi isi row me inline form khulta hai.
+function adminPass(username) {
+  const box = document.getElementById('passForm-' + username);
+  if (!box) return;
+  box.innerHTML = `<div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+    <input type="password" id="passNew-${esc(username)}" data-i18n-ph="phNewPass" placeholder="${esc(t('phNewPass'))}" autocomplete="new-password" style="width:170px">
+    <input type="password" id="passConf-${esc(username)}" data-i18n-ph="phConfirmPass" placeholder="${esc(t('phConfirmPass'))}" autocomplete="new-password" style="width:170px">
+    <button class="btn small gold" onclick="adminPassSave('${esc(username)}')">${esc(t('saveBtn'))}</button>
+    <button class="btn small" onclick="adminPassCancel('${esc(username)}')">${esc(t('cancelBtn'))}</button>
+    <span id="passMsg-${esc(username)}" class="fine"></span></div>`;
+  const inp = document.getElementById('passNew-' + username);
+  if (inp) inp.focus();
+}
+async function adminPassSave(username) {
+  const p = (document.getElementById('passNew-' + username) || {}).value || '';
+  const c = (document.getElementById('passConf-' + username) || {}).value || '';
+  const msg = document.getElementById('passMsg-' + username);
+  if (p.length < 6) { if (msg) msg.textContent = t('passTooShort'); return; }
+  if (p !== c) { if (msg) msg.textContent = t('passMismatch'); return; }
+  try {
+    await api('/api/admin/users/' + encodeURIComponent(username) + '/password', { method: 'POST', body: JSON.stringify({ password: p }) });
+    if (msg) msg.textContent = t('passChanged');
+    setTimeout(() => { const b = document.getElementById('passForm-' + username); if (b) b.innerHTML = ''; }, 1500);
+  } catch (e) { if (msg) msg.textContent = e.message; }
+}
+function adminPassCancel(username) {
+  const box = document.getElementById('passForm-' + username);
+  if (box) box.innerHTML = '';
 }
 async function adminDelete(username) {
   if (!confirm(username + ' ' + t('deleteConfirm'))) return;

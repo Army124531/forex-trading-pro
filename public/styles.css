@@ -149,6 +149,9 @@ html,body{overflow-x:hidden}
 .share-card-dir.sell{background:#ff6b6b;color:#fff}
 .share-card-code{color:#8ea0c2;font-size:13px;margin:8px 0}
 .share-boxes{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin:12px 0}
+/* v9.5: SMC per-pair tasdeeq cards — 2-col grid (phone par 1 col) */
+.smc-pair-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;margin-top:10px}
+@media (max-width:480px){.smc-pair-cards{grid-template-columns:1fr}}
 .share-box{border:1px solid #2a3550;border-radius:10px;padding:8px}
 .share-box-label{color:#8ea0c2;font-size:12px}
 .share-box-val{font-size:20px;font-weight:800}
