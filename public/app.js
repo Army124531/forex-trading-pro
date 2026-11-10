@@ -7825,6 +7825,10 @@ function drawChart(cv, candles) {
   const e20s = e20.slice(-100), e50s = e50.slice(-100), e200s = e200.slice(-100);
   let hi = -Infinity, lo = Infinity;
   data.forEach(c => { hi = Math.max(hi, c.h); lo = Math.min(lo, c.l); });
+  // v9.6: signal band hamesha nazar aaye — live signal ke Entry/SL/TP1 ko range me shamil karein
+  if (currentSignal && currentSignal.pair === currentPair && (currentSignal.direction === 'BUY' || currentSignal.direction === 'SELL')) {
+    [currentSignal.entry, currentSignal.sl, currentSignal.tp1].forEach(v => { if (v != null) { hi = Math.max(hi, v); lo = Math.min(lo, v); } });
+  }
   const pad = (hi - lo) * 0.08 || 1; hi += pad; lo -= pad;
   const X = i => 8 + (i / Math.max(data.length - 1, 1)) * (W - 16);
   const Y = v => 8 + (1 - (v - lo) / (hi - lo)) * (H - 16);
@@ -7850,6 +7854,32 @@ function drawChart(cv, candles) {
       ctx.strokeStyle = col; ctx.setLineDash([6, 4]); ctx.beginPath();
       ctx.moveTo(8, Y(v)); ctx.lineTo(W - 8, Y(v)); ctx.stroke(); ctx.setLineDash([]);
       ctx.fillStyle = col; ctx.fillText(lbl + ' ' + fmt(v, 2), 10, Y(v) - 4);
+    });
+  }
+  // v9.6: Terminal signal band — SIRF display (signal card ke Entry/SL/TP1 numbers, koi naya level nahi).
+  // BUY = hara, SELL = laal, WAIT (currentSignal null) = koi band nahi. Signal badle to loadTerminal chart dobara draw karta hai.
+  if (currentSignal && currentSignal.pair === currentPair && (currentSignal.direction === 'BUY' || currentSignal.direction === 'SELL')) {
+    const sig = currentSignal;
+    const bTop = Math.max(sig.sl, sig.tp1), bBot = Math.min(sig.sl, sig.tp1);
+    const rgb = sig.direction === 'BUY' ? '61,220,132' : '255,107,107';
+    ctx.fillStyle = 'rgba(' + rgb + ',0.13)';
+    ctx.fillRect(8, Y(bTop), W - 16, Y(bBot) - Y(bTop));
+    ctx.strokeStyle = 'rgba(' + rgb + ',0.85)'; ctx.setLineDash([6, 4]); ctx.beginPath();
+    ctx.moveTo(8, Y(sig.tp1)); ctx.lineTo(W - 8, Y(sig.tp1));
+    ctx.moveTo(8, Y(sig.sl)); ctx.lineTo(W - 8, Y(sig.sl)); ctx.stroke(); ctx.setLineDash([]);
+    ctx.strokeStyle = 'rgba(232,236,245,0.9)'; ctx.beginPath();
+    ctx.moveTo(8, Y(sig.entry)); ctx.lineTo(W - 8, Y(sig.entry)); ctx.stroke();
+    ctx.font = '11px sans-serif';
+    const bandLabels = [
+      { txt: 'TP1 ' + fmt(sig.tp1, 2), y: Y(sig.tp1) - 4, col: 'rgb(' + rgb + ')' },
+      { txt: t('entry') + ' ' + fmt(sig.entry, 2), y: Y(sig.entry) - 4, col: '#e8ecf5' },
+      { txt: 'SL ' + fmt(sig.sl, 2), y: Y(sig.sl) - 4, col: 'rgb(' + rgb + ')' }
+    ].sort((a, b) => a.y - b.y);
+    let prevY = 12;
+    bandLabels.forEach(l => {
+      const y = Math.max(prevY, Math.min(H - 4, l.y));
+      ctx.fillStyle = l.col; ctx.fillText(l.txt, W - 8 - ctx.measureText(l.txt).width, y);
+      prevY = y + 12;
     });
   }
   ctx.font = '11px sans-serif';
