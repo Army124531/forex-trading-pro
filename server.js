@@ -18,7 +18,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 // ---------------- Database (JSON file) ----------------
 function defaultDb() {
   return {
-    users: [],          // {username, passHash, salt, role:'admin'|'buyer', plan, createdAt, expiresAt, suspended}
+    users: [],          // {username, passHash, salt, role:'admin'|'buyer', plan, createdAt, expiresAt, suspended, tgCode, tgChatId, pushSubscriptions:[], notifyPairs:null|[]|['XAUUSD',...]}
     sessions: [],       // {token, username, createdAt}
     signals: [],        // {id, pair, direction, entry, sl, tp1, tp2, tp3, score, gate, engine, createdAt, outcome, outcomeAt}
     logs: [],           // {at, text}
@@ -1125,7 +1125,7 @@ async function computeSignal(pairId, lang, force) {
   if (direction !== 'WAIT') {
     const plan = direction === 'BUY' ? buyPlan : sellPlan;
     const res = recordTerminalSignal(pairId, direction, plan, confluence, direction === 'BUY' ? buy.gates : sell.gates, smc.error ? null : smc.score, signalCode);
-    if (res.recorded) { sendSignalAlert(res.signal); } // naya signal — Telegram alert (fire-and-forget)
+    if (res.recorded) { sendSignalAlert(res.signal); sendPushAlert(res.signal); } // naya signal — Telegram + Browser push (fire-and-forget)
     else if (res.signal && res.signal.signalCode) { data.signalCode = res.signal.signalCode; } // display = recorded code
   }
   return data;
@@ -1140,7 +1140,7 @@ function recordTerminalSignal(pairId, direction, plan, score, gates, smcScore, s
   const candleHour = Math.floor(Date.now() / 3600000) * 3600000;
   const existing = db.signals.find(s => s.pair === pairId && s.direction === direction && s.engine === 'terminal' && s.candleHour === candleHour);
   if (existing) return { recorded: false, signal: existing };
-  const rec = { id: 'SIG-' + Date.now().toString(36).toUpperCase(), pair: pairId, direction, entry: plan.entry, sl: plan.sl, tp1: plan.tp1, tp2: plan.tp2, tp3: plan.tp3, score, gate: 85, engine: 'terminal', createdAt: Date.now(), candleHour, outcome: null, outcomeAt: null, gates, smcScore, signalCode, telegramSent: false };
+  const rec = { id: 'SIG-' + Date.now().toString(36).toUpperCase(), pair: pairId, direction, entry: plan.entry, sl: plan.sl, tp1: plan.tp1, tp2: plan.tp2, tp3: plan.tp3, score, gate: 85, engine: 'terminal', createdAt: Date.now(), candleHour, outcome: null, outcomeAt: null, gates, smcScore, signalCode, telegramSent: false, pushSent: false };
   db.signals.unshift(rec);
   if (db.signals.length > 500) db.signals.length = 500;
   logEvent(direction + ' signal: ' + pairId + ' @ ' + plan.entry.toFixed(2) + ' (' + score + '%)');
@@ -1374,6 +1374,29 @@ const TG_API = 'https://api.telegram.org';
 const TG_BOT_LINK = 'https://t.me/tradingforexprobot';
 const telegramDryRunSent = []; // sirf dry-run test ke liye — yahan kabhi asal message nahi jata
 
+// ---------------- Web Push (v9.7) ----------------
+// VAPID keys SIRF env vars (VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY) se — kabhi code ya file me nahi.
+// Dono na hon to push chup-chaap band rehta hai, baaki sab chalta rehta hai (Telegram wala pattern).
+// Public key client ko /api/push/vapid-public-key se milti hai; private key sirf server par rehti hai.
+const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY || '';
+const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY || '';
+const PUSH_DRY_RUN = process.env.PUSH_DRY_RUN === '1';
+const pushDryRunSent = []; // sirf dry-run test ke liye — yahan kabhi asal push nahi jata
+let webpush = null;
+try {
+  if (VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY) {
+    webpush = require('web-push');
+    webpush.setVapidDetails('mailto:shizabhatti15@gmail.com', VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
+  }
+} catch (e) { console.error('Web Push setup fail: ' + e.message); webpush = null; }
+
+// Per-pair pasand (Telegram + Push dono par lagti hai): user ne jo pairs ON kiye hon, sirf un ke alerts.
+// notifyPairs kabhi set nahi hua (null/undefined) = sab pairs; khaali list [] = koi alert nahi.
+function notifyPairOn(u, pair) {
+  if (!u || !Array.isArray(u.notifyPairs)) return true;
+  return u.notifyPairs.includes(pair);
+}
+
 // Har user (buyer + admin) ka personal Telegram code — na ho to bana kar save karein (purane accounts ke liye bhi).
 function ensureTgCode(u) {
   if (!u) return u;
@@ -1421,6 +1444,7 @@ async function sendTelegramMessage(chatId, text) {
   } finally { clearTimeout(t); }
 }
 // Naye signal par alert — Active buyers + admin ko, ek signal code par sirf ek dafa, WAIT par kabhi nahi.
+// Per-pair pasand: jis pair ki notification user ne OFF ki ho, us pair ka alert us ko nahi jata.
 // Pehle claim karein (telegramSent=true), phir bhejein — taake dobara kabhi na jaye. Kabhi throw nahi karta.
 async function sendSignalAlert(sig) {
   try {
@@ -1431,10 +1455,49 @@ async function sendSignalAlert(sig) {
     sig.telegramSent = true; saveDb();
     const text = buildTelegramMessage(sig);
     for (const u of targets) {
+      if (!notifyPairOn(u, sig.pair)) continue; // is pair ki notification user ne OFF ki hai
       try { await sendTelegramMessage(u.tgChatId, text); }
       catch (e) { console.error('Telegram alert fail (' + u.username + '): ' + e.message); }
     }
   } catch (e) { console.error('Telegram alert fail: ' + e.message); }
+}
+// Web Push payload — sirf signal ki asal values (Entry/SL/TP1/Score), koi banaya hua number nahi.
+function buildPushPayload(sig) {
+  return {
+    title: '🔔 Forex Trading Pro — ' + sig.pair + ' ' + sig.direction + (sig.score != null ? ' ' + sig.score + '%' : ''),
+    body: 'Entry ' + fmtTgPrice(sig.entry) + ' · SL ' + fmtTgPrice(sig.sl) + ' · TP1 ' + fmtTgPrice(sig.tp1) + (sig.score != null ? ' · Score ' + sig.score + '/100' : ''),
+    url: '/',
+ code: sig.signalCode || sig.id || null,
+  };
+}
+// Browser notifications — sendSignalAlert jaisa, sirf Web Push ke liye.
+// Claim-first (pushSent), ek signal par ek dafa, WAIT kabhi nahi (record path se hi aata hai).
+// 404/410 aaye to wo subscription khatam kar dein (expired device), baaki ko na rokein. Kabhi throw nahi karta.
+async function sendPushAlert(sig) {
+  try {
+    if (!sig || sig.pushSent) return;
+    if (!webpush && !PUSH_DRY_RUN) return; // VAPID keys nahi — push band, baaki sab chalta hai
+    const targets = db.users.filter(u => Array.isArray(u.pushSubscriptions) && u.pushSubscriptions.length && (buyerActive(u) || (u.role === 'admin' && !u.suspended)) && notifyPairOn(u, sig.pair));
+    if (!targets.length) return;
+    sig.pushSent = true; saveDb();
+    const payload = JSON.stringify(buildPushPayload(sig));
+    for (const u of targets) {
+      for (const sub of (u.pushSubscriptions || [])) {
+        try {
+          if (PUSH_DRY_RUN) { pushDryRunSent.push({ username: u.username, endpoint: sub.endpoint, payload }); continue; }
+          await webpush.sendNotification(sub, payload);
+        } catch (e) {
+          if (e && (e.statusCode === 404 || e.statusCode === 410)) {
+            u.pushSubscriptions = (u.pushSubscriptions || []).filter(s => s.endpoint !== sub.endpoint);
+            saveDb();
+            console.log('Push subscription khatam ho gaya, hata diya (' + u.username + ')');
+          } else {
+            console.error('Push fail (' + u.username + '): ' + (e && e.message ? e.message : e));
+          }
+        }
+      }
+    }
+  } catch (e) { console.error('Push alert fail: ' + e.message); }
 }
 // getUpdates ka jawab parse karein — ORDER barkarar (update_id ke hisaab se).
 // Har event: {type:'start', code, chatId} | {type:'plainStart', chatId} | {type:'stop', chatId}
@@ -2035,6 +2098,45 @@ app.get('/api/tfmatrix', requireAuth, async (req, res) => {
   res.json({ pair, rows, note: 'Har row apni timeframe ki asal candles se banti hai.' });
 });
 
+// ---------------- Web Push + per-pair notifications (v9.7) ----------------
+// Har user sirf apni subscription aur apni pasand badalta hai (req.user).
+// pushSubscriptions backup export me kabhi nahi jati — /api/admin/users sirf
+// username/role/plan/dates bhejta hai, is liye wahan kuch strip karne ki zaroorat nahi.
+app.get('/api/push/vapid-public-key', requireAuth, (req, res) => {
+  res.json({ available: !!VAPID_PUBLIC_KEY, publicKey: VAPID_PUBLIC_KEY || null });
+});
+app.post('/api/push/subscribe', requireAuth, (req, res) => {
+  const sub = (req.body || {}).subscription;
+  if (!sub || typeof sub.endpoint !== 'string' || !sub.endpoint || !sub.keys || typeof sub.keys.p256dh !== 'string' || typeof sub.keys.auth !== 'string') {
+    return res.status(400).json({ error: 'bad_subscription', message: 'Subscription ghalat hai.' });
+  }
+  if (!Array.isArray(req.user.pushSubscriptions)) req.user.pushSubscriptions = [];
+  if (!req.user.pushSubscriptions.some(s => s.endpoint === sub.endpoint)) {
+    req.user.pushSubscriptions.push({ endpoint: sub.endpoint, keys: { p256dh: sub.keys.p256dh, auth: sub.keys.auth } });
+    saveDb();
+  }
+  res.json({ ok: true, count: req.user.pushSubscriptions.length });
+});
+app.post('/api/push/unsubscribe', requireAuth, (req, res) => {
+  const endpoint = (req.body || {}).endpoint;
+  if (!Array.isArray(req.user.pushSubscriptions)) req.user.pushSubscriptions = [];
+  if (endpoint) req.user.pushSubscriptions = req.user.pushSubscriptions.filter(s => s.endpoint !== endpoint);
+  saveDb();
+  res.json({ ok: true, count: req.user.pushSubscriptions.length });
+});
+app.get('/api/notify-pairs', requireAuth, (req, res) => {
+  res.json({ pairs: Array.isArray(req.user.notifyPairs) ? req.user.notifyPairs : PAIRS.map(p => p.id) });
+});
+app.post('/api/notify-pairs', requireAuth, (req, res) => {
+  const pairs = (req.body || {}).pairs;
+  const valid = PAIRS.map(p => p.id);
+  if (!Array.isArray(pairs) || pairs.length > 15 || pairs.some(p => typeof p !== 'string' || !valid.includes(p))) {
+    return res.status(400).json({ error: 'bad_pairs', message: 'Pairs ki list ghalat hai.' });
+  }
+  req.user.notifyPairs = [...new Set(pairs)]; saveDb();
+  res.json({ ok: true, pairs: req.user.notifyPairs });
+});
+
 // ---------------- Admin: buyer accounts ----------------
 app.get('/api/admin/users', requireAdmin, (req, res) => {
   const total = db.users.filter(u => u.role === 'buyer').length;
@@ -2102,11 +2204,12 @@ app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.ht
 // Background kaam: Telegram poll har 5 minute, recorder har 15 minute (server jaag raha ho tab).
 // Pehla tick 60 second baad — deploy ke baad lambi der tak intezaar nahi.
 if (!TG_TOKEN) console.log('Telegram: TELEGRAM_BOT_TOKEN nahi mila — alerts band hain, baaki sab chal raha hai.');
+if (!VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY) console.log('Web Push: VAPID keys nahi mileen — browser notifications band hain, baaki sab chal raha hai.');
 setTimeout(() => { backgroundTick().catch(() => {}); }, 60000);
 setInterval(() => { backgroundTick().catch(() => {}); }, 5 * 60 * 1000);
 app.listen(PORT, () => console.log('Forex Trading Pro chal raha hai: http://localhost:' + PORT));
 
 // Test ke liye (NODE_ENV=test) — production me kuch nahi badalta.
 if (process.env.NODE_ENV === 'test') {
-  module.exports = { recordTerminalSignal, sendSignalAlert, buildTelegramMessage, parseTelegramUpdates, applyTelegramUpdates, telegramPollUpdates, recorderTick, backgroundTick, ensureTgCode, buyerActive, gateScore, isMarketClosed, computeZones, computeTrendPanel, getDb: () => db, telegramDryRunSent };
+  module.exports = { recordTerminalSignal, sendSignalAlert, sendPushAlert, buildPushPayload, notifyPairOn, buildTelegramMessage, parseTelegramUpdates, applyTelegramUpdates, telegramPollUpdates, recorderTick, backgroundTick, ensureTgCode, buyerActive, gateScore, isMarketClosed, computeZones, computeTrendPanel, getDb: () => db, telegramDryRunSent, pushDryRunSent, webpush };
 }
