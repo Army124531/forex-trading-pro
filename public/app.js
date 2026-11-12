@@ -328,6 +328,9 @@ const I18N = {
     tfLoading: "TF Matrix load ho raha hai…",
     exportText: "Signals CSV me download karein.",
     exportBtn: "Export CSV",
+    backupBtn: "⬇️ Backup Download Karein",
+    backupWorking: "Backup tayyar ho raha hai…",
+    backupDone: "Backup download ho gaya.",
     aiTitle: "AI Agent — in-app only.",
     aiText: "Ye koi live AI service nahi hai, sirf app ke andar ka helper hai.",
     aiAsk: "Poochein",
@@ -868,6 +871,9 @@ const I18N = {
     tfLoading: "Loading TF Matrix…",
     exportText: "Download signals as CSV.",
     exportBtn: "Export CSV",
+    backupBtn: "⬇️ Download Backup",
+    backupWorking: "Preparing backup…",
+    backupDone: "Backup downloaded.",
     aiTitle: "AI Agent — in-app only.",
     aiText: "This is not a live AI service, only a helper inside the app.",
     aiAsk: "Ask",
@@ -7704,7 +7710,7 @@ function notifySignal(sig) {
   // History record me engine hota hai ('terminal' / 'smc' / 'session'); engine na ho to Terminal hi mana jata hai.
   if (sig.engine && sig.engine !== 'terminal') return;
   const title = t('newSignal') + ' ' + sig.pair + ' ' + sig.direction;
-  const body = 'Entry ' + fmt(sig.entry, 2) + ' · SL ' + fmt(sig.sl, 2) + ' · TP1 ' + fmt(sig.tp1, 2) + ' · ' + fmtPktTimeShort(sig.createdAt);
+  const body = 'Entry ' + fmtPx(sig.pair, sig.entry) + ' · SL ' + fmtPx(sig.pair, sig.sl) + ' · TP1 ' + fmtPx(sig.pair, sig.tp1) + ' · ' + fmtPktTimeShort(sig.createdAt);
   showToast(title, esc(body));
   playAlertSound();
   showSignalPopup(sig); // v7: bara pop-up (toast ke saath)
@@ -7853,7 +7859,7 @@ function drawChart(cv, candles) {
       if (v == null || v < lo || v > hi) return;
       ctx.strokeStyle = col; ctx.setLineDash([6, 4]); ctx.beginPath();
       ctx.moveTo(8, Y(v)); ctx.lineTo(W - 8, Y(v)); ctx.stroke(); ctx.setLineDash([]);
-      ctx.fillStyle = col; ctx.fillText(lbl + ' ' + fmt(v, 2), 10, Y(v) - 4);
+      ctx.fillStyle = col; ctx.fillText(lbl + ' ' + fmtPx(currentPair, v), 10, Y(v) - 4);
     });
   }
   // v9.6: Terminal signal band — SIRF display (signal card ke Entry/SL/TP1 numbers, koi naya level nahi).
@@ -7871,9 +7877,9 @@ function drawChart(cv, candles) {
     ctx.moveTo(8, Y(sig.entry)); ctx.lineTo(W - 8, Y(sig.entry)); ctx.stroke();
     ctx.font = '11px sans-serif';
     const bandLabels = [
-      { txt: 'TP1 ' + fmt(sig.tp1, 2), y: Y(sig.tp1) - 4, col: 'rgb(' + rgb + ')' },
-      { txt: t('entry') + ' ' + fmt(sig.entry, 2), y: Y(sig.entry) - 4, col: '#e8ecf5' },
-      { txt: 'SL ' + fmt(sig.sl, 2), y: Y(sig.sl) - 4, col: 'rgb(' + rgb + ')' }
+      { txt: 'TP1 ' + fmtPx(sig.pair, sig.tp1), y: Y(sig.tp1) - 4, col: 'rgb(' + rgb + ')' },
+      { txt: t('entry') + ' ' + fmtPx(sig.pair, sig.entry), y: Y(sig.entry) - 4, col: '#e8ecf5' },
+      { txt: 'SL ' + fmtPx(sig.pair, sig.sl), y: Y(sig.sl) - 4, col: 'rgb(' + rgb + ')' }
     ].sort((a, b) => a.y - b.y);
     let prevY = 12;
     bandLabels.forEach(l => {
@@ -7898,9 +7904,9 @@ async function loadIndStrip() {
     const lbl = document.getElementById('indStripPair'); if (lbl) lbl.textContent = currentPair.replace('USD', '/USD') + ' · ' + tfKey;
     const cell = (k, v) => `<div class="price-cell"><div>${k}</div><b>${v}</b></div>`;
     el.innerHTML =
-      cell('RSI 14', fmt(tf.rsi14, 1)) + cell('MACD', fmt(tf.macd, 2)) +
-      cell('EMA 20', fmt(tf.ema20, 2)) + cell('EMA 50', fmt(tf.ema50, 2)) +
-      cell('EMA 200', fmt(tf.ema200, 2)) + cell('ATR 14', fmt(tf.atr14, 2)) +
+      cell('RSI 14', fmt(tf.rsi14, 1)) + cell('MACD', fmtPx(currentPair, tf.macd)) +
+      cell('EMA 20', fmtPx(currentPair, tf.ema20)) + cell('EMA 50', fmtPx(currentPair, tf.ema50)) +
+      cell('EMA 200', fmtPx(currentPair, tf.ema200)) + cell('ATR 14', fmtPx(currentPair, tf.atr14)) +
       cell('ADX 14', fmt(tf.adx14, 1)) + cell('Stochastic K', fmt(tf.stochK, 1));
   } catch (e) { el.innerHTML = '<p>' + esc(t('indLoadFail')) + '</p>'; }
 }
@@ -7934,7 +7940,7 @@ function smcFeedCardHtml(s, i) {
     <div class="sig-meta">
       <div><span class="pc-label">${t('signalCode')}</span><br><b>${esc(s.id || '—')}</b></div>
       <div><span class="pc-label">${t('timeframeLbl')}</span><br><b>15m / 1H</b></div>
-      <div><span class="pc-label">${t('liveMarketPrice')}</span><br><b>${live == null ? '—' : fmt(live, 2)}</b></div>
+      <div><span class="pc-label">${t('liveMarketPrice')}</span><br><b>${live == null ? '—' : fmtPx(s.pair, live)}</b></div>
       <div><span class="pc-label">${t('smcGenerated')}</span><br><b>${fmtPktTime(s.createdAt)}</b><br><span class="fine">${esc(s.outcome || 'In-Flight')}</span></div>
     </div>
     <p class="fine">${esc(t('smcFeedNote'))}</p>
@@ -7974,6 +7980,24 @@ async function runTerminalBacktest() {
 
 const PAIR_IDS = ['XAUUSD','XAGUSD','BTCUSD','ETHUSD','SOLUSD','BNBUSD','XRPUSD','DOGEUSD','ADAUSD','EURUSD','GBPUSD','USDJPY','AUDUSD','USDCAD','USDCHF'];
 function fmt(n, dec) { return n == null ? '—' : Number(n).toLocaleString('en-US', { minimumFractionDigits: dec ?? 2, maximumFractionDigits: dec ?? 2 }); }
+// v9.6.1: pair ke asal decimals (server ke PAIRS dec jaisi) — fmt(x, 2) har pair ko
+// 2 decimal dikhata tha, is liye EURUSD/GBPUSD/USDCAD "1.33" nazar aate the.
+const PAIR_DEC = { XAUUSD: 2, XAGUSD: 2, BTCUSD: 2, ETHUSD: 2, SOLUSD: 2, BNBUSD: 2, XRPUSD: 4, DOGEUSD: 4, ADAUSD: 4, EURUSD: 5, GBPUSD: 5, USDJPY: 3, AUDUSD: 5, USDCAD: 5, USDCHF: 5 };
+function fmtPx(pair, n) { return fmt(n, PAIR_DEC[(pair || '').toUpperCase()] ?? 2); }
+// v9.6.1: "Market band hai" sirf tab jab market ASAL me band ho.
+// Server ka marketClosed flag purane (weekend ke) response se Tuesday ko bhi true
+// reh sakta hai (tab khula rehna + fetch fail/early-return) — is liye wording ka
+// faisla yahan live clock + feed freshness se hota hai, flag se nahi.
+// Band: PKT Hafta 00:00 – Ittwaar 23:59 (crypto 24/7, kabhi band nahi);
+// ya price feed asal me stale ho (aakhri kamyab price refresh 3 minute se purana).
+const CRYPTO_PAIRS = ['BTCUSD', 'ETHUSD', 'SOLUSD', 'BNBUSD', 'XRPUSD', 'DOGEUSD', 'ADAUSD'];
+function isMarketClosedNow(pairId) {
+  if (CRYPTO_PAIRS.includes((pairId || '').toUpperCase())) return false;
+  const pktDay = new Date(Date.now() + 5 * 3600 * 1000).getUTCDay(); // 0 = Ittwaar, 6 = Hafta
+  return pktDay === 0 || pktDay === 6;
+}
+function priceFeedStale() { return !!lastUpdateAt && (Date.now() - lastUpdateAt) > 180 * 1000; }
+function marketClosedNow(pairId) { return isMarketClosedNow(pairId) || priceFeedStale(); }
 function esc(s) { return String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
 async function api(path, opts = {}) {
   const r = await fetch(path, { ...opts, headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: 'Bearer ' + token } : {}), ...(opts.headers || {}) } });
@@ -8198,7 +8222,7 @@ function tickLastUpdate() {
   // v9.3: band market par sync line ko haath na lagayein — wahan
   // "Market band hai — price aakhri available hai" likha rehta hai (live jaisa na dikhe).
   const pc = document.getElementById('pcSync');
-  if (pc && !(lastSignalData && lastSignalData.marketClosed)) {
+  if (pc && !marketClosedNow(currentPair)) {
     const pcTxt = t('lastUpdate') + ' · ' + s + ' ' + t('secAgo') + (lastSourcesText ? ' · ' + t('pcSources') + ': ' + lastSourcesText : '');
     if (pc.textContent !== pcTxt) pc.textContent = pcTxt;
   }
@@ -8232,16 +8256,16 @@ function renderSignalBanner(d) {
     el.innerHTML = `<div class="signal-banner buy"><div class="sb-title">${esc(t('buyNow'))} — ${esc(pair)}</div>
       <div class="sb-line">${esc(t('bannerLine'))}</div>
       <div class="sb-line">⏱ ${esc(t('bestTimeframe'))}</div>
-      <div class="sb-vals">${t('entryZone')}: <b>${fmt(p.entryZone[0], 2)} – ${fmt(p.entryZone[1], 2)}</b> · ${t('trigger')}: <b>${fmt(p.trigger, 2)}</b><br>
-      SL: <b>${fmt(p.sl, 2)}</b> · TP1: <b>${fmt(p.tp1, 2)}</b> · TP2: <b>${fmt(p.tp2, 2)}</b> · TP3: <b>${fmt(p.tp3, 2)}</b><br>
+      <div class="sb-vals">${t('entryZone')}: <b>${fmtPx(currentPair, p.entryZone[0])} – ${fmtPx(currentPair, p.entryZone[1])}</b> · ${t('trigger')}: <b>${fmtPx(currentPair, p.trigger)}</b><br>
+      SL: <b>${fmtPx(currentPair, p.sl)}</b> · TP1: <b>${fmtPx(currentPair, p.tp1)}</b> · TP2: <b>${fmtPx(currentPair, p.tp2)}</b> · TP3: <b>${fmtPx(currentPair, p.tp3)}</b><br>
       ${t('confluence')}: <b>${d.confluence}%</b> (${t('gate')} 85%)</div></div>`;
   } else if (d.direction === 'SELL') {
     const p = d.sellPlan;
     el.innerHTML = `<div class="signal-banner sell"><div class="sb-title">${esc(t('sellNow'))} — ${esc(pair)}</div>
       <div class="sb-line">${esc(t('bannerLine'))}</div>
       <div class="sb-line">⏱ ${esc(t('bestTimeframe'))}</div>
-      <div class="sb-vals">${t('entryZone')}: <b>${fmt(p.entryZone[0], 2)} – ${fmt(p.entryZone[1], 2)}</b> · ${t('trigger')}: <b>${fmt(p.trigger, 2)}</b><br>
-      SL: <b>${fmt(p.sl, 2)}</b> · TP1: <b>${fmt(p.tp1, 2)}</b> · TP2: <b>${fmt(p.tp2, 2)}</b> · TP3: <b>${fmt(p.tp3, 2)}</b><br>
+      <div class="sb-vals">${t('entryZone')}: <b>${fmtPx(currentPair, p.entryZone[0])} – ${fmtPx(currentPair, p.entryZone[1])}</b> · ${t('trigger')}: <b>${fmtPx(currentPair, p.trigger)}</b><br>
+      SL: <b>${fmtPx(currentPair, p.sl)}</b> · TP1: <b>${fmtPx(currentPair, p.tp1)}</b> · TP2: <b>${fmtPx(currentPair, p.tp2)}</b> · TP3: <b>${fmtPx(currentPair, p.tp3)}</b><br>
       ${t('confluence')}: <b>${d.confluence}%</b> (${t('gate')} 85%)</div></div>`;
   } else {
     el.innerHTML = `<div class="signal-banner wait"><div class="sb-title">${esc(t('waitNoTrade'))} — ${esc(pair)}</div>
@@ -8286,13 +8310,13 @@ function whyTradeHtml(d) {
   if (d.tradeZone) {
     const z = d.tradeZone;
     const inZ = d.price >= z.low && d.price <= z.high;
-    reasons.push(esc(inZ ? t('whyZone') : t('whyZoneNear')) + ' — ' + esc(z.type + ' ' + fmt(z.low, 2) + ' – ' + fmt(z.high, 2)));
+    reasons.push(esc(inZ ? t('whyZone') : t('whyZoneNear')) + ' — ' + esc(z.type + ' ' + fmtPx(currentPair, z.low) + ' – ' + fmtPx(currentPair, z.high)));
   } else if (d.smc) {
     const s = d.smc;
     const inDz = s.demandZone && d.price >= s.demandZone[0] && d.price <= s.demandZone[1];
     const inSz = s.supplyZone && d.price >= s.supplyZone[0] && d.price <= s.supplyZone[1];
-    if (dir === 'BUY' && inDz) reasons.push(esc(t('whyZone')) + ' — ' + esc(t('demandZone') + ' ' + fmt(s.demandZone[0], 2) + ' – ' + fmt(s.demandZone[1], 2)));
-    else if (dir === 'SELL' && inSz) reasons.push(esc(t('whyZone')) + ' — ' + esc(t('supplyZone') + ' ' + fmt(s.supplyZone[0], 2) + ' – ' + fmt(s.supplyZone[1], 2)));
+    if (dir === 'BUY' && inDz) reasons.push(esc(t('whyZone')) + ' — ' + esc(t('demandZone') + ' ' + fmtPx(currentPair, s.demandZone[0]) + ' – ' + fmtPx(currentPair, s.demandZone[1])));
+    else if (dir === 'SELL' && inSz) reasons.push(esc(t('whyZone')) + ' — ' + esc(t('supplyZone') + ' ' + fmtPx(currentPair, s.supplyZone[0]) + ' – ' + fmtPx(currentPair, s.supplyZone[1])));
   }
   if (d.smc && d.smc.score >= 80) reasons.push(esc(t('whySmcHigh')) + ' (' + d.smc.score + '/100)');
   if (d.smc && d.smc.bosDir) {
@@ -8329,7 +8353,7 @@ function smcChecklistHtml(d) {
   let obSt = null, obDetail;
   if (ob) {
     obSt = chkDir === 'WAIT' ? null : !ob.mitigated;
-    obDetail = esc(fmt(ob.low, 2) + ' – ' + fmt(ob.high, 2) + ' (' + t(ob.mitigated ? 'mitigated' : 'fresh') + ')');
+    obDetail = esc(fmtPx(currentPair, ob.low) + ' – ' + fmtPx(currentPair, ob.high) + ' (' + t(ob.mitigated ? 'mitigated' : 'fresh') + ')');
   } else obDetail = esc(t('noObDir'));
   // 3. FVG — BUY ke liye bullish gap, SELL ke liye bearish gap
   const fvgs = chkDir === 'BUY' ? (s.fvgs || []).filter(f => f.type === 'Bullish')
@@ -8337,14 +8361,14 @@ function smcChecklistHtml(d) {
   let fvgSt = chkDir === 'WAIT' ? null : false, fvgDetail;
   if (fvgs.length) {
     fvgSt = chkDir === 'WAIT' ? null : true;
-    fvgDetail = esc(fvgs.length + ' × ' + fvgs[0].type + ' ' + fmt(fvgs[0].low, 2) + ' – ' + fmt(fvgs[0].high, 2));
+    fvgDetail = esc(fvgs.length + ' × ' + fvgs[0].type + ' ' + fmtPx(currentPair, fvgs[0].low) + ' – ' + fmtPx(currentPair, fvgs[0].high));
   } else fvgDetail = esc(t('noFvgDir'));
   // 4. Support / Resistance + structure break (BOS)
   let srSt = null;
   if (chkDir === 'BUY') srSt = s.bosDir === 'up' ? true : s.bosDir === 'down' ? false : null;
   else if (chkDir === 'SELL') srSt = s.bosDir === 'down' ? true : s.bosDir === 'up' ? false : null;
   const srTxt = s.bosDir === 'up' ? t('bosUp') : s.bosDir === 'down' ? t('bosDown') : t('noBreak');
-  const srDetail = esc(t('swingLow') + ' ' + fmt(s.swingLow, 2) + ' · ' + t('swingHigh') + ' ' + fmt(s.swingHigh, 2) + ' — ' + srTxt);
+  const srDetail = esc(t('swingLow') + ' ' + fmtPx(currentPair, s.swingLow) + ' · ' + t('swingHigh') + ' ' + fmtPx(currentPair, s.swingHigh) + ' — ' + srTxt);
   // 5. Zones — trade zone (agar hai) + price us me / ke qareeb hai ya nahi; warna demand/supply zones
   const atr = d.atr14 || 0;
   let zoneSt = null, zoneDetail;
@@ -8354,7 +8378,7 @@ function smcChecklistHtml(d) {
     const nearZ = !inZ && Math.abs(d.price - (chkDir === 'BUY' ? z.high : z.low)) <= atr;
     const zoneTxt = inZ ? t('inZone') : nearZ ? t('nearZone') : t('farZone');
     zoneSt = inZ || nearZ;
-    zoneDetail = esc(t('tradeZone') + ': ' + z.type + ' ' + fmt(z.low, 2) + ' – ' + fmt(z.high, 2) + ' — ' + zoneTxt);
+    zoneDetail = esc(t('tradeZone') + ': ' + z.type + ' ' + fmtPx(currentPair, z.low) + ' – ' + fmtPx(currentPair, z.high) + ' — ' + zoneTxt);
   } else {
     const inDz = s.demandZone && d.price >= s.demandZone[0] && d.price <= s.demandZone[1];
     const inSz = s.supplyZone && d.price >= s.supplyZone[0] && d.price <= s.supplyZone[1];
@@ -8364,7 +8388,7 @@ function smcChecklistHtml(d) {
     if (inDz || nearDz) { zoneTxt = t(inDz ? 'inDemand' : 'nearDemand'); zoneSt = chkDir === 'BUY' ? true : chkDir === 'SELL' ? false : null; }
     else if (inSz || nearSz) { zoneTxt = t(inSz ? 'inSupply' : 'nearSupply'); zoneSt = chkDir === 'SELL' ? true : chkDir === 'BUY' ? false : null; }
     else { zoneTxt = chkDir === 'WAIT' ? t('noZone') : t('noZoneDir'); zoneSt = chkDir === 'WAIT' ? null : false; }
-    zoneDetail = esc(zoneTxt + ' — ' + t('demandZone') + ' ' + (s.demandZone ? fmt(s.demandZone[0], 2) + ' – ' + fmt(s.demandZone[1], 2) : '—') + ' · ' + t('supplyZone') + ' ' + (s.supplyZone ? fmt(s.supplyZone[0], 2) + ' – ' + fmt(s.supplyZone[1], 2) : '—'));
+    zoneDetail = esc(zoneTxt + ' — ' + t('demandZone') + ' ' + (s.demandZone ? fmtPx(currentPair, s.demandZone[0]) + ' – ' + fmtPx(currentPair, s.demandZone[1]) : '—') + ' · ' + t('supplyZone') + ' ' + (s.supplyZone ? fmtPx(currentPair, s.supplyZone[0]) + ' – ' + fmtPx(currentPair, s.supplyZone[1]) : '—'));
   }
   return `<h4>${t('smcChecklist')} — ${t('smcScore')}: ${s.score}/100 (${t('gate')} 80%)</h4>` +
     row(t('chkSweep'), 'chkLblSweep', sweepSt, sweepDetail) +
@@ -8410,7 +8434,7 @@ function extendedConfluenceHtml(d) {
   let bSt = null, bDetail = esc(t('noBreaker'));
   if (x.breakers && x.breakers.length) {
     const bl = x.breakers[0];
-    const blTxt = (bl.type === 'Breaker' ? t('breakerLbl') : t('mitigationLbl')) + ' (' + bl.dir + ') ' + fmt(bl.low, 2) + ' – ' + fmt(bl.high, 2);
+    const blTxt = (bl.type === 'Breaker' ? t('breakerLbl') : t('mitigationLbl')) + ' (' + bl.dir + ') ' + fmtPx(currentPair, bl.low) + ' – ' + fmtPx(currentPair, bl.high);
     bDetail = esc(blTxt + (x.breakers.length > 1 ? ' · +' + (x.breakers.length - 1) : ''));
     bSt = dirMatch(bl.dir);
   }
@@ -8424,7 +8448,7 @@ function extendedConfluenceHtml(d) {
   html += row(t('chkIdm'), 'extLblIdm', iSt, iDetail);
   // 6. Fibonacci
   let fDetail = '—';
-  if (x.fib && x.fib.nearest) fDetail = esc(t('fibNearest') + ': ' + x.fib.nearest.label + ' @ ' + fmt(x.fib.nearest.price, 2) + ' (High ' + fmt(x.fib.high, 2) + ' / Low ' + fmt(x.fib.low, 2) + ')');
+  if (x.fib && x.fib.nearest) fDetail = esc(t('fibNearest') + ': ' + x.fib.nearest.label + ' @ ' + fmtPx(currentPair, x.fib.nearest.price) + ' (High ' + fmtPx(currentPair, x.fib.high) + ' / Low ' + fmtPx(currentPair, x.fib.low) + ')');
   html += row(t('chkFib'), 'extLblFib', null, fDetail);
   // 7. Bollinger squeeze
   let bbDetail = '—';
@@ -8456,13 +8480,13 @@ function extendedConfluenceHtml(d) {
   let aSt = null, aDetail = esc(t('noAsian'));
   if (x.asian) {
     const exp = x.asian.expanded;
-    aDetail = esc(fmt(x.asian.low, 2) + ' – ' + fmt(x.asian.high, 2) + ' — ' + t(exp === 'above' ? 'asianAbove' : exp === 'below' ? 'asianBelow' : 'asianIn'));
+    aDetail = esc(fmtPx(currentPair, x.asian.low) + ' – ' + fmtPx(currentPair, x.asian.high) + ' — ' + t(exp === 'above' ? 'asianAbove' : exp === 'below' ? 'asianBelow' : 'asianIn'));
     aSt = exp === 'above' ? dirMatch('BUY') : exp === 'below' ? dirMatch('SELL') : null;
   }
   html += row(t('chkAsian'), 'extLblAsian', aSt, aDetail);
   // 12. VWAP bands
   let vDetail = '—';
-  if (x.vwapBands && x.vwapBands.nearest) vDetail = esc(t('vwapNearest') + ': ' + x.vwapBands.nearest.label + ' @ ' + fmt(x.vwapBands.nearest.price, 2) + ' · VWAP ' + fmt(x.vwapBands.vwap, 2));
+  if (x.vwapBands && x.vwapBands.nearest) vDetail = esc(t('vwapNearest') + ': ' + x.vwapBands.nearest.label + ' @ ' + fmtPx(currentPair, x.vwapBands.nearest.price) + ' · VWAP ' + fmtPx(currentPair, x.vwapBands.vwap));
   html += row(t('chkVwap'), 'extLblVwap', null, vDetail);
   // 13. Volume
   let volDetail = esc(t('volNa'));
@@ -8520,9 +8544,9 @@ function buildSignalText(sig) {
   const emoji = s.direction === 'BUY' ? '🟢' : '🔴';
   const lines = [
     emoji + ' ' + s.pair + ' ' + s.direction,
-    'Entry: ' + fmt(s.entry, 2),
-    'SL: ' + fmt(s.sl, 2),
-    'TP1: ' + fmt(s.tp1, 2) + ' | TP2: ' + fmt(s.tp2, 2) + ' | TP3: ' + fmt(s.tp3, 2),
+    'Entry: ' + fmtPx(s.pair, s.entry),
+    'SL: ' + fmtPx(s.pair, s.sl),
+    'TP1: ' + fmtPx(s.pair, s.tp1) + ' | TP2: ' + fmtPx(s.pair, s.tp2) + ' | TP3: ' + fmtPx(s.pair, s.tp3),
   ];
   if (s.score != null) lines.push('Score: ' + s.score + '%' + (s.rr ? ' · R:R ' + s.rr : ''));
   lines.push('Forex Trading Pro · ' + fmtPktTime(s.time) + ' PKT');
@@ -8567,11 +8591,11 @@ function drawSignalCard(sig) {
   ctx.fillStyle = isBuy ? '#0a0f1e' : '#ffffff';
   ctx.fillText(s.direction, W / 2, 406);
   const rows = [
-    ['Entry', fmt(s.entry, 2), '#e8ecf5'],
-    ['SL', fmt(s.sl, 2), '#ff6b6b'],
-    ['TP1', fmt(s.tp1, 2), '#3ddc84'],
-    ['TP2', fmt(s.tp2, 2), '#3ddc84'],
-    ['TP3', fmt(s.tp3, 2), '#3ddc84'],
+    ['Entry', fmtPx(s.pair, s.entry), '#e8ecf5'],
+    ['SL', fmtPx(s.pair, s.sl), '#ff6b6b'],
+    ['TP1', fmtPx(s.pair, s.tp1), '#3ddc84'],
+    ['TP2', fmtPx(s.pair, s.tp2), '#3ddc84'],
+    ['TP3', fmtPx(s.pair, s.tp3), '#3ddc84'],
   ];
   let y = 528;
   rows.forEach((row, i) => {
@@ -8633,7 +8657,7 @@ function showSignalPopup(sig) {
   el.innerHTML = `<div class="signal-banner ${dirCls}" style="margin:0 0 10px"><div class="sb-title">${esc(t('newSignalPopup'))}</div>
     <div class="sb-line">${esc(s.pair)} — <b>${s.direction}</b></div>
     <div class="sb-line">⏱ ${esc(t('bestTimeframe'))}</div>
-    <div class="sb-vals">Entry: <b>${fmt(s.entry, 2)}</b><br>SL: <b>${fmt(s.sl, 2)}</b> · TP1: <b>${fmt(s.tp1, 2)}</b> · TP2: <b>${fmt(s.tp2, 2)}</b> · TP3: <b>${fmt(s.tp3, 2)}</b><br>${s.score != null ? t('confluence') + ': <b>' + s.score + '%</b>' : ''}${s.rr ? ' · R:R ' + esc(s.rr) : ''}</div></div>
+    <div class="sb-vals">Entry: <b>${fmtPx(s.pair, s.entry)}</b><br>SL: <b>${fmtPx(s.pair, s.sl)}</b> · TP1: <b>${fmtPx(s.pair, s.tp1)}</b> · TP2: <b>${fmtPx(s.pair, s.tp2)}</b> · TP3: <b>${fmtPx(s.pair, s.tp3)}</b><br>${s.score != null ? t('confluence') + ': <b>' + s.score + '%</b>' : ''}${s.rr ? ' · R:R ' + esc(s.rr) : ''}</div></div>
     <p class="fine">${esc(t('shareDisclaimer'))}</p>`;
   const m = document.getElementById('signalPopup');
   if (m) m.style.display = 'flex';
@@ -8662,9 +8686,9 @@ function buildFormattedShareText(s) {
   return [
     '*' + s.pair + ' ' + s.direction + '* ' + emoji,
     'Signal: ' + (s.code || s.id || ''),
-    'Entry: ' + fmt(s.entry, 2),
-    'SL: ' + fmt(s.sl, 2),
-    'TP1: ' + fmt(s.tp1, 2) + ' | TP2: ' + fmt(s.tp2, 2) + ' | TP3: ' + fmt(s.tp3, 2),
+    'Entry: ' + fmtPx(s.pair, s.entry),
+    'SL: ' + fmtPx(s.pair, s.sl),
+    'TP1: ' + fmtPx(s.pair, s.tp1) + ' | TP2: ' + fmtPx(s.pair, s.tp2) + ' | TP3: ' + fmtPx(s.pair, s.tp3),
     'Score: ' + (s.score != null ? s.score + '%' : '—') + (s.rr ? ' | R:R ' + s.rr : ''),
     'DCA: TP1 par 50% profit lo.',
     'Breakeven: TP1 ke baad SL entry par.',
@@ -8685,7 +8709,7 @@ function closeShareModal() { const m = document.getElementById('shareModal'); if
 function renderSharePreview() {
   const s = shareSignal; if (!s) return;
   const isBuy = s.direction === 'BUY';
-  const box = (label, val, cls, level) => `<div class="share-box"><div class="share-box-label">${esc(label)}</div><div class="share-box-val ${cls}">${fmt(val, 2)}</div><div class="share-box-status">${esc(shareStatusOf(level, s))}</div></div>`;
+  const box = (label, val, cls, level) => `<div class="share-box"><div class="share-box-label">${esc(label)}</div><div class="share-box-val ${cls}">${fmtPx(s.pair, val)}</div><div class="share-box-status">${esc(shareStatusOf(level, s))}</div></div>`;
   const done = timelineDone(s);
   const steps = [t('stepSignal'), t('stepEntry'), t('stepTp1'), t('stepTp2'), t('stepTp3'), t('stepDone')];
   const pv = document.getElementById('shareCardPreview');
@@ -8738,11 +8762,11 @@ function drawShareCardPng(s) {
   ctx.fillStyle = '#8ea0c2'; ctx.font = '400 30px Arial, sans-serif';
   ctx.fillText(s.code || s.id || '', W / 2, 428);
   const rows = [
-    ['Entry', fmt(s.entry, 2), '#e8ecf5', 'entry'],
-    ['SL', fmt(s.sl, 2), '#ff6b6b', 'sl'],
-    ['TP1', fmt(s.tp1, 2), '#3ddc84', 'tp1'],
-    ['TP2', fmt(s.tp2, 2), '#3ddc84', 'tp2'],
-    ['TP3', fmt(s.tp3, 2), '#3ddc84', 'tp3'],
+    ['Entry', fmtPx(s.pair, s.entry), '#e8ecf5', 'entry'],
+    ['SL', fmtPx(s.pair, s.sl), '#ff6b6b', 'sl'],
+    ['TP1', fmtPx(s.pair, s.tp1), '#3ddc84', 'tp1'],
+    ['TP2', fmtPx(s.pair, s.tp2), '#3ddc84', 'tp2'],
+    ['TP3', fmtPx(s.pair, s.tp3), '#3ddc84', 'tp3'],
   ];
   let y = 500;
   rows.forEach((row, i) => {
@@ -8876,13 +8900,13 @@ function sentimentWaveHtml(d) {
     const pct = (v) => Math.max(0, Math.min(100, (v - d.range.pdl) / (d.range.pdh - d.range.pdl) * 100));
     const dz = s.demandZone ? `<div class="corr-zone demand" style="left:${pct(s.demandZone[0])}%;width:${Math.max(1, pct(s.demandZone[1]) - pct(s.demandZone[0]))}%"></div>` : '';
     const sz = s.supplyZone ? `<div class="corr-zone supply" style="left:${pct(s.supplyZone[0])}%;width:${Math.max(1, pct(s.supplyZone[1]) - pct(s.supplyZone[0]))}%"></div>` : '';
-    corridor = `<div class="corr-track">${dz}${sz}<div class="corr-price" style="left:${pct(d.price)}%"></div></div><p class="fine">PDL ${fmt(d.range.pdl, 2)} — PDH ${fmt(d.range.pdh, 2)} · <span style="color:#f5c542">▮</span> = price</p>`;
+    corridor = `<div class="corr-track">${dz}${sz}<div class="corr-price" style="left:${pct(d.price)}%"></div></div><p class="fine">PDL ${fmtPx(currentPair, d.range.pdl)} — PDH ${fmtPx(currentPair, d.range.pdh)} · <span style="color:#f5c542">▮</span> = price</p>`;
   }
   return `<h4>${t('sentimentWave')}</h4>
   <div class="sent-bar"><div class="sent-bull" style="width:${bull}%"></div><div class="sent-bear" style="width:${bear}%"></div></div>
   <p>Bullish ${bull}% · Bearish ${bear}% — ${esc(s.label)}</p>
   <p>${t('demandIndex')}: ${dIdx == null ? '—' : dIdx + '/100'} · ${t('supplyIndex')}: ${sIdx == null ? '—' : sIdx + '/100'}</p>
-  <p>${t('demandZone')}: ${s.demandZone ? fmt(s.demandZone[0], 2) + ' – ' + fmt(s.demandZone[1], 2) : '—'} · ${t('supplyZone')}: ${s.supplyZone ? fmt(s.supplyZone[0], 2) + ' – ' + fmt(s.supplyZone[1], 2) : '—'}</p>
+  <p>${t('demandZone')}: ${s.demandZone ? fmtPx(currentPair, s.demandZone[0]) + ' – ' + fmtPx(currentPair, s.demandZone[1]) : '—'} · ${t('supplyZone')}: ${s.supplyZone ? fmtPx(currentPair, s.supplyZone[0]) + ' – ' + fmtPx(currentPair, s.supplyZone[1]) : '—'}</p>
   <h4>${t('zoneCorridor')}</h4>${corridor}
   <p class="fine">${t('sentimentWaveNote')}</p>`;
 }
@@ -8918,10 +8942,10 @@ function pairBadge() {
 function gateDetail(gName, d, dir, passed) {
   const s = d.smc || {};
   if (gName.indexOf('Indicator Trend') === 0) {
-    return 'EMA20 ' + fmt(d.ema20, 2) + ' · EMA50 ' + fmt(d.ema50, 2) + ' · ' + t('price') + ' ' + fmt(d.price, 2) + ' (1H)';
+    return 'EMA20 ' + fmtPx(currentPair, d.ema20) + ' · EMA50 ' + fmtPx(currentPair, d.ema50) + ' · ' + t('price') + ' ' + fmtPx(currentPair, d.price) + ' (1H)';
   }
   if (gName === 'Structure Swing') {
-    return t('swingHigh') + ' ' + fmt(s.swingHigh, 2) + ' · ' + t('swingLow') + ' ' + fmt(s.swingLow, 2) + ' (15M)';
+    return t('swingHigh') + ' ' + fmtPx(currentPair, s.swingHigh) + ' · ' + t('swingLow') + ' ' + fmtPx(currentPair, s.swingLow) + ' (15M)';
   }
   if (gName === 'RSI Recovery') {
     if (passed) return 'RSI 14: ' + fmt(d.rsi14, 1) + ' (' + (dir === 'BUY' ? '50–70' : '30–50') + ') (1H)';
@@ -8936,7 +8960,7 @@ function gateDetail(gName, d, dir, passed) {
     return passed ? 'R:R ' + rr.toFixed(2) + ' (1.5+) (15M)' : 'R:R ' + rr.toFixed(2) + ' — ' + t('rrNeed') + ' (15M)';
   }
   if (gName === 'Macro EMA200') {
-    return 'EMA200 ' + fmt(d.ema200, 2) + ' · ' + t('price') + ' ' + fmt(d.price, 2) + ' (1H)';
+    return 'EMA200 ' + fmtPx(currentPair, d.ema200) + ' · ' + t('price') + ' ' + fmtPx(currentPair, d.price) + ' (1H)';
   }
   if (gName === 'Data Freshness') {
     return lastKrakenAgeSec != null ? 'Kraken: ' + lastKrakenAgeSec + 's' : t('gateLblFresh');
@@ -9005,8 +9029,8 @@ function requiredBoxHtml(d) {
   const s = d.smc || {};
   const dz = s.demandZone || (d.sentiment && d.sentiment.demandZone);
   const sz = s.supplyZone || (d.sentiment && d.sentiment.supplyZone);
-  const buyTxt = dz ? t('reqBuyTpl').replace('{a}', fmt(dz[0], 2)).replace('{b}', fmt(dz[1], 2)) : '—';
-  const sellTxt = sz ? t('reqSellTpl').replace('{a}', fmt(sz[1], 2)).replace('{b}', fmt(sz[0], 2)) : '—';
+  const buyTxt = dz ? t('reqBuyTpl').replace('{a}', fmtPx(currentPair, dz[0])).replace('{b}', fmtPx(currentPair, dz[1])) : '—';
+  const sellTxt = sz ? t('reqSellTpl').replace('{a}', fmtPx(currentPair, sz[1])).replace('{b}', fmtPx(currentPair, sz[0])) : '—';
   return `<h4>${t('requiredTitle')}</h4><div class="req-box">
     <div class="req-buy"><b>▲ ${t('requiredBuy')}</b><br>${esc(buyTxt)}</div>
     <div class="req-sell"><b>▼ ${t('requiredSell')}</b><br>${esc(sellTxt)}</div>
@@ -9018,12 +9042,12 @@ function priceCardHtml(d) {
   const chg = info.change24h;
   const chgHtml = chg == null ? '—' : '<span class="' + (chg >= 0 ? 'up' : 'down') + '">' + (chg >= 0 ? '+' : '') + chg.toFixed(2) + '%</span>';
   const age = lastUpdateAt ? Math.floor((Date.now() - lastUpdateAt) / 1000) : null;
-  const syncTxt = d.marketClosed ? t('marketClosedShort') : t('lastUpdate') + ' · ' + (age == null ? '—' : age + ' ' + t('secAgo')) + (lastSourcesText ? ' · ' + t('pcSources') + ': ' + lastSourcesText : '');
+  const syncTxt = marketClosedNow(currentPair) ? t('marketClosedShort') : t('lastUpdate') + ' · ' + (age == null ? '—' : age + ' ' + t('secAgo')) + (lastSourcesText ? ' · ' + t('pcSources') + ': ' + lastSourcesText : '');
   return `<div class="price-card">
-    <div class="pc-col"><div class="pc-label">${t('pcMarketPrice')}</div><div class="pc-big" id="pcPrice">${fmt(d.price, 2)}</div><div class="pc-sub">Bid <b id="pcBid">${fmt(d.bid, 2)}</b> · Ask <b id="pcAsk">${fmt(d.ask, 2)}</b></div></div>
+    <div class="pc-col"><div class="pc-label">${t('pcMarketPrice')}</div><div class="pc-big" id="pcPrice">${fmtPx(currentPair, d.price)}</div><div class="pc-sub">Bid <b id="pcBid">${fmtPx(currentPair, d.bid)}</b> · Ask <b id="pcAsk">${fmtPx(currentPair, d.ask)}</b></div></div>
     <div class="pc-col"><div class="pc-label">${t('pcChange24h')}</div><div class="pc-big" id="pcChg">${chgHtml}</div><div class="pc-sub">${esc(currentPair.replace('USD', '/USD'))}</div></div>
-    <div class="pc-col"><div class="pc-label">${t('pcSpread')}</div><div class="pc-big" id="pcSpread">${fmt(d.spread, 2)}</div><div class="pc-sub">Ask − Bid</div></div>
-    <div class="pc-col"><div class="pc-label">${t('pcKeyLevels')}</div><div class="pc-sub">PDH <b>${fmt(d.range.pdh, 2)}</b> · PDL <b>${fmt(d.range.pdl, 2)}</b></div><div class="pc-sub">Range ${fmt(d.range.pdl, 2)} – ${fmt(d.range.pdh, 2)}</div></div>
+    <div class="pc-col"><div class="pc-label">${t('pcSpread')}</div><div class="pc-big" id="pcSpread">${fmtPx(currentPair, d.spread)}</div><div class="pc-sub">Ask − Bid</div></div>
+    <div class="pc-col"><div class="pc-label">${t('pcKeyLevels')}</div><div class="pc-sub">PDH <b>${fmtPx(currentPair, d.range.pdh)}</b> · PDL <b>${fmtPx(currentPair, d.range.pdl)}</b></div><div class="pc-sub">Range ${fmtPx(currentPair, d.range.pdl)} – ${fmtPx(currentPair, d.range.pdh)}</div></div>
     <div class="pc-sync" id="pcSync">${esc(syncTxt)}</div>
   </div>`;
 }
@@ -9040,7 +9064,7 @@ function confRingHtml(pct, greenAt) {
 function signalCardHeadHtml(d) {
   const dirCls = d.direction === 'BUY' ? 'buy' : d.direction === 'SELL' ? 'sell' : 'wait';
   const ageSec = d.updatedAt ? Math.floor((Date.now() - d.updatedAt) / 1000) : null;
-  const liveLine = d.marketClosed
+  const liveLine = marketClosedNow(currentPair)
     ? esc(t('marketClosedShort'))
     : ageSec != null && ageSec <= 60
       ? '<span class="up">● ' + esc(t('liveTick')) + '</span>'
@@ -9055,7 +9079,7 @@ function signalCardHeadHtml(d) {
       <div><span class="pc-label">${t('confidenceLbl')}</span><br><b>${d.confluence}%</b> (${t('gate')} 85%)</div>
       <div><span class="pc-label">${t('signalCode')}</span><br><b>${d.signalCode ? esc(d.signalCode) : '—'}</b>${d.signalCode ? '<br><span class="fine">' + t('validUntil') + ': ' + fmtPktTimeShort(d.validUntil) + '</span>' : ''}</div>
       <div><span class="pc-label">${t('timeframeLbl')}</span><br><b>1H</b><br><span class="fine">15M entry</span></div>
-      <div><span class="pc-label">${t('liveMarketPrice')}</span><br><b id="sigLivePrice">${fmt(d.price, 2)}</b><br><span class="fine" id="sigLiveSync">${liveLine}</span></div>
+      <div><span class="pc-label">${t('liveMarketPrice')}</span><br><b id="sigLivePrice">${fmtPx(currentPair, d.price)}</b><br><span class="fine" id="sigLiveSync">${liveLine}</span></div>
     </div>
     ${d.direction === 'WAIT' ? `<p class="scan-line">● ${esc(t('scanningMarket'))}</p>` : ''}
   </div>`;
@@ -9079,10 +9103,10 @@ function downloadCardAction() {
 // Price tick par price card + signal card ki live values update karein (poora card dobara nahi banta).
 function updateTickValues(d) {
   const set = (id, txt) => { const el = document.getElementById(id); if (el && el.textContent !== txt) el.textContent = txt; };
-  set('pcPrice', fmt(d.price, 2));
-  set('pcBid', fmt(d.bid, 2));
-  set('pcAsk', fmt(d.ask, 2));
-  set('pcSpread', fmt(d.spread, 2));
+  set('pcPrice', fmtPx(currentPair, d.price));
+  set('pcBid', fmtPx(currentPair, d.bid));
+  set('pcAsk', fmtPx(currentPair, d.ask));
+  set('pcSpread', fmtPx(currentPair, d.spread));
   const info = lastPriceMap[currentPair] || {};
   if (info.change24h != null) {
     const chgEl = document.getElementById('pcChg');
@@ -9091,10 +9115,10 @@ function updateTickValues(d) {
       if (chgEl.textContent !== chgTxt) { chgEl.textContent = chgTxt; chgEl.className = info.change24h >= 0 ? 'up' : 'down'; }
     }
   }
-  set('sigLivePrice', fmt(d.price, 2));
+  set('sigLivePrice', fmtPx(currentPair, d.price));
   const cba = document.getElementById('chartBidAsk');
   if (cba) {
-    const cbaTxt = 'Bid ' + fmt(d.bid, 2) + ' · Ask ' + fmt(d.ask, 2) + ' · ' + t('pcSpread') + ' ' + fmt(d.spread, 2);
+    const cbaTxt = 'Bid ' + fmtPx(currentPair, d.bid) + ' · Ask ' + fmtPx(currentPair, d.ask) + ' · ' + t('pcSpread') + ' ' + fmtPx(currentPair, d.spread);
     if (cba.textContent !== cbaTxt) cba.textContent = cbaTxt;
   }
 }
@@ -9117,10 +9141,10 @@ async function loadTerminal(fromPrice, force) {
       const isActive = d.direction === plan.direction;
       return `<div class="plan-card ${isActive ? (plan.direction === 'BUY' ? 'active-buy' : 'active-sell') : ''}">
       <div class="plan-head"><b>${label} ${plan.direction}</b> <span class="status-badge ${statusCls}">${esc(t(statusKey))}</span>${isActive ? ' <span class="status-badge st-active">' + esc(t('activePlan')) + '</span>' : ''}</div>
-      ${t('entryZone')}: <b>${fmt(plan.entryZone[0], 2)} – ${fmt(plan.entryZone[1], 2)}</b> · ${t('trigger')}: <b>${fmt(plan.trigger, 2)}</b><br>
-      SL: <span class="sell"><b>${fmt(plan.sl, 2)}</b></span> · R:R ${esc(plan.rr || '')}<br>
-      TP1: <span class="buy"><b>${fmt(plan.tp1, 2)}</b></span> (${rrOf(plan.tp1)}) · TP2: <b>${fmt(plan.tp2, 2)}</b> (${rrOf(plan.tp2)}) · TP3: <b>${fmt(plan.tp3, 2)}</b> (${rrOf(plan.tp3)})<br>
-      ${d.tradeZone ? `${t('tradeZone')}: <b>${esc(d.tradeZone.type)} ${fmt(d.tradeZone.low, 2)} – ${fmt(d.tradeZone.high, 2)}</b>` : ''}
+      ${t('entryZone')}: <b>${fmtPx(currentPair, plan.entryZone[0])} – ${fmtPx(currentPair, plan.entryZone[1])}</b> · ${t('trigger')}: <b>${fmtPx(currentPair, plan.trigger)}</b><br>
+      SL: <span class="sell"><b>${fmtPx(currentPair, plan.sl)}</b></span> · R:R ${esc(plan.rr || '')}<br>
+      TP1: <span class="buy"><b>${fmtPx(currentPair, plan.tp1)}</b></span> (${rrOf(plan.tp1)}) · TP2: <b>${fmtPx(currentPair, plan.tp2)}</b> (${rrOf(plan.tp2)}) · TP3: <b>${fmtPx(currentPair, plan.tp3)}</b> (${rrOf(plan.tp3)})<br>
+      ${d.tradeZone ? `${t('tradeZone')}: <b>${esc(d.tradeZone.type)} ${fmtPx(currentPair, d.tradeZone.low)} – ${fmtPx(currentPair, d.tradeZone.high)}</b>` : ''}
       ${riskBoxHtml(plan)}
       <p class="fine">⏱ ${esc(t('bestTimeframe'))}</p>
       ${d.signalCode ? `<p class="fine">${t('signalCode')}: <b>${esc(d.signalCode)}</b> · ${t('validUntil')}: ${fmtPktTimeShort(d.validUntil)}</p>` : ''}
@@ -9134,7 +9158,7 @@ async function loadTerminal(fromPrice, force) {
     // v7 perf: price tick par poora card dobara na banayein — sirf tab jab signal ki asal values badlein.
     // Badli hui price sirf price card + signal card ki live values me update hoti hai (ids se), baaki card waisa ka waisa rehta hai.
     // termSig me bid/ask/spread/price nahi — wo har tick badalte hain, inhe tick update se handle karte hain.
-    const termSig = [d.direction, d.confluence, d.buyScore, d.sellScore, activePlan ? activePlan.trigger : '', activePlan ? activePlan.sl : '', activePlan ? activePlan.tp1 : '', activePlan ? activePlan.tp2 : '', activePlan ? activePlan.tp3 : '', d.smc ? d.smc.score : '', d.zoneBlocked, d.signalCode || '', d.smc && d.smc.demandZone ? d.smc.demandZone.join(',') : '', d.smc && d.smc.supplyZone ? d.smc.supplyZone.join(',') : '', lastPriceMap[currentPair] ? lastPriceMap[currentPair].change24h : '', tfSig()].join('|');
+    const termSig = [d.direction, d.confluence, d.buyScore, d.sellScore, activePlan ? activePlan.trigger : '', activePlan ? activePlan.sl : '', activePlan ? activePlan.tp1 : '', activePlan ? activePlan.tp2 : '', activePlan ? activePlan.tp3 : '', d.smc ? d.smc.score : '', d.zoneBlocked, d.signalCode || '', d.smc && d.smc.demandZone ? d.smc.demandZone.join(',') : '', d.smc && d.smc.supplyZone ? d.smc.supplyZone.join(',') : '', lastPriceMap[currentPair] ? lastPriceMap[currentPair].change24h : '', tfSig(), marketClosedNow(currentPair) ? 'closed' : 'open'].join('|');
     if (fromPrice && lastTerminalSig === termSig) {
       updateTickValues(d);
       renderSignalBanner(d);
@@ -9143,7 +9167,7 @@ async function loadTerminal(fromPrice, force) {
     lastTerminalSig = termSig;
     el.innerHTML = `
       <p class="fine">📌 ${esc(t('oneTradeLabel'))}</p>
-      ${d.marketClosed ? `<div class="market-closed-banner">⛔ <b>${esc(t('marketClosedTitle'))}</b><br>${esc(t('marketClosedText'))}</div>` : ''}
+      ${marketClosedNow(currentPair) ? `<div class="market-closed-banner">⛔ <b>${esc(t('marketClosedTitle'))}</b><br>${esc(t('marketClosedText'))}</div>` : ''}
       ${priceCardHtml(d)}
       ${signalCardHeadHtml(d)}
       ${confirmedHtml(d)}
@@ -9181,17 +9205,17 @@ async function loadIndicators() {
     const row = (k, v) => `<div class="gate"><span>${k}</span><span>${v}</span></div>`;
     body.innerHTML = `
       <p class="fine">${esc(t('indTfNote'))}</p>
-      <h4>${t('trend')}</h4>${row('EMA 20 (1H)', fmt(tf.ema20, 2))}${row('EMA 50 (1H)', fmt(tf.ema50, 2))}${row('EMA 200 (1H)', fmt(tf.ema200, 2))}${row('MACD (1H)', fmt(tf.macd, 2) + ' / Signal ' + fmt(tf.macdSignal, 2) + ' / Hist ' + fmt(tf.macdHist, 2))}${row('ADX 14 (1H)', fmt(tf.adx14, 1))}
+      <h4>${t('trend')}</h4>${row('EMA 20 (1H)', fmtPx(currentPair, tf.ema20))}${row('EMA 50 (1H)', fmtPx(currentPair, tf.ema50))}${row('EMA 200 (1H)', fmtPx(currentPair, tf.ema200))}${row('MACD (1H)', fmtPx(currentPair, tf.macd) + ' / Signal ' + fmtPx(currentPair, tf.macdSignal) + ' / Hist ' + fmtPx(currentPair, tf.macdHist))}${row('ADX 14 (1H)', fmt(tf.adx14, 1))}
       <h4>${t('momentum')}</h4>${row('RSI 14 (1H)', fmt(tf.rsi14, 1))}${row('Stochastic K/D (1H)', fmt(tf.stochK, 1) + ' / ' + fmt(tf.stochD, 1))}${row('CCI 20 (1H)', fmt(tf.cci, 1))}${row('Williams %R (1H)', fmt(tf.williamsR, 1))}
-      <h4>${t('volatility')}</h4>${row('ATR 14 (1H)', fmt(tf.atr14, 2))}${row('Bollinger Upper (1H)', fmt(tf.bbUpper, 2))}${row('Bollinger Middle (1H)', fmt(tf.bbMiddle, 2))}${row('Bollinger Lower (1H)', fmt(tf.bbLower, 2))}
+      <h4>${t('volatility')}</h4>${row('ATR 14 (1H)', fmtPx(currentPair, tf.atr14))}${row('Bollinger Upper (1H)', fmtPx(currentPair, tf.bbUpper))}${row('Bollinger Middle (1H)', fmtPx(currentPair, tf.bbMiddle))}${row('Bollinger Lower (1H)', fmtPx(currentPair, tf.bbLower))}
       <h4>${t('volume')}</h4>${row('OBV (1H)', fmt(tf.obv, 0))}${row('CMF (1H)', fmt(tf.cmf, 2))}${row('MFI 14 (1H)', fmt(tf.mfi, 1))}
-      <h4>${t('structure')}</h4>${row('Support (1H)', fmt(tf.support, 2))}${row('Resistance (1H)', fmt(tf.resistance, 2))}${row('Fibonacci 38.2% (1H)', fmt(tf.fib['38.2'], 2))}${row('Fibonacci 61.8% (1H)', fmt(tf.fib['61.8'], 2))}
-      <h4>${t('ichimoku')}</h4>${row('Tenkan (1H)', fmt(tf.tenkan, 2))}${row('Kijun (1H)', fmt(tf.kijun, 2))}${row('Span A (1H)', fmt(tf.spanA, 2))}${row('Span B (1H)', fmt(tf.spanB, 2))}${row('Chikou (1H)', fmt(tf.chikou, 2))}
-      <h4>${t('vwapSar')}</h4>${row('VWAP (1H)', fmt(tf.vwap, 2))}${row('Parabolic SAR (1H)', fmt(tf.sar, 2))}
+      <h4>${t('structure')}</h4>${row('Support (1H)', fmtPx(currentPair, tf.support))}${row('Resistance (1H)', fmtPx(currentPair, tf.resistance))}${row('Fibonacci 38.2% (1H)', fmtPx(currentPair, tf.fib['38.2']))}${row('Fibonacci 61.8% (1H)', fmtPx(currentPair, tf.fib['61.8']))}
+      <h4>${t('ichimoku')}</h4>${row('Tenkan (1H)', fmtPx(currentPair, tf.tenkan))}${row('Kijun (1H)', fmtPx(currentPair, tf.kijun))}${row('Span A (1H)', fmtPx(currentPair, tf.spanA))}${row('Span B (1H)', fmtPx(currentPair, tf.spanB))}${row('Chikou (1H)', fmtPx(currentPair, tf.chikou))}
+      <h4>${t('vwapSar')}</h4>${row('VWAP (1H)', fmtPx(currentPair, tf.vwap))}${row('Parabolic SAR (1H)', fmtPx(currentPair, tf.sar))}
       <h4>${t('tf15d')}</h4>
-      <p>15M — RSI ${fmt(d.timeframes['15m'].rsi14, 1)} · EMA20 ${fmt(d.timeframes['15m'].ema20, 2)} · ATR ${fmt(d.timeframes['15m'].atr14, 2)}</p>
-      <p>Daily — RSI ${fmt(d.timeframes['1D'].rsi14, 1)} · EMA20 ${fmt(d.timeframes['1D'].ema20, 2)} · ATR ${fmt(d.timeframes['1D'].atr14, 2)}</p>
-      ${d.pivots ? `<h4>${t('pivotTitle')}</h4>${row('P', fmt(d.pivots.P, 2))}${row('R1', fmt(d.pivots.R1, 2))}${row('R2', fmt(d.pivots.R2, 2))}${row('S1', fmt(d.pivots.S1, 2))}${row('S2', fmt(d.pivots.S2, 2))}` : ''}
+      <p>15M — RSI ${fmt(d.timeframes['15m'].rsi14, 1)} · EMA20 ${fmtPx(currentPair, d.timeframes['15m'].ema20)} · ATR ${fmtPx(currentPair, d.timeframes['15m'].atr14)}</p>
+      <p>Daily — RSI ${fmt(d.timeframes['1D'].rsi14, 1)} · EMA20 ${fmtPx(currentPair, d.timeframes['1D'].ema20)} · ATR ${fmtPx(currentPair, d.timeframes['1D'].atr14)}</p>
+      ${d.pivots ? `<h4>${t('pivotTitle')}</h4>${row('P', fmtPx(currentPair, d.pivots.P))}${row('R1', fmtPx(currentPair, d.pivots.R1))}${row('R2', fmtPx(currentPair, d.pivots.R2))}${row('S1', fmtPx(currentPair, d.pivots.S1))}${row('S2', fmtPx(currentPair, d.pivots.S2))}` : ''}
       <h4>${t('fearGreedTitle')}</h4><div id="fngBody"><p>${esc(t('loading'))}</p></div>`;
     loadFearGreed();
   } catch (e) { body.innerHTML = '<p>' + t('indLoadFail') + ' ' + esc(e.message) + '</p>'; }
@@ -9242,8 +9266,8 @@ function smcSetupCardHtml(d, sig) {
     </div>
     <div class="sig-meta">
       <div><span class="pc-label">${t('smcSetupQuality')}</span><br><b>${esc(smcGradeOf(d.score))}</b></div>
-      <div><span class="pc-label">${t('liveMarketPrice')}</span><br><b>${price == null ? '—' : fmt(price, 2)}</b></div>
-      <div><span class="pc-label">${t('pcSpread')}</span><br><b>${spread == null ? '—' : fmt(spread, 2)}</b></div>
+      <div><span class="pc-label">${t('liveMarketPrice')}</span><br><b>${price == null ? '—' : fmtPx(currentPair, price)}</b></div>
+      <div><span class="pc-label">${t('pcSpread')}</span><br><b>${spread == null ? '—' : fmtPx(currentPair, spread)}</b></div>
       <div><span class="pc-label">${t('smcBias')}</span><br><b>${esc(smcBiasOf(d))}</b></div>
     </div>
     ${ok ? `<p class="scan-line" style="color:#3ddc84">✓ ${esc(t('smcConfirmed80'))}</p>` : `<p class="scan-line">● ${esc(t('smcWaiting80'))} — ${d.score}% / 80%</p>`}
@@ -9265,16 +9289,16 @@ async function loadSmc() {
       <p class="score">${t('smcScore')}: ${d.score} / 100 (${t('gate')} 80%) — ${d.score >= 80 ? '<span class="buy">' + esc(t('smcConfirmStrong')) + '</span>' : '<span class="wait">' + esc(t('smcConfirmWeak')) + '</span>'}</p>
       <p class="fine">${esc(t('smcExplain'))}</p>
       ${d.parts.map(p => gateRowHtml(p.name, p.score, p.max)).join('')}
-      <h4>${t('swingLevels')}</h4><p>${t('swingHigh')}: ${fmt(d.swingHigh, 2)} · ${t('swingLow')}: ${fmt(d.swingLow, 2)}</p>
+      <h4>${t('swingLevels')}</h4><p>${t('swingHigh')}: ${fmtPx(currentPair, d.swingHigh)} · ${t('swingLow')}: ${fmtPx(currentPair, d.swingLow)}</p>
       <h4>${t('liqSweeps')}</h4><p>${esc(d.sweep)}</p>
       <h4>${t('orderBlocks')}</h4>
-      <p>${t('bullOB')}: ${d.bullOB ? fmt(d.bullOB.low, 2) + ' – ' + fmt(d.bullOB.high, 2) + (d.bullOB.mitigated ? ' (' + t('mitigated') + ')' : ' (' + t('fresh') + ')') : '—'}</p>
-      <p>${t('bearOB')}: ${d.bearOB ? fmt(d.bearOB.low, 2) + ' – ' + fmt(d.bearOB.high, 2) + (d.bearOB.mitigated ? ' (' + t('mitigated') + ')' : ' (' + t('fresh') + ')') : '—'}</p>
+      <p>${t('bullOB')}: ${d.bullOB ? fmtPx(currentPair, d.bullOB.low) + ' – ' + fmtPx(currentPair, d.bullOB.high) + (d.bullOB.mitigated ? ' (' + t('mitigated') + ')' : ' (' + t('fresh') + ')') : '—'}</p>
+      <p>${t('bearOB')}: ${d.bearOB ? fmtPx(currentPair, d.bearOB.low) + ' – ' + fmtPx(currentPair, d.bearOB.high) + (d.bearOB.mitigated ? ' (' + t('mitigated') + ')' : ' (' + t('fresh') + ')') : '—'}</p>
       <h4>${t('fvg')}</h4>
-      ${d.fvgs.length ? d.fvgs.map(f => `<p>${f.type}: ${fmt(f.low, 2)} – ${fmt(f.high, 2)}</p>`).join('') : '<p>' + esc(t('noFvg')) + '</p>'}
+      ${d.fvgs.length ? d.fvgs.map(f => `<p>${f.type}: ${fmtPx(currentPair, f.low)} – ${fmtPx(currentPair, f.high)}</p>`).join('') : '<p>' + esc(t('noFvg')) + '</p>'}
       <p>${t('microSweeps')}: ${d.sslSweeps} · ${t('liqPools')}: ${d.pools}</p>`;
     const macro = document.getElementById('smcMacro');
-    if (macro) macro.innerHTML = `<p><b>${t('macroTitle')}</b> — ${t('bos')}: ${d.bos ? '✓' : '—'} · ${t('mss')}: ${d.mss ? '✓' : '—'} · ${t('swingHigh')}: ${fmt(d.swingHigh, 2)} · ${t('swingLow')}: ${fmt(d.swingLow, 2)} · ${t('liqPools')}: ${d.pools}</p>`;
+    if (macro) macro.innerHTML = `<p><b>${t('macroTitle')}</b> — ${t('bos')}: ${d.bos ? '✓' : '—'} · ${t('mss')}: ${d.mss ? '✓' : '—'} · ${t('swingHigh')}: ${fmtPx(currentPair, d.swingHigh)} · ${t('swingLow')}: ${fmtPx(currentPair, d.swingLow)} · ${t('liqPools')}: ${d.pools}</p>`;
     const micro = document.getElementById('smcMicro');
     if (micro) micro.innerHTML = `<p>${t('microSweeps')}: <b>${d.sslSweeps}</b> · FVG: ${d.fvgs.length} · ${t('bullOB')}: ${d.bullOB ? (d.bullOB.mitigated ? t('mitigated') : t('fresh')) : '—'} · ${t('bearOB')}: ${d.bearOB ? (d.bearOB.mitigated ? t('mitigated') : t('fresh')) : '—'}</p>`;
   } catch (e) { el.innerHTML = '<p>' + t('smcLoadFail') + ' ' + esc(e.message) + '</p>'; }
@@ -9284,7 +9308,7 @@ async function loadScanner() {
   try {
     const d = await api('/api/scanner');
     el.innerHTML = `<div class="table-wrap"><table><tr><th>${t('pair')}</th><th>${t('price')}</th><th>${t('smcScore')}</th><th>${t('direction')}</th></tr>` +
-      d.rows.map(r => `<tr><td>${esc(r.pair)}</td><td>${fmt(r.price, 2)}</td><td>${r.smcScore == null ? '—' : r.smcScore + '/100'}</td><td>${esc(r.direction)}</td></tr>`).join('') + `</table></div>
+      d.rows.map(r => `<tr><td>${esc(r.pair)}</td><td>${fmtPx(r.pair, r.price)}</td><td>${r.smcScore == null ? '—' : r.smcScore + '/100'}</td><td>${esc(r.direction)}</td></tr>`).join('') + `</table></div>
       <p>${t('confirmedSignals')}: ${d.confirmedSignals} · ${t('cycleEvery')} ${d.cycleSec} ${t('cycleSec')}</p>` +
       smcPairCardsHtml(d.rows);
   } catch (e) { el.innerHTML = '<p>' + t('scannerFail') + ' ' + esc(e.message) + '</p>'; }
@@ -9292,9 +9316,9 @@ async function loadScanner() {
 // v9.5: SMC per-pair tasdeeq cards — scanner ke rows se (koi naya engine nahi, koi signal nahi).
 // Sirf score ring, bias, OB/FVG zones. Koi Entry/SL/TP, koi trade button, koi Copy/Share nahi.
 function smcPairCardHtml(r) {
-  const obLine = (ob) => ob ? fmt(ob.low, 2) + ' – ' + fmt(ob.high, 2) + ' (' + (ob.mitigated ? t('mitigated') : t('fresh')) + ')' : '—';
+  const obLine = (ob) => ob ? fmtPx(r.pair, ob.low) + ' – ' + fmtPx(r.pair, ob.high) + ' (' + (ob.mitigated ? t('mitigated') : t('fresh')) + ')' : '—';
   const fvgLine = r.fvgs && r.fvgs.length
-    ? r.fvgs.slice(0, 2).map(f => esc(f.type) + ': ' + fmt(f.low, 2) + ' – ' + fmt(f.high, 2)).join('<br>')
+    ? r.fvgs.slice(0, 2).map(f => esc(f.type) + ': ' + fmtPx(r.pair, f.low) + ' – ' + fmtPx(r.pair, f.high)).join('<br>')
     : esc(t('noFvg'));
   return `<div class="sig-card smc-pair-card">
     <div class="sig-head">
@@ -9303,7 +9327,7 @@ function smcPairCardHtml(r) {
       ${r.smcScore == null ? '' : confRingHtml(r.smcScore, 80)}
     </div>
     <div class="sig-meta">
-      <div><span class="pc-label">${t('liveMarketPrice')}</span><br><b>${r.price == null ? '—' : fmt(r.price, 2)}</b></div>
+      <div><span class="pc-label">${t('liveMarketPrice')}</span><br><b>${r.price == null ? '—' : fmtPx(r.pair, r.price)}</b></div>
       <div><span class="pc-label">${t('bullOB')}</span><br><b>${obLine(r.bullOB)}</b></div>
       <div><span class="pc-label">${t('bearOB')}</span><br><b>${obLine(r.bearOB)}</b></div>
       <div><span class="pc-label">${t('fvg')}</span><br><b>${fvgLine}</b></div>
@@ -9357,7 +9381,7 @@ async function loadHistory() {
   try {
     const d = await api('/api/history?outcome=' + o + '&engine=' + en);
     histSignals = d.signals || [];
-    el.innerHTML = d.signals.length ? d.signals.map((s, i) => `<div class="price-cell hist-row" style="margin:6px 0" onclick="toggleHistDetails(${i})"><b>${esc(s.pair)}</b> <span class="${s.direction === 'BUY' ? 'buy' : 'sell'}">${s.direction}</span> · ${fmtPktTime(s.createdAt)}<br>${t('entry')} ${fmt(s.entry, 2)} · SL ${fmt(s.sl, 2)} · TP1 ${fmt(s.tp1, 2)} · TP2 ${fmt(s.tp2, 2)} · TP3 ${fmt(s.tp3, 2)} · Score ${s.score}% · ${esc(s.engine)} · <b>${esc(s.outcome || 'In-Flight')}</b><br><button class="btn-sig-sm" onclick="event.stopPropagation();copyHistorySignal(${i})">${esc(t('copySignal'))}</button> <button class="btn-sig-sm" onclick="event.stopPropagation();downloadHistorySignal(${i})">${esc(t('downloadSignal'))}</button> <button class="btn-sig-sm" onclick="event.stopPropagation();openShareCard(histSignals[${i}])">${esc(t('shareCard'))}</button> <button class="btn-sig-sm" onclick="event.stopPropagation();toggleHistDetails(${i})">${esc(t('detailsBtn'))}</button><div id="hist-det-${i}" style="display:${histOpenDetails[i] ? 'block' : 'none'}">${histDetailsHtml(s)}</div></div>`).join('') : '<p>' + esc(t('noSignals')) + '</p>';
+    el.innerHTML = d.signals.length ? d.signals.map((s, i) => `<div class="price-cell hist-row" style="margin:6px 0" onclick="toggleHistDetails(${i})"><b>${esc(s.pair)}</b> <span class="${s.direction === 'BUY' ? 'buy' : 'sell'}">${s.direction}</span> · ${fmtPktTime(s.createdAt)}<br>${t('entry')} ${fmtPx(s.pair, s.entry)} · SL ${fmtPx(s.pair, s.sl)} · TP1 ${fmtPx(s.pair, s.tp1)} · TP2 ${fmtPx(s.pair, s.tp2)} · TP3 ${fmtPx(s.pair, s.tp3)} · Score ${s.score}% · ${esc(s.engine)} · <b>${esc(s.outcome || 'In-Flight')}</b><br><button class="btn-sig-sm" onclick="event.stopPropagation();copyHistorySignal(${i})">${esc(t('copySignal'))}</button> <button class="btn-sig-sm" onclick="event.stopPropagation();downloadHistorySignal(${i})">${esc(t('downloadSignal'))}</button> <button class="btn-sig-sm" onclick="event.stopPropagation();openShareCard(histSignals[${i}])">${esc(t('shareCard'))}</button> <button class="btn-sig-sm" onclick="event.stopPropagation();toggleHistDetails(${i})">${esc(t('detailsBtn'))}</button><div id="hist-det-${i}" style="display:${histOpenDetails[i] ? 'block' : 'none'}">${histDetailsHtml(s)}</div></div>`).join('') : '<p>' + esc(t('noSignals')) + '</p>';
   } catch (e) { el.innerHTML = '<p>' + esc(e.message) + '</p>'; }
 }
 // History per-row details — RECORDED gate breakdown (audit). Purane signals me gates save nahi hue.
@@ -9381,7 +9405,20 @@ async function loadRefiner() {
     el.innerHTML = `<p>${t('cutoff')} ${d.cutoff}% — ${t('qualifying')}: ${d.qualifying} · ${t('simWinRate')}: ${d.winRate == null ? '—' : d.winRate + '%'}</p><p>${esc(d.note)}</p>`;
   } catch (e) { el.innerHTML = '<p>' + esc(e.message) + '</p>'; }
 }
-function exportCsv() { window.open('/api/export.csv?engine=terminal', '_blank'); }
+// v9.6.1: Bearer token ke baghair plain navigation /api/export.csv par
+// not_logged_in deta hai (server sirf Authorization header padhta hai,
+// koi session cookie nahi) — is liye token ke saath fetch karke Blob download karte hain.
+async function exportCsv() {
+  try {
+    const r = await fetch('/api/export.csv?engine=terminal', { headers: token ? { Authorization: 'Bearer ' + token } : {} });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const blob = await r.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'forex-trading-pro-signals.csv'; a.click();
+    setTimeout(() => { try { URL.revokeObjectURL(url); } catch (e) {} }, 2000);
+  } catch (e) { alert(e.message); }
+}
 
 // ---- Account: 9 sub-tabs ----
 const ACCT_TAB_KEYS = ['overview', 'engineControls', 'signalDetails', 'signalHistory', 'tfMatrix', 'trackingLogs', 'exportCsv', 'aiAgent', 'preferences'];
@@ -9458,7 +9495,7 @@ async function loadAcct() {
       // Ek direction, ek trade — sirf wo plan dikhao jo gate paar kare (Terminal jaisa)
       const p = d.direction === 'BUY' ? d.buyPlan : d.direction === 'SELL' ? d.sellPlan : null;
       el.innerHTML = d.error ? '<p>' + esc(d.message) + '</p>' : p
-        ? `<p><b>${d.direction}</b> — ${t('entryZone')} ${fmt(p.entryZone[0], 2)} – ${fmt(p.entryZone[1], 2)} · ${t('trigger')} ${fmt(p.trigger, 2)} · SL ${fmt(p.sl, 2)} · TP ${fmt(p.tp1, 2)} / ${fmt(p.tp2, 2)} / ${fmt(p.tp3, 2)} · ${t('confluence')} ${d.confluence}%</p><p class="fine">📌 ${esc(t('oneTradeNote'))}</p>${whyTradeHtml(d)}`
+        ? `<p><b>${d.direction}</b> — ${t('entryZone')} ${fmtPx(currentPair, p.entryZone[0])} – ${fmtPx(currentPair, p.entryZone[1])} · ${t('trigger')} ${fmtPx(currentPair, p.trigger)} · SL ${fmtPx(currentPair, p.sl)} · TP ${fmtPx(currentPair, p.tp1)} / ${fmtPx(currentPair, p.tp2)} / ${fmtPx(currentPair, p.tp3)} · ${t('confluence')} ${d.confluence}%</p><p class="fine">📌 ${esc(t('oneTradeNote'))}</p>${whyTradeHtml(d)}`
         : '<p>' + esc(t('waitNoTrade')) + ' — ' + t('confluence') + ' ' + d.confluence + '%</p><p class="fine">📌 ' + esc(t('oneTradeNote')) + '</p>';
     } else if (acctTab === 'signalHistory') {
       el.innerHTML = `<p>${esc(t('historyTabText'))}</p><button class="btn small gold" onclick="showTab('history')">${t('openHistory')}</button>`;
@@ -9497,7 +9534,7 @@ async function loadTfMatrix() {
   try {
     const d = await api('/api/tfmatrix?pair=' + currentPair);
     el.innerHTML = `<div class="table-wrap"><table><tr><th>TF</th><th>${t('rsi')}</th><th>${t('ema20')}</th><th>${t('macdHist')}</th><th>${t('adx')}</th><th>${t('signal')}</th></tr>` +
-      d.rows.map(r => `<tr><td>${esc(r.tf)}</td><td>${r.rsi ?? '—'}</td><td>${fmt(r.ema20, 2)}</td><td>${fmt(r.macdHist, 2)}</td><td>${r.adx ?? '—'}</td><td>${esc(r.signal)}</td></tr>`).join('') + `</table></div><p>${esc(d.note)}</p>`;
+      d.rows.map(r => `<tr><td>${esc(r.tf)}</td><td>${r.rsi ?? '—'}</td><td>${fmtPx(currentPair, r.ema20)}</td><td>${fmtPx(currentPair, r.macdHist)}</td><td>${r.adx ?? '—'}</td><td>${esc(r.signal)}</td></tr>`).join('') + `</table></div><p>${esc(d.note)}</p>`;
   } catch (e) { el.innerHTML = '<p>' + esc(e.message) + '</p>'; }
 }
 async function toggleEngine(k, val) {
@@ -9559,6 +9596,26 @@ async function createBuyer() {
   const plan = document.getElementById('newBuyerPlan').value;
   try { await api('/api/admin/users', { method: 'POST', body: JSON.stringify({ username, password, plan }) }); alert(t('buyerCreated') + ': ' + username + ' (' + plan + ')'); loadAdmin(); }
   catch (e) { alert(e.message); }
+}
+// v9.6.1: Admin backup — users/settings/logs/signals ek JSON file me.
+// Server ke /api/admin/users me pehle se password hash/salt/Telegram code nahi aate,
+// aur /api/settings, /api/logs, /api/history me bhi koi password ya Telegram link/token
+// nahi hota — backup me sirf wahi jo API deti hai (raw db.json kabhi download nahi hota).
+async function downloadBackup() {
+  if (!me || me.role !== 'admin') return;
+  const msg = document.getElementById('backupMsg');
+  const setMsg = (s) => { if (msg) msg.textContent = s; };
+  try {
+    setMsg(t('backupWorking'));
+    const [u, s, l, h] = await Promise.all([api('/api/admin/users'), api('/api/settings'), api('/api/logs'), api('/api/history')]);
+    const backup = { app: 'Forex Trading Pro', exportedAt: new Date().toISOString(), exportedBy: me.username, counts: { total: u.total, active: u.active, expired: u.expired }, users: u.users || [], settings: s.settings || {}, logs: l.logs || [], signals: h.signals || [] };
+    const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'forex-trading-pro-backup-' + new Date().toISOString().slice(0, 10) + '.json'; a.click();
+    setTimeout(() => { try { URL.revokeObjectURL(url); } catch (e) {} }, 2000);
+    setMsg(t('backupDone'));
+  } catch (e) { setMsg(e.message); }
 }
 async function adminAction(username, action) {
   try { await api('/api/admin/users/' + encodeURIComponent(username) + '/' + action, { method: 'POST' }); loadAdmin(); }
