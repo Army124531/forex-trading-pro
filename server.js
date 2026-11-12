@@ -585,7 +585,7 @@ function computeIndicators(candles) {
     stochK: st.k, stochD: st.d, cci, williamsR: wr,
     tenkan, kijun, spanA, spanB, chikou, vwap,
     obv, cmf, mfi, support, resistance, fib, sar,
-    lastPrice: last.c,
+    lastPrice: last.c, lastOpen: last.o,
   };
 }
 function findSwings(candles) {
@@ -1752,7 +1752,7 @@ app.get('/api/indicators', requireAuth, async (req, res) => {
   const pair = (req.query.pair || 'XAUUSD').toUpperCase();
   const out = {};
   let candles1h = [];
-  for (const tf of ['15m', '30m', '1H', '4H', '1D']) {
+  for (const tf of ['1m', '5m', '15m', '30m', '1H', '4H', '1D']) {
     const candles = await getCandles(pair, tf);
     if (tf === '1H') candles1h = candles;
     out[tf] = candles.length ? computeIndicators(candles) : { error: 'no_data' };
