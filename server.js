@@ -412,6 +412,99 @@ function dailyPivots(candles, dec) {
   return { P: f(P), R1: f(2 * P - L), S1: f(2 * P - H), R2: f(P + (H - L)), S2: f(P - (H - L)), dayHigh: H, dayLow: L, dayClose: C };
 }
 
+// Gold Buy/Sell Zones (v9.6.3): asal 1H candles se — pivot (3/3) + impulse (1.0 x ATR(14)).
+// Supply (SELL) zone: pivot high, phir price zor se neeche. Demand (BUY) zone: pivot low, phir price zor se upar.
+// Zone toot jata hai jab 1H candle uske bahar close ho (supply ke upar / demand ke neeche).
+// Re-entry par tests++ (sirf tab jab pichli candle zone ke andar nahi thi).
+// Sirf display — signal engine inhe use nahi karta. Sirf XAUUSD ke liye.
+function computeZones(candles) {
+  if (!candles || candles.length < 25) return null;
+  const n = candles.length;
+  const atr = atrArr(candles, 14);
+  const supply = [], demand = [];
+  const inZone = (z, k) => candles[k].l <= z.top && candles[k].h >= z.bottom;
+  for (let k = 0; k < n; k++) {
+    const c = candles[k];
+    // Maujooda zones: break / test (formation bar par test nahi — sirf baad wali bars par)
+    for (let s = supply.length - 1; s >= 0; s--) {
+      const z = supply[s];
+      if (c.c > z.top) { supply.splice(s, 1); continue; }
+      if (k > 0 && inZone(z, k) && !inZone(z, k - 1)) z.tests++;
+    }
+    for (let s = demand.length - 1; s >= 0; s--) {
+      const z = demand[s];
+      if (c.c < z.bottom) { demand.splice(s, 1); continue; }
+      if (k > 0 && inZone(z, k) && !inZone(z, k - 1)) z.tests++;
+    }
+    // Naya zone: pivot i = k-3, confirm bar k
+    const i = k - 3;
+    if (i >= 3 && i <= n - 4) {
+      const a = atr[k];
+      if (a != null && a > 0) {
+        const hi = candles[i].h, lo = candles[i].l;
+        let isPH = true, isPL = true;
+        for (let d = 1; d <= 3; d++) {
+          if (!(hi > candles[i - d].h) || !(hi >= candles[i + d].h)) isPH = false;
+          if (!(lo < candles[i - d].l) || !(lo <= candles[i + d].l)) isPL = false;
+        }
+        if (isPH) {
+          let bot = Infinity;
+          for (let b = k - 6; b <= k; b++) bot = Math.min(bot, candles[b].l);
+          if (hi - c.c > 1.0 * a) {
+            supply.push({ side: 'supply', top: hi, bottom: bot, tests: 0, formedAt: candles[i].t, confirmedAt: candles[k].t });
+            if (supply.length > 5) supply.shift();
+          }
+        }
+        if (isPL) {
+          let top = -Infinity;
+          for (let b = k - 6; b <= k; b++) top = Math.max(top, candles[b].h);
+          if (c.c - lo > 1.0 * a) {
+            demand.push({ side: 'demand', top, bottom: lo, tests: 0, formedAt: candles[i].t, confirmedAt: candles[k].t });
+            if (demand.length > 5) demand.shift();
+          }
+        }
+      }
+    }
+  }
+  const price = candles[n - 1].c;
+  const lastAtr = atr[n - 1];
+  let nearestBuy = null, nearestSell = null;
+  for (const z of demand) if (z.top <= price && (!nearestBuy || z.top > nearestBuy.top)) nearestBuy = z;
+  for (const z of supply) if (z.bottom >= price && (!nearestSell || z.bottom < nearestSell.bottom)) nearestSell = z;
+  const inBuy = demand.some(z => price >= z.bottom && price <= z.top);
+  const inSell = supply.some(z => price >= z.bottom && price <= z.top);
+  let status;
+  if (!supply.length && !demand.length) status = 'none';
+  else if (inBuy) status = 'in_buy';
+  else if (inSell) status = 'in_sell';
+  else if (nearestBuy && lastAtr != null && price - nearestBuy.top <= 0.5 * lastAtr) status = 'near_buy';
+  else if (nearestSell && lastAtr != null && nearestSell.bottom - price <= 0.5 * lastAtr) status = 'near_sell';
+  else status = 'between';
+  return { price, atr: lastAtr, supply: supply.slice().reverse(), demand: demand.slice().reverse(), nearestBuy, nearestSell, status };
+}
+
+// ---------------- Trend Panel (v9.6.4) ----------------
+// TradingView Trend Panel ka hisaab, asal candles se — display only, koi signal nahi.
+// Har timeframe — TradingView panel wala asal rule (Pine):
+// Bullish = close > EMA50 aur EMA20 > EMA50; Bearish = close < EMA50 aur EMA20 < EMA50; warna Mixed.
+// Overall BUY sirf jab 15m+30m+1H+4H sab Bullish, SELL sirf jab sab Bearish — Daily sirf dikhaya jata hai.
+function trendStateOf(tf) {
+  if (!tf || tf.error || tf.ema20 == null || tf.ema50 == null || tf.lastPrice == null) return 'nodata';
+  if (tf.lastPrice > tf.ema50 && tf.ema20 > tf.ema50) return 'bullish';
+  if (tf.lastPrice < tf.ema50 && tf.ema20 < tf.ema50) return 'bearish';
+  return 'mixed';
+}
+function computeTrendPanel(timeframes) {
+  const tfs = ['15m', '30m', '1H', '4H', '1D'];
+  const rows = tfs.map(tf => {
+    const d = timeframes ? timeframes[tf] : null;
+    return { tf, state: trendStateOf(d), ema20: d && !d.error ? d.ema20 : null, ema50: d && !d.error ? d.ema50 : null, price: d && !d.error ? d.lastPrice : null };
+  });
+  const core = rows.slice(0, 4).map(r => r.state);
+  const overall = core.every(s => s === 'bullish') ? 'BUY' : core.every(s => s === 'bearish') ? 'SELL' : 'WAIT';
+  return { rows, overall };
+}
+
 function computeIndicators(candles) {
   const closes = candles.map(c => c.c);
   const last = candles[candles.length - 1];
@@ -1425,7 +1518,9 @@ function isMarketClosed(pairId, date) {
 // compute karke record karein — chahe koi user site khole ya na khole. Signal ka
 // hisaab bilkul wahi hai jo user visit par hota hai (computeSignal); sirf waqt
 // badalta hai, signal nahi. WAIT kabhi record nahi hota.
-const RECORDER_PAIRS = ['XAUUSD', 'EURUSD', 'GBPUSD', 'BTCUSD'];
+// Background recorder (v9.6.4): tamam 15 pairs — Telegram alert site band ho tab bhi aaye.
+// (Pehle sirf 4 pairs the; baaki 11 ka signal sirf user visit par banta tha.)
+const RECORDER_PAIRS = PAIRS.map(p => p.id);
 let recorderRunning = false;
 async function recorderTick(computeFn) {
   if (recorderRunning) return { skipped: true };
@@ -1593,9 +1688,10 @@ app.get('/api/signal', requireAuth, async (req, res) => {
 app.get('/api/indicators', requireAuth, async (req, res) => {
   const pair = (req.query.pair || 'XAUUSD').toUpperCase();
   const out = {};
-  for (const tf of ['15m', '1H', '1D']) {
-    const iv = tf === '15m' ? '15m' : tf === '1H' ? '1H' : '1D';
-    const candles = await getCandles(pair, iv);
+  let candles1h = [];
+  for (const tf of ['15m', '30m', '1H', '4H', '1D']) {
+    const candles = await getCandles(pair, tf);
+    if (tf === '1H') candles1h = candles;
     out[tf] = candles.length ? computeIndicators(candles) : { error: 'no_data' };
   }
   // Scorecard /100: 5 hisse x 20 (Trend, Momentum, Volatility, Strength, Structure)
@@ -1611,8 +1707,10 @@ app.get('/api/indicators', requireAuth, async (req, res) => {
     parts.push({ name: 'Trend', score: trend, max: 20 }, { name: 'Momentum', score: mom, max: 20 }, { name: 'Volatility', score: vol, max: 20 }, { name: 'Strength', score: str, max: 20 }, { name: 'Structure', score: struct, max: 20 });
   }
   // Pivot points: pichle poore UTC din se (asal 1H candles)
-  const pivots = dailyPivots(await getCandles(pair, '1H'), (PAIRS.find(p => p.id === pair) || {}).dec);
-  res.json({ pair, timeframes: out, scorecard: { score, parts, note: 'Score asal Kraken candles se banta hai.' }, pivots });
+  const pivots = dailyPivots(candles1h, (PAIRS.find(p => p.id === pair) || {}).dec);
+  // Gold zones (v9.6.3): sirf XAUUSD, asal 1H candles se — display only.
+  // Trend Panel (v9.6.4): 15m/30m/1H/4H/1D EMA trend — display only.
+  res.json({ pair, timeframes: out, scorecard: { score, parts, note: 'Score asal Kraken candles se banta hai.' }, pivots, zones: pair === 'XAUUSD' ? computeZones(candles1h) : null, panel: computeTrendPanel(out) });
 });
 
 // Candles (Terminal chart ke liye — asal Kraken/Yahoo candles)
@@ -2010,5 +2108,5 @@ app.listen(PORT, () => console.log('Forex Trading Pro chal raha hai: http://loca
 
 // Test ke liye (NODE_ENV=test) — production me kuch nahi badalta.
 if (process.env.NODE_ENV === 'test') {
-  module.exports = { recordTerminalSignal, sendSignalAlert, buildTelegramMessage, parseTelegramUpdates, applyTelegramUpdates, telegramPollUpdates, recorderTick, backgroundTick, ensureTgCode, buyerActive, gateScore, isMarketClosed, getDb: () => db, telegramDryRunSent };
+  module.exports = { recordTerminalSignal, sendSignalAlert, buildTelegramMessage, parseTelegramUpdates, applyTelegramUpdates, telegramPollUpdates, recorderTick, backgroundTick, ensureTgCode, buyerActive, gateScore, isMarketClosed, computeZones, computeTrendPanel, getDb: () => db, telegramDryRunSent };
 }
