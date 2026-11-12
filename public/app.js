@@ -469,6 +469,13 @@ const I18N = {
     confluenceLbl: "Confluence",
     pending: "PENDING",
     hit: "HIT",
+    tpStatusLbl: "TP Status",
+    beLbl: "Break-Even",
+    beActive: "Active",
+    beNotYet: "Abhi nahi",
+    dcaLbl: "DCA Entry",
+    dcaNotActive: "Not Activated",
+    monLbl: "Monitoring",
     sentimentWave: "Sentiment Wave — computed (prediction nahi)",
     sentimentWaveNote: "Ye sentiment asal RSI, trend aur zones se hisaab hota hai — ye koi prediction nahi hai.",
     demandIndex: "Demand Index",
@@ -478,6 +485,37 @@ const I18N = {
     gatesNotSaved: "Gate details is signal ke liye save nahi hui.",
     detailsBtn: "Details",
     pivotTitle: "Pivot Points (pichla din)",
+    zonesTitle: "Gold Buy/Sell Zones",
+    zonesBanner: "YE SIGNAL NAHI HAI — sirf zones dikhata hai",
+    zonesText: "Ye zones asal 1H candles se bante hain — pivot + impulse (1.0 x ATR) wale rules, wahi jo TradingView zones indicator mein hain. Sirf Gold (XAUUSD) ke liye. Trade sirf Terminal signal par lein.",
+    zonesBuy: "BUY Zone",
+    zonesSell: "SELL Zone",
+    zonesFresh: "Fresh",
+    zonesTested: "Tested",
+    zonesNearestBuy: "Qareebi BUY Zone",
+    zonesNearestSell: "Qareebi SELL Zone",
+    zonesStatus: "Status",
+    zonesPrice: "Price (1H close)",
+    zonesNone: "Abhi koi zone nahi bana.",
+    zonesInBuy: "Price BUY zone ke andar hai",
+    zonesInSell: "Price SELL zone ke andar hai",
+    zonesNearBuy: "Price BUY zone ke qareeb hai",
+    zonesNearSell: "Price SELL zone ke qareeb hai",
+    zonesBetween: "Price zones ke beech mein hai",
+    panelTitle: "Trend Panel",
+    panelBanner: "YE SIGNAL NAHI HAI — sirf trend dikhata hai",
+    panelText: "Ye panel asal candles se 15m/30m/1H/4H/D ka EMA 20/50 trend dikhata hai — wahi hisaab jo TradingView wale Trend Panel mein hai. Trade sirf Terminal signal par lein.",
+    panelBullish: "Bullish",
+    panelBearish: "Bearish",
+    panelMixed: "Mixed",
+    panelOverall: "Overall",
+    panelBuy: "BUY",
+    panelSell: "SELL",
+    panelWait: "WAIT",
+    tvTitle: "TradingView Chart",
+    tvNote: "Ye TradingView ka live chart hai — aap ke Pine wale zones/strategy is chart ke andar nahi dikhte. Wo website ke apne Zones + Trend Panel mein dikhte hain (upar).",
+    tvOpenBtn: "TradingView par apna chart kholein",
+    tvLoadFail: "TradingView chart load nahi hua — neeche wale button se apna chart kholein.",
     fearGreedTitle: "Bitcoin Fear & Greed (alternative.me)",
     fearGreedNa: "Fear & Greed abhi nahi mil saka.",
     riskProfile: "Risk Profile",
@@ -1012,6 +1050,13 @@ const I18N = {
     confluenceLbl: "Confluence",
     pending: "PENDING",
     hit: "HIT",
+    tpStatusLbl: "TP Status",
+    beLbl: "Break-Even",
+    beActive: "Active",
+    beNotYet: "Not yet",
+    dcaLbl: "DCA Entry",
+    dcaNotActive: "Not Activated",
+    monLbl: "Monitoring",
     sentimentWave: "Sentiment Wave — computed (not a prediction)",
     sentimentWaveNote: "This sentiment is calculated from real RSI, trend and zones — it is not a prediction.",
     demandIndex: "Demand Index",
@@ -1021,6 +1066,37 @@ const I18N = {
     gatesNotSaved: "Gate details were not saved for this signal.",
     detailsBtn: "Details",
     pivotTitle: "Pivot Points (previous day)",
+    zonesTitle: "Gold Buy/Sell Zones",
+    zonesBanner: "NOT A SIGNAL — zones display only",
+    zonesText: "These zones are built from real 1H candles — pivot + impulse (1.0 x ATR) rules, the same as the TradingView zones indicator. Gold (XAUUSD) only. Take trades only on Terminal signals.",
+    zonesBuy: "BUY Zone",
+    zonesSell: "SELL Zone",
+    zonesFresh: "Fresh",
+    zonesTested: "Tested",
+    zonesNearestBuy: "Nearest BUY Zone",
+    zonesNearestSell: "Nearest SELL Zone",
+    zonesStatus: "Status",
+    zonesPrice: "Price (1H close)",
+    zonesNone: "No zone formed yet.",
+    zonesInBuy: "Price is inside a BUY zone",
+    zonesInSell: "Price is inside a SELL zone",
+    zonesNearBuy: "Price is near a BUY zone",
+    zonesNearSell: "Price is near a SELL zone",
+    zonesBetween: "Price is between zones",
+    panelTitle: "Trend Panel",
+    panelBanner: "NOT A SIGNAL — trend display only",
+    panelText: "This panel shows the EMA 20/50 trend on 15m/30m/1H/4H/D from real candles — the same logic as the TradingView Trend Panel. Take trades only on Terminal signals.",
+    panelBullish: "Bullish",
+    panelBearish: "Bearish",
+    panelMixed: "Mixed",
+    panelOverall: "Overall",
+    panelBuy: "BUY",
+    panelSell: "SELL",
+    panelWait: "WAIT",
+    tvTitle: "TradingView Chart",
+    tvNote: "This is TradingView's live chart — your Pine zones/strategy do not appear inside it. They appear in the website's own Zones + Trend Panel above.",
+    tvOpenBtn: "Open my chart on TradingView",
+    tvLoadFail: "TradingView chart did not load — open your chart with the button below.",
     fearGreedTitle: "Bitcoin Fear & Greed (alternative.me)",
     fearGreedNa: "Fear & Greed is not available right now.",
     riskProfile: "Risk Profile",
@@ -8137,7 +8213,7 @@ function buildPairSelect() {
   document.getElementById('pairSelect').innerHTML = PAIR_IDS.map(id =>
     `<button class="${id === currentPair ? 'active' : ''}" onclick="selectPair('${id}')">${id.replace('USD', '/USD')}</button>`).join('');
 }
-function selectPair(id) { currentPair = id; buildPairSelect(); loadTerminal(); loadIndicators(); loadSmc(); loadTfMatrix(); loadChart(); loadIndStrip(); }
+function selectPair(id) { currentPair = id; buildPairSelect(); loadTerminal(); loadIndicators(); loadSmc(); loadTfMatrix(); loadChart(); loadIndStrip(); if (currentTab === 'indicators') initTvChart(); }
 function showTab(t) {
   // v9.3-sec: Admin tab sirf admin khol sakta hai — buyer yahan aaye to Terminal par
   // wapas bhej dein aur koi purana admin data bhi na dikhe.
@@ -8151,7 +8227,7 @@ function showTab(t) {
   document.querySelectorAll('.tab').forEach(s => s.style.display = 'none');
   document.getElementById('tab-' + t).style.display = 'block';
   if (t === 'terminal') { loadTerminal(); loadChart(); loadIndStrip(); }
-  if (t === 'indicators') loadIndicators();
+  if (t === 'indicators') { loadIndicators(); initTvChart(); }
   if (t === 'smc') { loadSmc(); loadScanner(); loadSmcFeed(); }
   if (t === 'session') { loadSession(); loadNews(); }
   if (t === 'history') { loadHistory(); loadPerf(); loadRefiner(); }
@@ -8539,6 +8615,49 @@ function signalToShare(sig) {
     score: sig.score, rr: rr, time: sig.time || sig.createdAt || Date.now(),
   };
 }
+// v9.6.2: Live TP / Break-Even / DCA / Monitoring rows — sirf live price se (koi value banayi nahi jati).
+// BUY: price >= TP → HIT; SELL: price <= TP → HIT. Break-Even Active sirf jab TP1 HIT ho (+1R) —
+// tab buyer SL ko entry par le ja sakta hai. DCA engine me nahi hai, is liye hamesha "Not Activated".
+// Monitoring: pair ki live price + aakhri price update se guzre seconds.
+function tpHitNow(direction, price, tp) {
+  if (price == null || tp == null || isNaN(price) || isNaN(tp)) return false;
+  return direction === 'BUY' ? price >= tp : price <= tp;
+}
+function tpStatusText(direction, price, tp) {
+  return tpHitNow(direction, price, tp) ? '✓ ' + t('hit') : t('pending');
+}
+function beStatusText(direction, price, tp1) {
+  return tpHitNow(direction, price, tp1) ? t('beActive') : t('beNotYet');
+}
+// Live price ek signal ke pair ke liye: price feed se (lastPriceMap), warna last signal data se.
+function livePriceFor(pair) {
+  const info = lastPriceMap[pair];
+  if (info && info.price != null) return info.price;
+  if (lastSignalData && lastSignalData.price != null && pair === currentPair) return lastSignalData.price;
+  return null;
+}
+function priceAgeSec() {
+  return lastUpdateAt ? Math.floor((Date.now() - lastUpdateAt) / 1000) : null;
+}
+function statusSpanHtml(id, hit) {
+  return '<span id="' + id + '" class="' + (hit ? 'buy' : 'fine') + '">' + (hit ? '<b>✓ ' + esc(t('hit')) + '</b>' : esc(t('pending'))) + '</span>';
+}
+// Terminal plan card ki live status rows (BUY/SELL plan par hi banti hain — WAIT par plan nahi hota).
+function liveStatusRowsHtml(d, plan) {
+  const dir = d.direction;
+  const price = d.price;
+  const tp1Hit = tpHitNow(dir, price, plan.tp1);
+  const tp2Hit = tpHitNow(dir, price, plan.tp2);
+  const tp3Hit = tpHitNow(dir, price, plan.tp3);
+  const age = priceAgeSec();
+  const be = tp1Hit
+    ? '<span id="beSt" class="buy"><b>' + esc(t('beActive')) + '</b></span>'
+    : '<span id="beSt" class="fine">' + esc(t('beNotYet')) + '</span>';
+  return t('tpStatusLbl') + ': TP1 ' + statusSpanHtml('tpSt1', tp1Hit) + ' · TP2 ' + statusSpanHtml('tpSt2', tp2Hit) + ' · TP3 ' + statusSpanHtml('tpSt3', tp3Hit) + '<br>'
+    + t('beLbl') + ': ' + be + '<br>'
+    + t('dcaLbl') + ': <span class="fine">' + esc(t('dcaNotActive')) + '</span><br>'
+    + t('monLbl') + ': <b id="monPrice">' + (price == null ? '—' : fmtPx(currentPair, price)) + '</b> · <span id="monAge" class="fine">' + (age == null ? '—' : age + ' ' + esc(t('secAgo'))) + '</span><br>';
+}
 function buildSignalText(sig) {
   const s = signalToShare(sig);
   const emoji = s.direction === 'BUY' ? '🟢' : '🔴';
@@ -8549,6 +8668,13 @@ function buildSignalText(sig) {
     'TP1: ' + fmtPx(s.pair, s.tp1) + ' | TP2: ' + fmtPx(s.pair, s.tp2) + ' | TP3: ' + fmtPx(s.pair, s.tp3),
   ];
   if (s.score != null) lines.push('Score: ' + s.score + '%' + (s.rr ? ' · R:R ' + s.rr : ''));
+  // v9.6.2: card wali chaar rows — wahi values, live price se (price na mile to Pending/Not yet — HIT kabhi claim nahi hota).
+  const livePrice = livePriceFor(s.pair);
+  const age = priceAgeSec();
+  lines.push(t('tpStatusLbl') + ': TP1 ' + tpStatusText(s.direction, livePrice, s.tp1) + ' · TP2 ' + tpStatusText(s.direction, livePrice, s.tp2) + ' · TP3 ' + tpStatusText(s.direction, livePrice, s.tp3));
+  lines.push(t('beLbl') + ': ' + beStatusText(s.direction, livePrice, s.tp1));
+  lines.push(t('dcaLbl') + ': ' + t('dcaNotActive'));
+  lines.push(t('monLbl') + ': ' + (livePrice == null ? '—' : fmtPx(s.pair, livePrice) + ' · ' + (age == null ? '—' : age + ' ' + t('secAgo'))));
   lines.push('Forex Trading Pro · ' + fmtPktTime(s.time) + ' PKT');
   return lines.join('\n');
 }
@@ -9116,6 +9242,19 @@ function updateTickValues(d) {
     }
   }
   set('sigLivePrice', fmtPx(currentPair, d.price));
+  // v9.6.2: live status rows — har tick par taaza (poora card dobara nahi banta).
+  const setStatus = (id, hit) => { const el = document.getElementById(id); if (!el) return; el.className = hit ? 'buy' : 'fine'; el.innerHTML = hit ? '<b>✓ ' + esc(t('hit')) + '</b>' : esc(t('pending')); };
+  const ap = d.direction === 'BUY' ? d.buyPlan : d.direction === 'SELL' ? d.sellPlan : null;
+  if (ap) {
+    setStatus('tpSt1', tpHitNow(d.direction, d.price, ap.tp1));
+    setStatus('tpSt2', tpHitNow(d.direction, d.price, ap.tp2));
+    setStatus('tpSt3', tpHitNow(d.direction, d.price, ap.tp3));
+    const beEl = document.getElementById('beSt');
+    if (beEl) { const beHit = tpHitNow(d.direction, d.price, ap.tp1); beEl.className = beHit ? 'buy' : 'fine'; beEl.innerHTML = beHit ? '<b>' + esc(t('beActive')) + '</b>' : esc(t('beNotYet')); }
+  }
+  set('monPrice', d.price == null ? '—' : fmtPx(currentPair, d.price));
+  const monAge = priceAgeSec();
+  set('monAge', monAge == null ? '—' : monAge + ' ' + t('secAgo'));
   const cba = document.getElementById('chartBidAsk');
   if (cba) {
     const cbaTxt = 'Bid ' + fmtPx(currentPair, d.bid) + ' · Ask ' + fmtPx(currentPair, d.ask) + ' · ' + t('pcSpread') + ' ' + fmtPx(currentPair, d.spread);
@@ -9144,6 +9283,7 @@ async function loadTerminal(fromPrice, force) {
       ${t('entryZone')}: <b>${fmtPx(currentPair, plan.entryZone[0])} – ${fmtPx(currentPair, plan.entryZone[1])}</b> · ${t('trigger')}: <b>${fmtPx(currentPair, plan.trigger)}</b><br>
       SL: <span class="sell"><b>${fmtPx(currentPair, plan.sl)}</b></span> · R:R ${esc(plan.rr || '')}<br>
       TP1: <span class="buy"><b>${fmtPx(currentPair, plan.tp1)}</b></span> (${rrOf(plan.tp1)}) · TP2: <b>${fmtPx(currentPair, plan.tp2)}</b> (${rrOf(plan.tp2)}) · TP3: <b>${fmtPx(currentPair, plan.tp3)}</b> (${rrOf(plan.tp3)})<br>
+      ${liveStatusRowsHtml(d, plan)}
       ${d.tradeZone ? `${t('tradeZone')}: <b>${esc(d.tradeZone.type)} ${fmtPx(currentPair, d.tradeZone.low)} – ${fmtPx(currentPair, d.tradeZone.high)}</b>` : ''}
       ${riskBoxHtml(plan)}
       <p class="fine">⏱ ${esc(t('bestTimeframe'))}</p>
@@ -9195,6 +9335,72 @@ async function loadTerminal(fromPrice, force) {
   } catch (e) { if (!fromPrice) el.innerHTML = '<p>' + t('signalLoadFail') + ' ' + esc(e.message) + '</p>'; }
 }
 
+// v9.6.3: Gold Buy/Sell Zones — asal 1H candles se (server computeZones). Sirf display, sirf XAUUSD.
+// Koi Entry/SL/TP, koi signal, koi trade advice nahi.
+function zonesCardHtml(d) {
+  if (!d.zones) return '';
+  const z = d.zones;
+  const statusKey = { in_buy: 'zonesInBuy', in_sell: 'zonesInSell', near_buy: 'zonesNearBuy', near_sell: 'zonesNearSell', between: 'zonesBetween', none: 'zonesNone' }[z.status] || 'zonesBetween';
+  const freshLbl = (zn) => zn.tests > 0 ? esc(t('zonesTested')) + ' (' + zn.tests + ')' : esc(t('zonesFresh'));
+  const zoneRow = (zn, label) => `<div class="gate"><span>${label} · ${freshLbl(zn)} · ${fmtPktTimeShort(zn.formedAt)}</span><span>${fmtPx(currentPair, zn.bottom)} – ${fmtPx(currentPair, zn.top)}</span></div>`;
+  const nearRow = (zn, label) => `<div class="gate"><span>${label}</span><span>${zn ? fmtPx(currentPair, zn.bottom) + ' – ' + fmtPx(currentPair, zn.top) + ' · ' + freshLbl(zn) : '—'}</span></div>`;
+  let html = `<p class="notice-banner">${esc(t('zonesBanner'))}</p>
+      <h4>${esc(t('zonesTitle'))}</h4>
+      <p class="fine">${esc(t('zonesText'))}</p>
+      <div class="gate"><span>${esc(t('zonesPrice'))}</span><span>${fmtPx(currentPair, z.price)}</span></div>
+      <div class="gate"><span>${esc(t('zonesStatus'))}</span><span>${esc(t(statusKey))}</span></div>
+      ${nearRow(z.nearestBuy, esc(t('zonesNearestBuy')))}
+      ${nearRow(z.nearestSell, esc(t('zonesNearestSell')))}`;
+  if (!z.supply.length && !z.demand.length) {
+    html += `<p>${esc(t('zonesNone'))}</p>`;
+  } else {
+    if (z.demand.length) html += `<h4>${esc(t('zonesBuy'))}</h4>` + z.demand.map(zn => zoneRow(zn, esc(t('zonesBuy')))).join('');
+    if (z.supply.length) html += `<h4>${esc(t('zonesSell'))}</h4>` + z.supply.map(zn => zoneRow(zn, esc(t('zonesSell')))).join('');
+  }
+  return html;
+}
+// Trend Panel (v9.6.4) — TradingView Trend Panel ka wahi hisaab, server ke panel data se.
+// Display only: koi Entry/SL/TP nahi, koi signal nahi.
+function trendPanelHtml(d) {
+  const p = d.panel; if (!p) return '';
+  const stateLbl = (s) => s === 'bullish' ? esc(t('panelBullish')) : s === 'bearish' ? esc(t('panelBearish')) : s === 'mixed' ? esc(t('panelMixed')) : '—';
+  const overallLbl = p.overall === 'BUY' ? esc(t('panelBuy')) : p.overall === 'SELL' ? esc(t('panelSell')) : esc(t('panelWait'));
+  const row = (r) => `<div class="gate"><span>${esc(r.tf)} · ${stateLbl(r.state)}</span><span>EMA20 ${fmtPx(currentPair, r.ema20)} · EMA50 ${fmtPx(currentPair, r.ema50)} · ${fmtPx(currentPair, r.price)}</span></div>`;
+  return `<p class="notice-banner">${esc(t('panelBanner'))}</p>
+      <h4>${esc(t('panelTitle'))}</h4>
+      <p class="fine">${esc(t('panelText'))}</p>
+      ${p.rows.map(row).join('')}
+      <div class="gate"><span>${esc(t('panelOverall'))}</span><span><b>${overallLbl}</b></span></div>`;
+}
+// TradingView chart widget (v9.6.4) — official free tv.js embed. Pine code is chart ke
+// andar kabhi inject nahi hota; zones/strategy website ke apne Zones + Trend Panel mein hain.
+const TV_SYMBOLS = { XAUUSD: 'OANDA:XAUUSD', XAGUSD: 'OANDA:XAGUSD', BTCUSD: 'BITSTAMP:BTCUSD', ETHUSD: 'BITSTAMP:ETHUSD', SOLUSD: 'BINANCE:SOLUSDT', BNBUSD: 'BINANCE:BNBUSDT', XRPUSD: 'BITSTAMP:XRPUSD', DOGEUSD: 'BITSTAMP:DOGEUSD', ADAUSD: 'BITSTAMP:ADAUSD', EURUSD: 'FX:EURUSD', GBPUSD: 'FX:GBPUSD', USDJPY: 'FX:USDJPY', AUDUSD: 'FX:AUDUSD', USDCAD: 'FX:USDCAD', USDCHF: 'FX:USDCHF' };
+let tvWidgetPair = null, tvLoadStarted = false, tvLoadFailed = false;
+function tvShowFail() { const el = document.getElementById('tvFail'); if (el) el.style.display = 'block'; }
+function createTvWidget() {
+  const box = document.getElementById('tvChart'); if (!box || !window.TradingView) return;
+  box.innerHTML = '';
+  try {
+    new window.TradingView.widget({ container_id: 'tvChart', width: '100%', height: 480, symbol: TV_SYMBOLS[currentPair] || 'OANDA:XAUUSD', interval: '60', timezone: 'Asia/Karachi', theme: 'dark', style: '1', locale: 'en', toolbar_bg: '#0a0f1e', enable_publishing: false, allow_symbol_change: false, studies: [] });
+    tvWidgetPair = currentPair;
+  } catch (e) { tvShowFail(); }
+}
+function initTvChart() {
+  const box = document.getElementById('tvChart'); if (!box) return;
+  if (tvLoadFailed) { tvShowFail(); return; }
+  if (tvWidgetPair === currentPair) return;
+  if (window.TradingView) { createTvWidget(); return; }
+  if (tvLoadStarted) return; // script load ho raha hai — ready hone par onload widget banayega
+  tvLoadStarted = true;
+  const s = document.createElement('script');
+  s.src = 'https://s3.tradingview.com/tv.js';
+  s.async = true;
+  s.onload = () => createTvWidget();
+  s.onerror = () => { tvLoadFailed = true; tvShowFail(); };
+  document.head.appendChild(s);
+  // Agar script load ho kar bhi widget na bane (CDN block), 12s baad fail note dikhayein.
+  setTimeout(() => { if (!tvWidgetPair && !tvLoadFailed) { const b = document.getElementById('tvChart'); if (b && !b.querySelector('iframe')) { tvLoadFailed = true; tvShowFail(); } } }, 12000);
+}
 async function loadIndicators() {
   const body = document.getElementById('indBody');
   try {
@@ -9216,6 +9422,8 @@ async function loadIndicators() {
       <p>15M — RSI ${fmt(d.timeframes['15m'].rsi14, 1)} · EMA20 ${fmtPx(currentPair, d.timeframes['15m'].ema20)} · ATR ${fmtPx(currentPair, d.timeframes['15m'].atr14)}</p>
       <p>Daily — RSI ${fmt(d.timeframes['1D'].rsi14, 1)} · EMA20 ${fmtPx(currentPair, d.timeframes['1D'].ema20)} · ATR ${fmtPx(currentPair, d.timeframes['1D'].atr14)}</p>
       ${d.pivots ? `<h4>${t('pivotTitle')}</h4>${row('P', fmtPx(currentPair, d.pivots.P))}${row('R1', fmtPx(currentPair, d.pivots.R1))}${row('R2', fmtPx(currentPair, d.pivots.R2))}${row('S1', fmtPx(currentPair, d.pivots.S1))}${row('S2', fmtPx(currentPair, d.pivots.S2))}` : ''}
+      ${trendPanelHtml(d)}
+      ${zonesCardHtml(d)}
       <h4>${t('fearGreedTitle')}</h4><div id="fngBody"><p>${esc(t('loading'))}</p></div>`;
     loadFearGreed();
   } catch (e) { body.innerHTML = '<p>' + t('indLoadFail') + ' ' + esc(e.message) + '</p>'; }
