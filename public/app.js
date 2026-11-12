@@ -502,9 +502,39 @@ const I18N = {
     zonesNearBuy: "Price BUY zone ke qareeb hai",
     zonesNearSell: "Price SELL zone ke qareeb hai",
     zonesBetween: "Price zones ke beech mein hai",
+    confTitle: "BUY / SELL Confirmation Zones",
+    confBanner: "YE SIGNAL NAHI HAI — sirf guide hai; trade sirf Terminal signal (85% gate) par lein.",
+    confBuyTitle: "▲ FOR BUY — CONFIRMATION",
+    confSellTitle: "▼ FOR SELL — CONFIRMATION",
+    confSupport: "Support",
+    confResistance: "Resistance",
+    confBuyLine: "Price zone se bounce kare aur zone ke top se upar wapas aaye → BUY confirm hota hai.",
+    confSellLine: "Price zone par reject ho aur zone ke bottom se neeche gir jaye → SELL confirm hota hai.",
+    confReclaim: "Reclaim (top se upar)",
+    confFall: "Fall (bottom se neeche)",
+    confNextWatch: "Next Watch",
+    confGoldOnly: "Zones sirf Gold (XAUUSD) ke liye hain.",
+    confNoZone: "Abhi koi BUY/SELL zone nahi bana.",
+    confLoadFail: "Confirmation zones load nahi hue.",
+    confWatchInBuy: "Price BUY zone ke andar hai — zone ke neeche close ho to zone toot jata hai.",
+    confWatchInSell: "Price SELL zone ke andar hai — zone ke upar close ho to zone toot jata hai.",
+    confWatchNearBuy: "Price BUY zone ke qareeb hai — bounce + top se upar reclaim dekhein.",
+    confWatchNearSell: "Price SELL zone ke qareeb hai — rejection + bottom se neeche girna dekhein.",
+    confWatchBetweenBuy: "Price zones ke beech mein hai — qareebi BUY zone par nazar rakhein.",
+    confWatchBetweenSell: "Price zones ke beech mein hai — qareebi SELL zone par nazar rakhein.",
+    confWatchNone: "Abhi koi zone nahi — naya zone banne ka intezar karein.",
+    confZone: "Zone",
     panelTitle: "Trend Panel",
     panelBanner: "YE SIGNAL NAHI HAI — sirf trend dikhata hai",
     panelText: "Ye panel asal candles se 15m/30m/1H/4H/D ka EMA 20/50 trend dikhata hai — wahi hisaab jo TradingView wale Trend Panel mein hai. Trade sirf Terminal signal par lein.",
+    matrixTitle: "Multi-Timeframe Confluence Matrix",
+    matrixBanner: "YE SIGNAL NAHI HAI — sirf trend dikhata hai",
+    matrixText: "Har timeframe ki asal candles se — Candle (aakhri candle), Trend (EMA 20/50) aur RSI 14 momentum.",
+    matrixTf: "Timeframe",
+    matrixCandle: "Candle",
+    matrixTrend: "Trend Direction",
+    matrixMomentum: "Momentum RSI 14",
+    matrixNeutral: "Neutral",
     panelBullish: "Bullish",
     panelBearish: "Bearish",
     panelMixed: "Mixed",
@@ -626,6 +656,8 @@ const I18N = {
     pushPairsTitle: "Kaun Se Pairs Ki Notifications?",
     pushPairsText: "Ye pasand Telegram aur Browser dono notifications par lagti hai — band pair ka signal aaye to koi notification nahi aaye gi.",
     pushPairsSaved: "Pairs ki pasand save ho gayi.",
+    pushBannerText: "Signal aate hi notification paane ke liye Browser Notifications ON karein.",
+    pushBannerBtn: "ON Karein",
     marketCards: "Live Market",
     pcMarketPrice: "Market Price (Last)",
     pcChange24h: "Daily / 24H Change",
@@ -1096,9 +1128,39 @@ const I18N = {
     zonesNearBuy: "Price is near a BUY zone",
     zonesNearSell: "Price is near a SELL zone",
     zonesBetween: "Price is between zones",
+    confTitle: "BUY / SELL Confirmation Zones",
+    confBanner: "NOT A SIGNAL — guide only; trade only on the Terminal signal (85% gate).",
+    confBuyTitle: "▲ FOR BUY — CONFIRMATION",
+    confSellTitle: "▼ FOR SELL — CONFIRMATION",
+    confSupport: "Support",
+    confResistance: "Resistance",
+    confBuyLine: "Price bounces off the zone and reclaims above the zone top → BUY is confirmed.",
+    confSellLine: "Price rejects at the zone and falls below the zone bottom → SELL is confirmed.",
+    confReclaim: "Reclaim (above top)",
+    confFall: "Fall (below bottom)",
+    confNextWatch: "Next Watch",
+    confGoldOnly: "Zones are for Gold (XAUUSD) only.",
+    confNoZone: "No BUY/SELL zone formed yet.",
+    confLoadFail: "Confirmation zones did not load.",
+    confWatchInBuy: "Price is inside a BUY zone — a close below the zone breaks it.",
+    confWatchInSell: "Price is inside a SELL zone — a close above the zone breaks it.",
+    confWatchNearBuy: "Price is near a BUY zone — watch for a bounce and a reclaim above the top.",
+    confWatchNearSell: "Price is near a SELL zone — watch for a rejection and a fall below the bottom.",
+    confWatchBetweenBuy: "Price is between zones — watch the nearest BUY zone.",
+    confWatchBetweenSell: "Price is between zones — watch the nearest SELL zone.",
+    confWatchNone: "No zone yet — wait for a new zone to form.",
+    confZone: "Zone",
     panelTitle: "Trend Panel",
     panelBanner: "NOT A SIGNAL — trend display only",
     panelText: "This panel shows the EMA 20/50 trend on 15m/30m/1H/4H/D from real candles — the same logic as the TradingView Trend Panel. Take trades only on Terminal signals.",
+    matrixTitle: "Multi-Timeframe Confluence Matrix",
+    matrixBanner: "NOT A SIGNAL — trend display only",
+    matrixText: "From each timeframe's real candles — Candle (last candle), Trend (EMA 20/50) and RSI 14 momentum.",
+    matrixTf: "Timeframe",
+    matrixCandle: "Candle",
+    matrixTrend: "Trend Direction",
+    matrixMomentum: "Momentum RSI 14",
+    matrixNeutral: "Neutral",
     panelBullish: "Bullish",
     panelBearish: "Bearish",
     panelMixed: "Mixed",
@@ -1220,6 +1282,8 @@ const I18N = {
     pushPairsTitle: "Which Pairs' Notifications?",
     pushPairsText: "This choice applies to both Telegram and Browser notifications — if a switched-off pair gives a signal, no notification will come.",
     pushPairsSaved: "Pair preference saved.",
+    pushBannerText: "Turn on Browser Notifications to get notified the moment a signal arrives.",
+    pushBannerBtn: "Turn On",
     marketCards: "Live Market",
     pcMarketPrice: "Market Price (Last)",
     pcChange24h: "Daily / 24H Change",
@@ -7916,6 +7980,7 @@ async function loadChart() {
     const d = await api('/api/candles?pair=' + currentPair + '&tf=' + chartTf);
     lastChartCandles = d.candles || [];
     drawChart(cv, lastChartCandles);
+    if (currentPair === 'XAUUSD' && chartTf === '1H') loadTermConfirmZones(); // v9.7 Feature C: zones fetch → chart bands
   } catch (e) {
     fitChartCanvas(cv);
     const ctx = cv.getContext('2d'); ctx.clearRect(0, 0, cv.width, cv.height);
@@ -7954,6 +8019,35 @@ function drawChart(cv, candles) {
     ctx.stroke(); ctx.lineWidth = 1;
   };
   drawLine(e20s, '#f5c542'); drawLine(e50s, '#4da3ff'); drawLine(e200s, '#ff9a9a');
+  // v9.7 Feature C: BUY/SELL zone bands — sirf XAUUSD + 1H chart par, wahi computeZones
+  // data jo Zones card dikhata hai (termZones cache — Feature A wali shared fetch).
+  // Kisi aur pair/timeframe par koi band nahi (1H zones ko doosre timeframe par stretch nahi karte).
+  let zonesDrawn = false;
+  if (currentPair === 'XAUUSD' && chartTf === '1H' && termZones && termZones.pair === 'XAUUSD' && termZones.zones) {
+    const z = termZones.zones;
+    const bandLbl = (zn, side) => (side === 'buy' ? 'BUY ' : 'SELL ') + fmtPx(currentPair, zn.bottom) + ' – ' + fmtPx(currentPair, zn.top) + ' · ' + (zn.tests > 0 ? t('zonesTested') + ' (' + zn.tests + ')' : t('zonesFresh'));
+    const drawBand = (zn, rgb, side) => {
+      const yTop = Y(zn.top), yBot = Y(zn.bottom);
+      const y0 = Math.max(8, Math.min(yTop, yBot)), y1 = Math.min(H - 8, Math.max(yTop, yBot));
+      if (y1 <= 8 || y0 >= H - 8) return null; // band poora chart ke bahar — dikhaya nahi ja sakta
+      ctx.fillStyle = 'rgba(' + rgb + ',0.13)';
+      ctx.fillRect(8, y0, W - 16, y1 - y0);
+      ctx.strokeStyle = 'rgba(' + rgb + ',0.55)'; ctx.setLineDash([4, 4]); ctx.beginPath();
+      ctx.moveTo(8, y0); ctx.lineTo(W - 8, y0); ctx.moveTo(8, y1); ctx.lineTo(W - 8, y1); ctx.stroke(); ctx.setLineDash([]);
+      return { txt: bandLbl(zn, side), col: 'rgb(' + rgb + ')', y: y0 + 13 };
+    };
+    const bandLabels = [];
+    z.demand.forEach(zn => { const l = drawBand(zn, '61,220,132', 'buy'); if (l) { bandLabels.push(l); zonesDrawn = true; } });
+    z.supply.forEach(zn => { const l = drawBand(zn, '255,107,107', 'sell'); if (l) { bandLabels.push(l); zonesDrawn = true; } });
+    // Band labels — overlap na ho (legend row se neeche se shuru, signal band wali stacking)
+    ctx.font = '11px sans-serif';
+    let prevY = 30;
+    bandLabels.sort((a, b) => a.y - b.y).forEach(l => {
+      const y = Math.max(prevY, Math.min(H - 4, l.y));
+      ctx.fillStyle = l.col; ctx.fillText(l.txt, 10, y);
+      prevY = y + 12;
+    });
+  }
   // v9.1: PDH/PDL horizontal lines (sirf jab range usi pair ki ho aur chart ke andar ho)
   if (lastRange && lastRange.pair === currentPair) {
     ctx.font = '11px sans-serif';
@@ -7994,6 +8088,10 @@ function drawChart(cv, candles) {
   ctx.fillStyle = '#f5c542'; ctx.fillText('— EMA 20', 10, 14);
   ctx.fillStyle = '#4da3ff'; ctx.fillText('— EMA 50', 90, 14);
   ctx.fillStyle = '#ff9a9a'; ctx.fillText('— EMA 200', 170, 14);
+  if (zonesDrawn) { // v9.7 Feature C: zone legend (doosri row — phone par bhi fit)
+    ctx.fillStyle = '#3ddc84'; ctx.fillText('— BUY zone', 10, 28);
+    ctx.fillStyle = '#ff6b6b'; ctx.fillText('— SELL zone', 100, 28);
+  }
 }
 
 // ---------------- Terminal indicators strip ----------------
@@ -8123,7 +8221,19 @@ async function loadPublicPrices() {
 // v9.1: branded splash screen — once per browser session, overlay only.
 // It never blocks init(): the login/setup screen loads underneath while the
 // splash shows, and hiding it only removes the overlay (display:none).
-const SPLASH_LINES = ['Analyzing Market...', 'Scanning Liquidity & Order Blocks...', 'Checking Gold & Forex...', 'Loading Live Prices...'];
+// v9.7: splash status — honest, tied to real load stages (koi fake claim nahi:
+// "Scanning Liquidity & Order Blocks" jaisi line kabhi nahi — app asal me live prices
+// se connect ho raha hai aur load ho raha hai, status wahi batata hai).
+const SPLASH_STAGES = [
+  { max: 40, text: 'Live prices se connect ho raha hai...' },
+  { max: 75, text: 'App load ho raha hai...' },
+  { max: 100, text: 'Tayyar ho raha hai...' }
+];
+function splashStageText(p) {
+  for (const s of SPLASH_STAGES) if (p <= s.max) return s.text;
+  return SPLASH_STAGES[SPLASH_STAGES.length - 1].text;
+}
+// v9.1 se: splash sirf ek dafa per browser session (SKIP bhi isi ko set karta hai).
 let splashTimers = [];
 function splashSeen() { try { return sessionStorage.getItem('ftp_splash_seen') === '1'; } catch (e) { return false; } }
 function splashMarkSeen() { try { sessionStorage.setItem('ftp_splash_seen', '1'); } catch (e) {} }
@@ -8134,17 +8244,13 @@ function showSplash() {
   const status = document.getElementById('splashStatus');
   const started = Date.now();
   const DUR = 2500;
-  if (status) status.textContent = SPLASH_LINES[0];
+  if (status) status.textContent = SPLASH_STAGES[0].text + ' 0%';
   splashTimers.push(setInterval(() => {
     const p = Math.min(100, (Date.now() - started) / DUR * 100);
     if (fill) fill.style.width = p + '%';
+    if (status) status.textContent = splashStageText(p) + ' ' + Math.floor(p) + '%';
     if (p >= 100) hideSplash(false);
   }, 50));
-  let i = 0;
-  splashTimers.push(setInterval(() => {
-    i = (i + 1) % SPLASH_LINES.length;
-    if (status) status.textContent = SPLASH_LINES[i];
-  }, 650));
 }
 function hideSplash(now) {
   splashTimers.forEach(clearInterval); splashTimers = [];
@@ -8224,6 +8330,7 @@ function enterApp() {
   checkNewSignals();
   if (alertTimer) clearInterval(alertTimer);
   alertTimer = setInterval(checkNewSignals, 30000);
+  maybeShowPushBanner(); // v9.7 Feature F: buyer jiska push OFF ho — reminder banner
 }
 // Server ka defaultPair load karein (sirf tab jab user ne apna preferred pair save nahi kiya)
 async function applyDefaultPair() {
@@ -8252,7 +8359,7 @@ function showTab(t) {
   document.querySelectorAll('.tabs button').forEach(b => b.classList.toggle('active', b.dataset.tab === t));
   document.querySelectorAll('.tab').forEach(s => s.style.display = 'none');
   document.getElementById('tab-' + t).style.display = 'block';
-  if (t === 'terminal') { loadTerminal(); loadChart(); loadIndStrip(); }
+  if (t === 'terminal') { loadTerminal(); loadChart(); loadIndStrip(); maybeShowPushBanner(); }
   if (t === 'indicators') { loadIndicators(); initTvChart(); }
   if (t === 'smc') { loadSmc(); loadScanner(); loadSmcFeed(); }
   if (t === 'session') { loadSession(); loadNews(); }
@@ -8639,6 +8746,7 @@ function signalToShare(sig) {
     pair: sig.pair, direction: sig.direction === 'SELL' ? 'SELL' : 'BUY',
     entry: sig.entry, sl: sig.sl, tp1: sig.tp1, tp2: sig.tp2, tp3: sig.tp3,
     score: sig.score, rr: rr, time: sig.time || sig.createdAt || Date.now(),
+    outcome: sig.outcome || null, // v9.7: honest status rows ke liye (live vs recorded outcome)
   };
 }
 // v9.6.2: Live TP / Break-Even / DCA / Monitoring rows — sirf live price se (koi value banayi nahi jati).
@@ -8720,14 +8828,15 @@ function roundRectPath(ctx, x, y, w, h, r) {
 }
 function drawSignalCard(sig) {
   const s = signalToShare(sig);
-  const W = 1080, H = 1080;
+  const W = 1080, H = 1080, S = 2; // v9.7: HIGH-RES — 2160x2160, vector text scale se (upscale nahi, asal 2x render)
   const cv = document.createElement('canvas');
-  cv.width = W; cv.height = H;
+  cv.width = W * S; cv.height = H * S;
   const ctx = cv.getContext('2d');
+  ctx.scale(S, S);
   const isBuy = s.direction === 'BUY';
   const accent = isBuy ? '#3ddc84' : '#ff6b6b';
   ctx.fillStyle = '#0a0f1e'; ctx.fillRect(0, 0, W, H);
-  roundRectPath(ctx, 40, 40, W - 80, H - 80, 36);
+  roundRectPath(ctx, 40, 40, W - 80, H - 68, 36); // v9.7: neeche 12px zyada jagah — honest status lines + disclaimer andar rahein
   ctx.fillStyle = '#111a30'; ctx.fill();
   ctx.strokeStyle = '#2a3550'; ctx.lineWidth = 2; ctx.stroke();
   ctx.fillStyle = '#f5c542'; ctx.fillRect(40, 40, W - 80, 8);
@@ -8749,7 +8858,7 @@ function drawSignalCard(sig) {
     ['TP2', fmtPx(s.pair, s.tp2), '#3ddc84'],
     ['TP3', fmtPx(s.pair, s.tp3), '#3ddc84'],
   ];
-  let y = 528;
+  let y = 470; // v9.7: rows upar + tight (78px step) — neeche honest status block ke liye jagah
   rows.forEach((row, i) => {
     ctx.textAlign = 'left';
     ctx.font = '700 44px Arial, sans-serif'; ctx.fillStyle = '#8ea0c2';
@@ -8757,16 +8866,22 @@ function drawSignalCard(sig) {
     ctx.textAlign = 'right';
     ctx.font = '800 52px Arial, sans-serif'; ctx.fillStyle = row[2];
     ctx.fillText(row[1], W - 110, y);
-    y += 86;
+    y += 78;
     if (i < rows.length - 1) { ctx.fillStyle = '#22304d'; ctx.fillRect(110, y - 30, W - 220, 2); }
   });
+  // v9.7: honest status block (v9.6.2 rows) — TP Status / Break-Even / DCA / Monitoring.
+  // Pehle yahan Score (y+8=966) aur time (H-150=930) + disclaimer (H-100=980) overlap karte the.
   ctx.textAlign = 'center';
   ctx.font = '700 44px Arial, sans-serif'; ctx.fillStyle = '#f5c542';
   ctx.fillText('Score: ' + (s.score != null ? s.score + '%' : '—') + (s.rr ? '   ·   R:R ' + s.rr : ''), W / 2, y + 8);
-  ctx.font = '400 34px Arial, sans-serif'; ctx.fillStyle = '#8ea0c2';
-  ctx.fillText(fmtPktTime(s.time) + ' PKT', W / 2, H - 150);
-  ctx.font = '400 30px Arial, sans-serif';
-  ctx.fillText(t('shareDisclaimer'), W / 2, H - 100);
+  ctx.font = '400 30px Arial, sans-serif'; ctx.fillStyle = '#8ea0c2';
+  const tpLine = (n) => 'TP' + n + ' ' + shareLevelStatus('tp' + n, s['tp' + n], s);
+  ctx.fillText(t('tpStatusLbl') + ': ' + [1, 2, 3].map(tpLine).join(' · '), W / 2, y + 46);
+  ctx.fillText(t('beLbl') + ': ' + shareBeStatus(s), W / 2, y + 82);
+  ctx.fillText(t('dcaLbl') + ': ' + t('dcaNotActive'), W / 2, y + 118);
+  ctx.fillText(shareMonText(s) + ' · ' + fmtPktTime(s.time) + ' PKT', W / 2, y + 154);
+  ctx.font = '400 26px Arial, sans-serif';
+  ctx.fillText(t('shareDisclaimer'), W / 2, y + 186);
   return cv;
 }
 function downloadSignalImage(sig) {
@@ -8833,6 +8948,28 @@ function timelineDone(s) {
   if (s.outcome === 'Loss' || s.outcome === 'Break-Even') done[5] = true;
   return done;
 }
+// v9.7: Share card ki honest status — live signal (In-Flight) par live price se, recorded
+// outcome par outcome se. DCA engine me nahi hai → hamesha "Not Activated" (koi fake DCA nahi).
+function shareLiveLevelStatus(level, val, s) {
+  const livePrice = livePriceFor(s.pair);
+  if (livePrice == null) return t('pending');
+  if (level === 'sl') return s.direction === 'BUY' ? (livePrice <= val ? '✓ ' + t('hit') : t('pending')) : (livePrice >= val ? '✓ ' + t('hit') : t('pending'));
+  return tpStatusText(s.direction, livePrice, val);
+}
+function shareLevelStatus(level, val, s) {
+  if (s.outcome && s.outcome !== 'In-Flight') return shareStatusOf(level, s);
+  return shareLiveLevelStatus(level, val, s);
+}
+function shareBeStatus(s) {
+  if (s.outcome === 'Win' || s.outcome === 'Break-Even') return t('beActive');
+  if (s.outcome === 'Loss') return t('beNotYet');
+  return beStatusText(s.direction, livePriceFor(s.pair), s.tp1);
+}
+function shareMonText(s) {
+  const livePrice = livePriceFor(s.pair);
+  const age = priceAgeSec();
+  return t('monLbl') + ': ' + (livePrice == null ? '—' : fmtPx(s.pair, livePrice) + ' · ' + (age == null ? '—' : age + ' ' + t('secAgo')));
+}
 function buildFormattedShareText(s) {
   const emoji = s.direction === 'BUY' ? '🟢' : '🔴';
   return [
@@ -8842,8 +8979,9 @@ function buildFormattedShareText(s) {
     'SL: ' + fmtPx(s.pair, s.sl),
     'TP1: ' + fmtPx(s.pair, s.tp1) + ' | TP2: ' + fmtPx(s.pair, s.tp2) + ' | TP3: ' + fmtPx(s.pair, s.tp3),
     'Score: ' + (s.score != null ? s.score + '%' : '—') + (s.rr ? ' | R:R ' + s.rr : ''),
-    'DCA: TP1 par 50% profit lo.',
-    'Breakeven: TP1 ke baad SL entry par.',
+    t('beLbl') + ': ' + shareBeStatus(s),
+    t('dcaLbl') + ': ' + t('dcaNotActive'),
+    shareMonText(s),
     'Forex Trading Pro · ' + fmtPktTime(s.time) + ' PKT',
     'Koi signal 100% profitable nahi hota.',
   ].join('\n');
@@ -8861,7 +8999,7 @@ function closeShareModal() { const m = document.getElementById('shareModal'); if
 function renderSharePreview() {
   const s = shareSignal; if (!s) return;
   const isBuy = s.direction === 'BUY';
-  const box = (label, val, cls, level) => `<div class="share-box"><div class="share-box-label">${esc(label)}</div><div class="share-box-val ${cls}">${fmtPx(s.pair, val)}</div><div class="share-box-status">${esc(shareStatusOf(level, s))}</div></div>`;
+  const box = (label, val, cls, level) => `<div class="share-box"><div class="share-box-label">${esc(label)}</div><div class="share-box-val ${cls}">${fmtPx(s.pair, val)}</div><div class="share-box-status">${esc(shareLevelStatus(level, val, s))}</div></div>`;
   const done = timelineDone(s);
   const steps = [t('stepSignal'), t('stepEntry'), t('stepTp1'), t('stepTp2'), t('stepTp3'), t('stepDone')];
   const pv = document.getElementById('shareCardPreview');
@@ -8879,7 +9017,7 @@ function renderSharePreview() {
         ${box('TP3', s.tp3, 'buy', 'tp3')}
       </div>
       <p>${t('confluenceLbl')}: <b>${s.score != null ? s.score + '%' : '—'}</b>${s.rr ? ' · R:R ' + esc(s.rr) : ''}${s.smcScore != null ? ' · SMC ' + s.smcScore + '/100' : ''}</p>
-      <p class="fine">${esc(t('dcaNote'))}<br>${esc(t('breakevenNote'))}</p>
+      <p class="fine">${esc(t('beLbl'))}: <b>${esc(shareBeStatus(s))}</b><br>${esc(t('dcaLbl'))}: ${esc(t('dcaNotActive'))}<br>${esc(shareMonText(s))}</p>
       <h4>${t('progression')}</h4>
       <div class="share-timeline">${steps.map((st, i) => `<span class="${done[i] ? 'tl-done' : 'tl-pend'}">${done[i] ? '✓' : '○'} ${esc(st)}</span>`).join('')}</div>
       <p class="fine">${fmtPktTime(s.time)} PKT · ${esc(t('shareDisclaimer'))}</p>
@@ -8889,10 +9027,11 @@ function renderSharePreview() {
 }
 // Portrait share card 1080x1350 (v5 ke square card se lamba — asal data se)
 function drawShareCardPng(s) {
-  const W = 1080, H = 1350;
+  const W = 1080, H = 1350, S = 2; // v9.7: HIGH-RES — 2160x2700, vector text scale se (upscale nahi, asal 2x render)
   const cv = document.createElement('canvas');
-  cv.width = W; cv.height = H;
+  cv.width = W * S; cv.height = H * S;
   const ctx = cv.getContext('2d');
+  ctx.scale(S, S);
   const isBuy = s.direction === 'BUY';
   const accent = isBuy ? '#3ddc84' : '#ff6b6b';
   ctx.fillStyle = '#0a0f1e'; ctx.fillRect(0, 0, W, H);
@@ -8914,18 +9053,18 @@ function drawShareCardPng(s) {
   ctx.fillStyle = '#8ea0c2'; ctx.font = '400 30px Arial, sans-serif';
   ctx.fillText(s.code || s.id || '', W / 2, 428);
   const rows = [
-    ['Entry', fmtPx(s.pair, s.entry), '#e8ecf5', 'entry'],
-    ['SL', fmtPx(s.pair, s.sl), '#ff6b6b', 'sl'],
-    ['TP1', fmtPx(s.pair, s.tp1), '#3ddc84', 'tp1'],
-    ['TP2', fmtPx(s.pair, s.tp2), '#3ddc84', 'tp2'],
-    ['TP3', fmtPx(s.pair, s.tp3), '#3ddc84', 'tp3'],
+    ['Entry', fmtPx(s.pair, s.entry), '#e8ecf5', 'entry', s.entry],
+    ['SL', fmtPx(s.pair, s.sl), '#ff6b6b', 'sl', s.sl],
+    ['TP1', fmtPx(s.pair, s.tp1), '#3ddc84', 'tp1', s.tp1],
+    ['TP2', fmtPx(s.pair, s.tp2), '#3ddc84', 'tp2', s.tp2],
+    ['TP3', fmtPx(s.pair, s.tp3), '#3ddc84', 'tp3', s.tp3],
   ];
   let y = 500;
   rows.forEach((row, i) => {
     ctx.textAlign = 'left'; ctx.font = '700 40px Arial, sans-serif'; ctx.fillStyle = '#8ea0c2';
     ctx.fillText(row[0], 100, y);
     ctx.textAlign = 'right'; ctx.font = '800 44px Arial, sans-serif'; ctx.fillStyle = row[2];
-    ctx.fillText(row[1] + '  ·  ' + shareStatusOf(row[3], s), W - 100, y);
+    ctx.fillText(row[1] + '  ·  ' + shareLevelStatus(row[3], row[4], s), W - 100, y);
     y += 74;
     if (i < rows.length - 1) { ctx.fillStyle = '#22304d'; ctx.fillRect(100, y - 26, W - 200, 2); }
   });
@@ -8934,9 +9073,11 @@ function drawShareCardPng(s) {
   ctx.fillText('Score: ' + (s.score != null ? s.score + '%' : '—') + (s.rr ? '   ·   R:R ' + s.rr : ''), W / 2, y + 10);
   y += 70;
   ctx.font = '400 30px Arial, sans-serif'; ctx.fillStyle = '#8ea0c2';
-  ctx.fillText('DCA: TP1 par 50% lo, baaki TP2/TP3 tak.', W / 2, y);
+  ctx.fillText(t('beLbl') + ': ' + shareBeStatus(s), W / 2, y);
   y += 44;
-  ctx.fillText('Breakeven: TP1 ke baad SL entry par.', W / 2, y);
+  ctx.fillText(t('dcaLbl') + ': ' + t('dcaNotActive'), W / 2, y);
+  y += 44;
+  ctx.fillText(shareMonText(s), W / 2, y);
   y += 64;
   ctx.font = '700 32px Arial, sans-serif'; ctx.fillStyle = '#f5c542';
   ctx.fillText(t('progression'), W / 2, y);
@@ -8951,7 +9092,7 @@ function drawShareCardPng(s) {
     ctx.fillStyle = done[i] ? '#3ddc84' : '#8ea0c2';
     ctx.fillText((done[i] ? '✓ ' : '○ ') + st, cx, cy);
   });
-  y += 130;
+  y += 86; // v9.7: 3 honest lines (BE/DCA/Monitoring) ki wajah se y 44 upar hai — time/disclaimer wahi jagah par rahein (pehle 130 tha, 2 lines ke liye)
   ctx.textAlign = 'center';
   ctx.font = '400 30px Arial, sans-serif'; ctx.fillStyle = '#8ea0c2';
   ctx.fillText(fmtPktTime(s.time) + ' PKT', W / 2, y);
@@ -9328,6 +9469,7 @@ async function loadTerminal(fromPrice, force) {
     if (fromPrice && lastTerminalSig === termSig) {
       updateTickValues(d);
       renderSignalBanner(d);
+      loadTermConfirmZones();
       return;
     }
     lastTerminalSig = termSig;
@@ -9344,6 +9486,7 @@ async function loadTerminal(fromPrice, force) {
       ${activePlan ? whyTradeHtml(d) : ''}
       ${d.direction === 'WAIT' ? whyWaitHtml(d) : ''}
       ${d.direction === 'WAIT' ? requiredBoxHtml(d) : ''}
+      <div id="termConfirmZones"></div>
       ${actionRowHtml(d)}
       ${oppDir ? `<p class="fine">${t('oppScenario')}: ${oppDir} ${oppScore}% — ${t('oppGateNotMet')} (${t('gate')} 85%)</p>` : ''}
       ${smcChecklistHtml(d)}
@@ -9357,6 +9500,7 @@ async function loadTerminal(fromPrice, force) {
     const cv = document.getElementById('chartCanvas');
     if (cv && lastChartCandles.length) drawChart(cv, lastChartCandles);
     updateTickValues(d);
+    loadTermConfirmZones(); // v9.7 Feature A: Terminal confirmation zones (shared zones fetch)
     ensureTfData(); // HTF/ADX (60s cache) — aa jaye to awaiting list taaza ho jati hai
   } catch (e) { if (!fromPrice) el.innerHTML = '<p>' + t('signalLoadFail') + ' ' + esc(e.message) + '</p>'; }
 }
@@ -9384,6 +9528,93 @@ function zonesCardHtml(d) {
     if (z.supply.length) html += `<h4>${esc(t('zonesSell'))}</h4>` + z.supply.map(zn => zoneRow(zn, esc(t('zonesSell')))).join('');
   }
   return html;
+}
+
+// v9.7: Terminal BUY/SELL Confirmation Zones (Feature A) — wahi computeZones data jo
+// Zones card dikhata hai (same ranges, same formatting → bilkul match). Sirf display,
+// sirf XAUUSD. Koi signal, koi Entry/SL/TP, koi trade advice nahi.
+// Shared zones fetch (Feature A card + Feature C chart bands dono isi se lete hain —
+// ek fetch, 60s cache; /api/indicators se).
+let termZones = null; // {pair, at, zones}
+let termZonesRenderedFor = null;
+function termConfirmZonesHtml(z) {
+  if (!z) return `<div class="wm-card"><p class="notice-banner">${esc(t('confBanner'))}</p>
+      <h4 class="wm-gold">${esc(t('confTitle'))}</h4>
+      <p>${esc(t('confGoldOnly'))}</p></div>`;
+  const price = z.price;
+  const buy = z.nearestBuy, sell = z.nearestSell;
+  const freshLbl = (zn) => zn.tests > 0 ? esc(t('zonesTested')) + ' (' + zn.tests + ')' : esc(t('zonesFresh'));
+  const box = (zn, side) => {
+    if (!zn) return `<div class="conf-box ${side === 'buy' ? 'conf-buy' : 'conf-sell'}"><b>${side === 'buy' ? esc(t('confBuyTitle')) : esc(t('confSellTitle'))}</b><br>—</div>`;
+    const range = fmtPx(currentPair, zn.bottom) + ' – ' + fmtPx(currentPair, zn.top);
+    if (side === 'buy') return `<div class="conf-box conf-buy"><b>${esc(t('confBuyTitle'))}</b><br>${esc(t('confSupport'))} · ${esc(t('confZone'))}: <b>${range}</b> · ${freshLbl(zn)}<br>${esc(t('confReclaim'))}: <b>${fmtPx(currentPair, zn.top)}</b><br>${esc(t('confBuyLine'))}</div>`;
+    return `<div class="conf-box conf-sell"><b>${esc(t('confSellTitle'))}</b><br>${esc(t('confResistance'))} · ${esc(t('confZone'))}: <b>${range}</b> · ${freshLbl(zn)}<br>${esc(t('confFall'))}: <b>${fmtPx(currentPair, zn.bottom)}</b><br>${esc(t('confSellLine'))}</div>`;
+  };
+  let watchKey = 'confWatchNone', watchZone = null;
+  if (z.status === 'in_buy') { watchKey = 'confWatchInBuy'; watchZone = buy; }
+  else if (z.status === 'in_sell') { watchKey = 'confWatchInSell'; watchZone = sell; }
+  else if (z.status === 'near_buy') { watchKey = 'confWatchNearBuy'; watchZone = buy; }
+  else if (z.status === 'near_sell') { watchKey = 'confWatchNearSell'; watchZone = sell; }
+  else if (z.status === 'between') {
+    const dBuy = buy ? price - buy.top : Infinity, dSell = sell ? sell.bottom - price : Infinity;
+    if (dBuy === Infinity && dSell === Infinity) { watchKey = 'confWatchNone'; }
+    else if (dBuy <= dSell) { watchKey = 'confWatchBetweenBuy'; watchZone = buy; }
+    else { watchKey = 'confWatchBetweenSell'; watchZone = sell; }
+  }
+  const watchRange = watchZone ? fmtPx(currentPair, watchZone.bottom) + ' – ' + fmtPx(currentPair, watchZone.top) : '—';
+  let html = `<div class="wm-card"><p class="notice-banner">${esc(t('confBanner'))}</p>
+      <h4 class="wm-gold">${esc(t('confTitle'))}</h4>`;
+  if (!z.supply.length && !z.demand.length) {
+    html += `<p>${esc(t('confNoZone'))}</p>`;
+  } else {
+    html += box(buy, 'buy') + box(sell, 'sell');
+  }
+  html += `<div class="gate"><span>${esc(t('confNextWatch'))}</span><span>${esc(t(watchKey))}</span></div>
+      <div class="gate"><span>${esc(t('confNextWatch'))} · ${esc(t('confZone'))}</span><span>${watchRange}</span></div></div>`;
+  return html;
+}
+async function loadTermConfirmZones() {
+  const el = document.getElementById('termConfirmZones'); if (!el) return;
+  if (termZones && termZones.pair === currentPair && Date.now() - termZones.at < 60000) {
+    if (termZonesRenderedFor !== currentPair) { el.innerHTML = termConfirmZonesHtml(termZones.zones); termZonesRenderedFor = currentPair; }
+    return;
+  }
+  try {
+    const d = await api('/api/indicators?pair=' + currentPair);
+    termZones = { pair: currentPair, at: Date.now(), zones: d.zones || null };
+    el.innerHTML = termConfirmZonesHtml(termZones.zones);
+    termZonesRenderedFor = currentPair;
+    const cv = document.getElementById('chartCanvas');
+    if (cv && lastChartCandles.length) drawChart(cv, lastChartCandles);
+  } catch (e) { el.innerHTML = '<p class="fine">' + esc(t('confLoadFail')) + '</p>'; }
+}
+// v9.7 Feature D: Multi-Timeframe Confluence Matrix — 7 timeframes, asal candles se.
+// Candle = aakhri candle close vs open; Trend = Trend Panel wala EMA 20/50 rule;
+// RSI 14: 50+ = Bullish momentum, 50 se neeche = Bearish. Data na ho to "—" — koi number nahi banaya jata.
+function matrixHtml(d) {
+  const tfs = ['1m', '5m', '15m', '30m', '1H', '4H', '1D'];
+  const trendState = (tf) => {
+    if (!tf || tf.error || tf.ema20 == null || tf.ema50 == null || tf.lastPrice == null) return null;
+    if (tf.lastPrice > tf.ema50 && tf.ema20 > tf.ema50) return 'bullish';
+    if (tf.lastPrice < tf.ema50 && tf.ema20 < tf.ema50) return 'bearish';
+    return 'neutral';
+  };
+  const row = (label) => {
+    const tf = d.timeframes[label];
+    if (!tf || tf.error) return `<div class="gate"><span><b>${esc(label)}</b></span><span>— · — · —</span></div>`;
+    const candle = (tf.lastOpen == null || tf.lastPrice == null) ? '—' : (tf.lastPrice >= tf.lastOpen ? esc(t('panelBullish')) : esc(t('panelBearish')));
+    const tr = trendState(tf);
+    const trend = tr === 'bullish' ? esc(t('panelBullish')) : tr === 'bearish' ? esc(t('panelBearish')) : tr === 'neutral' ? esc(t('matrixNeutral')) : '—';
+    const rsi = tf.rsi14 == null ? '—' : fmt(tf.rsi14, 1) + ' · ' + (tf.rsi14 >= 50 ? esc(t('panelBullish')) : esc(t('panelBearish')));
+    const candleCls = candle === esc(t('panelBullish')) ? 'buy' : candle === esc(t('panelBearish')) ? 'sell' : 'fine';
+    const trendCls = tr === 'bullish' ? 'buy' : tr === 'bearish' ? 'sell' : 'fine';
+    return `<div class="gate"><span><b>${esc(label)}</b></span><span><span class="${candleCls}">${candle}</span> · <span class="${trendCls}">${trend}</span> · ${rsi}</span></div>`;
+  };
+  return `<div class="wm-card"><p class="notice-banner">${esc(t('matrixBanner'))}</p>
+      <h4 class="wm-gold">${esc(t('matrixTitle'))}</h4>
+      <p class="fine">${esc(t('matrixText'))}</p>
+      <div class="gate"><span><b>${esc(t('matrixTf'))}</b></span><span><b>${esc(t('matrixCandle'))} · ${esc(t('matrixTrend'))} · ${esc(t('matrixMomentum'))}</b></span></div>
+      ${tfs.map(row).join('')}</div>`;
 }
 // Trend Panel (v9.6.4) — TradingView Trend Panel ka wahi hisaab, server ke panel data se.
 // Display only: koi Entry/SL/TP nahi, koi signal nahi.
@@ -9449,6 +9680,7 @@ async function loadIndicators() {
       <p>Daily — RSI ${fmt(d.timeframes['1D'].rsi14, 1)} · EMA20 ${fmtPx(currentPair, d.timeframes['1D'].ema20)} · ATR ${fmtPx(currentPair, d.timeframes['1D'].atr14)}</p>
       ${d.pivots ? `<h4>${t('pivotTitle')}</h4>${row('P', fmtPx(currentPair, d.pivots.P))}${row('R1', fmtPx(currentPair, d.pivots.R1))}${row('R2', fmtPx(currentPair, d.pivots.R2))}${row('S1', fmtPx(currentPair, d.pivots.S1))}${row('S2', fmtPx(currentPair, d.pivots.S2))}` : ''}
       ${trendPanelHtml(d)}
+      ${matrixHtml(d)}
       ${zonesCardHtml(d)}
       <h4>${t('fearGreedTitle')}</h4><div id="fngBody"><p>${esc(t('loading'))}</p></div>`;
     loadFearGreed();
@@ -9824,6 +10056,48 @@ async function disablePush() {
     }
     await refreshPushCard(); msg(t('pushDisabledMsg'));
   } catch (e) { msg(e.message); }
+}
+// v9.7 Feature F: buyer jiska browser push ON nahi — Terminal par halka sa reminder banner.
+// Sirf buyer ko, sirf jab push supported ho aur subscription na ho; X se band karein to
+// is session me dobara nahi dikhta (sessionStorage). Terminal/signals ko kabhi block nahi karta.
+let pushBannerDismissed = false;
+function pushBannerDismissedThisSession() {
+  if (pushBannerDismissed) return true;
+  try { return sessionStorage.getItem('ftp_push_banner_dismissed') === '1'; } catch (e) { return false; }
+}
+async function maybeShowPushBanner() {
+  const el = document.getElementById('pushBanner'); if (!el) return;
+  if (!me || me.role !== 'buyer') { el.innerHTML = ''; return; }
+  if (pushBannerDismissedThisSession()) { el.innerHTML = ''; return; }
+  if (!pushSupported()) { el.innerHTML = ''; return; }
+  let sub = null;
+  try { const reg = await navigator.serviceWorker.getRegistration(); if (reg) sub = await reg.pushManager.getSubscription(); } catch (e) {}
+  if (sub) { el.innerHTML = ''; return; }
+  el.innerHTML = `<div class="wm-card push-banner"><span class="push-banner-text">🔔 ${esc(t('pushBannerText'))}</span>
+    <button class="btn small gold" onclick="gotoPushCard()">${esc(t('pushBannerBtn'))}</button>
+    <button class="push-banner-x" onclick="dismissPushBanner()" aria-label="Close">✕</button></div>`;
+}
+function dismissPushBanner() {
+  pushBannerDismissed = true;
+  try { sessionStorage.setItem('ftp_push_banner_dismissed', '1'); } catch (e) {}
+  const el = document.getElementById('pushBanner'); if (el) el.innerHTML = '';
+}
+function gotoPushCard() {
+  acctTab = 'overview'; // Browser Notifications card Account → Overview me hai
+  showTab('account');
+  // loadAcct() pehle ek await karta hai — card milne tak thora wait karein (max 2s).
+  let tries = 0;
+  const tick = () => {
+    const card = document.getElementById('pushCard');
+    if (card) {
+      card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      card.classList.add('push-glow');
+      setTimeout(() => card.classList.remove('push-glow'), 2500);
+      return;
+    }
+    if (++tries < 20) setTimeout(tick, 100);
+  };
+  tick();
 }
 async function refreshPairsCard() {
   const el = document.getElementById('pairsCard'); if (!el) return;

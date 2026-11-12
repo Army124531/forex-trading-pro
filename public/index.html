@@ -7,15 +7,17 @@
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-<!-- v9.1: branded splash screen (once per browser session, overlay only) -->
+<!-- v9.7: branded splash screen (premium terminal style, OUR brand only — once per browser session, overlay only) -->
 <div id="splash">
   <div class="splash-inner">
-    <div class="splash-emblem">F</div>
+    <div class="splash-top"><span class="splash-online"><span class="splash-dot"></span>LIVE • ONLINE</span><button class="splash-skip" id="splashSkip" onclick="hideSplash(true)">SKIP ›</button></div>
+    <div class="splash-tag">LIVE SIGNALS • GOLD • FOREX • CRYPTO</div>
+    <div class="splash-hero"><img src="splash-hero.jpg" alt="Forex Trading Pro"></div>
     <div class="splash-brand">FOREX TRADING PRO</div>
-    <div class="splash-tag">AI POWERED TRADING TERMINAL</div>
+    <div class="splash-sub">AI POWERED TRADING TERMINAL</div>
+    <div class="splash-status" id="splashStatus">Live prices se connect ho raha hai... 0%</div>
     <div class="splash-bar"><div class="splash-fill" id="splashFill"></div></div>
-    <div class="splash-status" id="splashStatus">Analyzing Market...</div>
-    <button class="splash-skip" id="splashSkip" onclick="hideSplash(true)">SKIP ›</button>
+    <div class="splash-icons"><div><div class="si-ic">💱</div><div class="si-lb">Forex</div></div><div><div class="si-ic">🥇</div><div class="si-lb">Gold</div></div><div><div class="si-ic">₿</div><div class="si-lb">Crypto</div></div><div><div class="si-ic">🤖</div><div class="si-lb">AI Signals</div></div></div>
   </div>
 </div>
 <div id="app">
@@ -88,6 +90,7 @@
     <!-- TERMINAL -->
     <section id="tab-terminal" class="tab">
       <div class="pair-select" id="pairSelect"></div>
+      <div id="pushBanner"></div><!-- v9.7 Feature F: buyer push reminder (sirf buyer, sirf jab push OFF ho) -->
       <div id="signalBanner"></div>
       <div class="tab-banner" data-i18n="bannerTerminal">SIGNAL SIRF YAHAN SE — BUY/SELL card par trade lein</div>
       <div id="terminalCard" class="card"><p>Loading…</p></div>
