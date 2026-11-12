@@ -391,7 +391,9 @@ function stochArr(candles, period = 14) {
 // Daily Pivot Points: pichle poore UTC din ke H/L/C se (asal 1H candles).
 // P = (H+L+C)/3, R1 = 2P−L, S1 = 2P−H, R2 = P+(H−L), S2 = P−(H−L).
 // Poora din na mile to null (koi number banaya nahi jata).
-function dailyPivots(candles) {
+// v9.6.1: pivots pair ke asal decimals me (pehle hamesha 2 — forex "1.33" dikhta tha).
+// Sirf Indicators tab ki display values hain — signal engine inhe use nahi karta.
+function dailyPivots(candles, dec) {
   if (!candles || candles.length < 25) return null;
   const keyOf = (t) => { const d = new Date(t); return d.getUTCFullYear() + '-' + (d.getUTCMonth() + 1) + '-' + d.getUTCDate(); };
   const lastKey = keyOf(candles[candles.length - 1].t);
@@ -406,7 +408,8 @@ function dailyPivots(candles) {
   }
   if (day === null || !isFinite(H) || !isFinite(L) || C == null) return null;
   const P = (H + L + C) / 3;
-  return { P: +P.toFixed(2), R1: +(2 * P - L).toFixed(2), S1: +(2 * P - H).toFixed(2), R2: +(P + (H - L)).toFixed(2), S2: +(P - (H - L)).toFixed(2), dayHigh: H, dayLow: L, dayClose: C };
+  const f = (v) => +v.toFixed(dec ?? 2);
+  return { P: f(P), R1: f(2 * P - L), S1: f(2 * P - H), R2: f(P + (H - L)), S2: f(P - (H - L)), dayHigh: H, dayLow: L, dayClose: C };
 }
 
 function computeIndicators(candles) {
@@ -1608,7 +1611,7 @@ app.get('/api/indicators', requireAuth, async (req, res) => {
     parts.push({ name: 'Trend', score: trend, max: 20 }, { name: 'Momentum', score: mom, max: 20 }, { name: 'Volatility', score: vol, max: 20 }, { name: 'Strength', score: str, max: 20 }, { name: 'Structure', score: struct, max: 20 });
   }
   // Pivot points: pichle poore UTC din se (asal 1H candles)
-  const pivots = dailyPivots(await getCandles(pair, '1H'));
+  const pivots = dailyPivots(await getCandles(pair, '1H'), (PAIRS.find(p => p.id === pair) || {}).dec);
   res.json({ pair, timeframes: out, scorecard: { score, parts, note: 'Score asal Kraken candles se banta hai.' }, pivots });
 });
 
