@@ -613,6 +613,19 @@ const I18N = {
     tgNotLinked: "Abhi Telegram alerts ON nahi hain — link khol kar Start dabayein.",
     tgCopyLink: "Link Copy Karein",
     tgLinkCopied: "Aap ka personal Telegram link copy ho gaya — bot par Start dabayein.",
+    pushTitle: "Browser Notifications — Site Band Ho Tab Bhi",
+    pushText: "Signal aate hi aap ke browser me notification aa jaye ga — website khuli ho ya band. iPhone par site ko Home Screen par add karna hoga. Notification ki awaz phone ki default sound hoti hai.",
+    pushOn: "✅ Browser notifications ON hain — signal aate hi notification mile ga.",
+    pushOff: "Browser notifications abhi ON nahi hain.",
+    pushEnableBtn: "🔔 Browser Notifications ON Karein",
+    pushDisableBtn: "Notifications Band Karein",
+    pushDenied: "Browser ne permission nahi di — browser ki site settings se Allow karein.",
+    pushUnsupported: "Aap ka browser Web Push support nahi karta.",
+    pushEnabledMsg: "Browser notifications ON ho gayi hain.",
+    pushDisabledMsg: "Browser notifications band kar di gayi hain.",
+    pushPairsTitle: "Kaun Se Pairs Ki Notifications?",
+    pushPairsText: "Ye pasand Telegram aur Browser dono notifications par lagti hai — band pair ka signal aaye to koi notification nahi aaye gi.",
+    pushPairsSaved: "Pairs ki pasand save ho gayi.",
     marketCards: "Live Market",
     pcMarketPrice: "Market Price (Last)",
     pcChange24h: "Daily / 24H Change",
@@ -1194,6 +1207,19 @@ const I18N = {
     tgNotLinked: "Telegram alerts are not ON yet — open the link and press Start.",
     tgCopyLink: "Copy Link",
     tgLinkCopied: "Your personal Telegram link is copied — press Start on the bot.",
+    pushTitle: "Browser Notifications — Even When the Site Is Closed",
+    pushText: "When a signal appears, you get a browser notification — whether the website is open or closed. On iPhone, add the site to your Home Screen first. The notification sound is your phone's default sound.",
+    pushOn: "✅ Browser notifications are ON — you will get a notification when a signal appears.",
+    pushOff: "Browser notifications are not ON yet.",
+    pushEnableBtn: "🔔 Turn On Browser Notifications",
+    pushDisableBtn: "Turn Off Notifications",
+    pushDenied: "The browser did not give permission — Allow it from the browser's site settings.",
+    pushUnsupported: "Your browser does not support Web Push.",
+    pushEnabledMsg: "Browser notifications are ON.",
+    pushDisabledMsg: "Browser notifications are off.",
+    pushPairsTitle: "Which Pairs' Notifications?",
+    pushPairsText: "This choice applies to both Telegram and Browser notifications — if a switched-off pair gives a signal, no notification will come.",
+    pushPairsSaved: "Pair preference saved.",
     marketCards: "Live Market",
     pcMarketPrice: "Market Price (Last)",
     pcChange24h: "Daily / 24H Change",
@@ -9678,6 +9704,9 @@ async function loadAcct() {
       <p>${t('engines')}: Terminal ${s.settings.engines.terminal ? 'ON' : 'OFF'} · SMC ${s.settings.engines.smc ? 'ON' : 'OFF'} · Session ${s.settings.engines.session ? 'ON' : 'OFF'}</p>
       <p>${t('signals')}: ${t('total')} ${p.total} · ${t('wins')} ${p.wins} · ${t('losses')} ${p.losses} · ${t('inFlight')} ${p.inFlight}</p>` + planExpiryHtml() +
       (me.tgCode ? `<p><b>${esc(t('tgPersonalTitle'))}</b><br><a class="btn gold" href="https://t.me/tradingforexprobot?start=${esc(me.tgCode || '')}" target="_blank" rel="noopener">${esc(t('tgButton'))}</a> <button class="btn small" onclick="copyTgLink()">${esc(t('tgCopyLink'))}</button><br><span class="fine">${esc(t('tgPersonalText'))}</span><br><span class="fine">${esc(me.tgLinked ? t('tgLinked') : t('tgNotLinked'))}</span></p>` : '') +
+      // v9.7: Browser notifications + per-pair pasand (Telegram + Push dono par lagti hai).
+      `<h4>${esc(t('pushTitle'))}</h4><div id="pushCard"><p>${esc(t('loading'))}</p></div>
+      <h4>${esc(t('pushPairsTitle'))}</h4><p class="fine">${esc(t('pushPairsText'))}</p><div id="pairsCard"><p>${esc(t('loading'))}</p></div><p id="pairsMsg" class="fine"></p>` +
       // v9.5: Admin apna password khud badle — sirf admin ko dikhta hai (buyer ko nahi).
       (me.role === 'admin' ? `<h4>${esc(t('ownPassTitle'))}</h4>
       <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
@@ -9685,6 +9714,7 @@ async function loadAcct() {
       <input type="password" id="selfPassConf" data-i18n-ph="phConfirmPass" placeholder="${esc(t('phConfirmPass'))}" autocomplete="new-password" style="width:170px">
       <button class="btn small gold" onclick="changeOwnPass()">${esc(t('saveBtn'))}</button>
       <span id="selfPassMsg" class="fine"></span></div>` : '');
+      refreshPushCard(); refreshPairsCard();
     } else if (acctTab === 'engineControls') {
       const s = await api('/api/settings');
       const engLabel = (k) => k === 'terminal' ? t('mainTerminal') : k === 'smc' ? t('smcEngine') : k === 'session' ? t('sessionEngine') : t('newsIntel');
@@ -9750,6 +9780,70 @@ async function toggleEngine(k, val) {
   catch (e) { alert(e.message); }
 }
 function testPush() { document.getElementById('pushMsg').textContent = t('testPushMsg'); }
+// ---- v9.7: Web Push (browser notifications, site band ho tab bhi) + per-pair pasand ----
+// Permission sirf button dabane par mangi jati hai (browser page load par prompt nahi dikhata).
+function urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; ++i) outputArray[i] = rawData.charCodeAt(i);
+  return outputArray;
+}
+function pushSupported() { return ('serviceWorker' in navigator) && ('PushManager' in window) && ('Notification' in window); }
+async function refreshPushCard() {
+  const el = document.getElementById('pushCard'); if (!el) return;
+  if (!pushSupported()) { el.innerHTML = '<p>' + esc(t('pushUnsupported')) + '</p>'; return; }
+  let sub = null;
+  try { const reg = await navigator.serviceWorker.getRegistration(); if (reg) sub = await reg.pushManager.getSubscription(); } catch (e) {}
+  const on = !!sub;
+  el.innerHTML = `<p>${esc(t('pushText'))}</p><p>${esc(on ? t('pushOn') : t('pushOff'))}</p>
+    <button class="btn small ${on ? '' : 'gold'}" onclick="${on ? 'disablePush()' : 'enablePush()'}">${esc(on ? t('pushDisableBtn') : t('pushEnableBtn'))}</button> <span id="pushMsg" class="fine"></span>`;
+}
+async function enablePush() {
+  const msg = (s) => { const m = document.getElementById('pushMsg'); if (m) m.textContent = s; };
+  try {
+    if (!pushSupported()) { msg(t('pushUnsupported')); return; }
+    const reg = await navigator.serviceWorker.register('/sw.js');
+    const perm = await Notification.requestPermission();
+    if (perm !== 'granted') { msg(t('pushDenied')); return; }
+    const k = await api('/api/push/vapid-public-key');
+    if (!k.available || !k.publicKey) { msg(t('pushUnsupported')); return; }
+    const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlBase64ToUint8Array(k.publicKey) });
+    await api('/api/push/subscribe', { method: 'POST', body: JSON.stringify({ subscription: sub.toJSON() }) });
+    await refreshPushCard(); msg(t('pushEnabledMsg'));
+  } catch (e) { msg(e.message); }
+}
+async function disablePush() {
+  const msg = (s) => { const m = document.getElementById('pushMsg'); if (m) m.textContent = s; };
+  try {
+    const reg = await navigator.serviceWorker.getRegistration();
+    if (reg) {
+      const sub = await reg.pushManager.getSubscription();
+      if (sub) { try { await api('/api/push/unsubscribe', { method: 'POST', body: JSON.stringify({ endpoint: sub.endpoint }) }); } catch (e) {} await sub.unsubscribe(); }
+    }
+    await refreshPushCard(); msg(t('pushDisabledMsg'));
+  } catch (e) { msg(e.message); }
+}
+async function refreshPairsCard() {
+  const el = document.getElementById('pairsCard'); if (!el) return;
+  try {
+    const d = await api('/api/notify-pairs');
+    const on = new Set(d.pairs || []);
+    el.innerHTML = PAIR_IDS.map(p => `<div class="gate"><span>${esc(p.replace('USD', '/USD'))}</span><button class="btn small ${on.has(p) ? 'gold' : ''}" onclick="toggleNotifyPair('${p}')">${on.has(p) ? 'ON' : 'OFF'}</button></div>`).join('');
+  } catch (e) { el.innerHTML = '<p>' + esc(e.message) + '</p>'; }
+}
+async function toggleNotifyPair(pair) {
+  const msg = (s) => { const m = document.getElementById('pairsMsg'); if (m) m.textContent = s; };
+  try {
+    const d = await api('/api/notify-pairs');
+    const set = new Set(d.pairs || []);
+    if (set.has(pair)) set.delete(pair); else set.add(pair);
+    await api('/api/notify-pairs', { method: 'POST', body: JSON.stringify({ pairs: [...set] }) });
+    msg(t('pushPairsSaved'));
+    refreshPairsCard();
+  } catch (e) { msg(e.message); }
+}
 async function askAi() {
   const q = document.getElementById('aiQ').value;
   try { const d = await api('/api/ai', { method: 'POST', body: JSON.stringify({ question: q }) }); document.getElementById('aiA').textContent = d.answer + ' (' + d.note + ')'; }
