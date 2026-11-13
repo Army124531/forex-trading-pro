@@ -19,7 +19,9 @@ let riskProfile = localStorage.getItem('ftp_risk_profile') || 'moderate';
 let theme = localStorage.getItem('ftp_theme') || 'dark';
 let lastChartCandles = []; // v9.8 (c): loadTerminal se pehle bhi defined rahe — race fix
 // v9.8 (a): pair label hamesha "USD/JPY" jaisa — replace('USD','/USD') pehli 'USD' badal deta tha (USDJPY -> "/USDJPY").
-function pairLabel(id) { const x = String(id || ''); return x.length > 3 ? x.slice(0, 3) + '/' + x.slice(3) : x; }
+// v9.8-fix2: quote-aware split — DOGEUSD -> DOGE/USD (pehle DOG/EUSD banta tha).
+// USD-quote wale pairs: base = quote se pehle ka hissa; USD-base wale: USD/XXX.
+function pairLabel(id) { const x = String(id || ''); if (!x) return x; if (x.length > 3 && x.endsWith('USD')) return x.slice(0, -3) + '/USD'; if (x.length > 3 && x.startsWith('USD')) return 'USD/' + x.slice(3); return x.length > 3 ? x.slice(0, 3) + '/' + x.slice(3) : x; }
 function applyTheme() { try { document.body.classList.toggle('light', theme === 'light'); } catch (e) {} }
 applyTheme();
 function riskProfileText() {
@@ -111,6 +113,14 @@ const I18N = {
     backtestText: "Asal 1H candles par session rule chala kar dekhein.",
     backtestBtn: "Backtest Chalayein (30 din)",
     historyTitle: "Signal History",
+    pips: "Pips",
+    livePips: "Live Pips",
+    runningPips: "Chal rahe Pips",
+    totalPips: "Kul Pips",
+    winPips: "Jeete hue Pips",
+    lossPips: "Haare hue Pips",
+    netPips: "Net Pips",
+    pipsNote: "Pips ka hisaab: forex 0.0001, JPY 0.01, Gold 0.10, Silver 0.01, crypto $1 ya 0.0001 (pair ke hisaab se). Kul pips tamam pairs ka seedha jama hai.",
     historyText: "Sirf asal record kiye gaye signals dikhaye jate hain — koi purani history banayi nahi gayi. Nateeja (Win/Loss/Break-Even/In-Flight) baad ki candles se check karke dikhaya jata hai.",
     refinerTitle: "Strategy Refiner",
     refinerText: "Cutoff sirf is build ke baad record hone wale signals par lagta hai, kyunke purane signals me gate score save nahi hua.",
@@ -806,6 +816,14 @@ const I18N = {
     backtestText: "Run the session rule on real 1H candles.",
     backtestBtn: "Run Backtest (30 days)",
     historyTitle: "Signal History",
+    pips: "Pips",
+    livePips: "Live Pips",
+    runningPips: "Running Pips",
+    totalPips: "Total Pips",
+    winPips: "Win Pips",
+    lossPips: "Loss Pips",
+    netPips: "Net Pips",
+    pipsNote: "Pips: forex 0.0001, JPY 0.01, Gold 0.10, Silver 0.01, crypto $1 or 0.0001 (by pair). Total pips is a plain sum across pairs.",
     historyText: "Only actually recorded signals are shown — no past history was invented. The result (Win/Loss/Break-Even/In-Flight) is checked against later candles.",
     refinerTitle: "Strategy Refiner",
     refinerText: "The cutoff only applies to signals recorded after this build, because older signals did not save a gate score.",
@@ -8345,6 +8363,27 @@ function fmt(n, dec) { return n == null ? '—' : Number(n).toLocaleString('en-U
 // v9.6.1: pair ke asal decimals (server ke PAIRS dec jaisi) — fmt(x, 2) har pair ko
 // 2 decimal dikhata tha, is liye EURUSD/GBPUSD/USDCAD "1.33" nazar aate the.
 const PAIR_DEC = { XAUUSD: 2, XAGUSD: 2, BTCUSD: 2, ETHUSD: 2, SOLUSD: 2, BNBUSD: 2, XRPUSD: 4, DOGEUSD: 4, ADAUSD: 4, EURUSD: 5, GBPUSD: 5, USDJPY: 3, AUDUSD: 5, USDCAD: 5, USDCHF: 5 };
+// v9.8.1: Pips — server ke PIP_SIZE jaisa (1 pip: forex 0.0001, JPY 0.01, Gold 0.10,
+// Silver 0.01, crypto $1 ya 0.0001). Chal rahe signal ke live pips isi se bante hain.
+const PIP_SIZE = { XAUUSD: 0.1, XAGUSD: 0.01, BTCUSD: 1, ETHUSD: 1, SOLUSD: 1, BNBUSD: 1, XRPUSD: 0.0001, DOGEUSD: 0.0001, ADAUSD: 0.0001, EURUSD: 0.0001, GBPUSD: 0.0001, USDJPY: 0.01, AUDUSD: 0.0001, USDCAD: 0.0001, USDCHF: 0.0001 };
+function pipSize(pair) { return PIP_SIZE[(pair || '').toUpperCase()] || 0.0001; }
+// Chal raha signal: maujooda price se live running pips (BUY: price-entry, SELL: entry-price).
+function livePipsFor(pair, direction, entry, price) {
+  if (entry == null || price == null) return null;
+  const d = direction === 'BUY' ? price - entry : entry - price;
+  return +(d / pipSize(pair)).toFixed(1);
+}
+// Do prices ke darmiyan asal pip faasla (hamesha positive) — TP distances ke liye.
+// Kabhi template nahi: har TP ka faasla uske asal TP−entry se banta hai.
+function distPips(pair, a, b) {
+  if (a == null || b == null) return null;
+  return +(Math.abs(b - a) / pipSize(pair)).toFixed(1);
+}
+// Pips rang: + green, − red, 0 amber — bada signed figure, asal numbers se.
+function pipsCls(v) { return v > 0 ? 'up' : v < 0 ? 'down' : 'wait'; }
+function pipsBigHtml(v) { return `<b class="pips-big ${pipsCls(v)}">${fmtPips(v)} ${t('pips')}</b>`; }
+// Pips display: +45.0 / -30.0 / 0.0 — hamesha ek decimal, sign ke saath.
+function fmtPips(v) { if (v == null) return '—'; return (v > 0 ? '+' : '') + (+v).toFixed(1); }
 function fmtPx(pair, n) { return fmt(n, PAIR_DEC[(pair || '').toUpperCase()] ?? 2); }
 // v9.6.1: "Market band hai" sirf tab jab market ASAL me band ho.
 // Server ka marketClosed flag purane (weekend ke) response se Tuesday ko bhi true
@@ -8950,7 +8989,9 @@ function liveStatusRowsHtml(d, plan) {
   const be = tp1Hit
     ? '<span id="beSt" class="buy"><b>' + esc(t('beActive')) + '</b></span>'
     : '<span id="beSt" class="fine">' + esc(t('beNotYet')) + '</span>';
-  return t('tpStatusLbl') + ': TP1 ' + statusSpanHtml('tpSt1', tp1Hit) + ' · TP2 ' + statusSpanHtml('tpSt2', tp2Hit) + ' · TP3 ' + statusSpanHtml('tpSt3', tp3Hit) + '<br>'
+  // Har TP ka ASAL pip faasla (trigger se us TP tak) — kabhi template nahi (fixed +150/+250/+350 nahi).
+  const tpPips = (tp) => { const v = distPips(currentPair, plan.trigger, tp); return v == null ? '—' : '+' + v.toFixed(1) + ' ' + t('pips'); };
+  return t('tpStatusLbl') + ': TP1 ' + tpPips(plan.tp1) + ' ' + statusSpanHtml('tpSt1', tp1Hit) + ' · TP2 ' + tpPips(plan.tp2) + ' ' + statusSpanHtml('tpSt2', tp2Hit) + ' · TP3 ' + tpPips(plan.tp3) + ' ' + statusSpanHtml('tpSt3', tp3Hit) + '<br>'
     + t('beLbl') + ': ' + be + '<br>'
     + t('dcaLbl') + ': <span class="fine">' + esc(t('dcaNotActive')) + '</span><br>'
     + t('monLbl') + ': <b id="monPrice">' + (price == null ? '—' : fmtPx(currentPair, price)) + '</b> · <span id="monAge" class="fine">' + (age == null ? '—' : age + ' ' + esc(t('secAgo'))) + '</span><br>';
@@ -9541,6 +9582,7 @@ function signalCardHeadHtml(d) {
       <div><span class="pc-label">${t('signalCode')}</span><br><b>${d.signalCode ? esc(d.signalCode) : '—'}</b>${d.signalCode ? '<br><span class="fine">' + t('validUntil') + ': ' + fmtPktTimeShort(d.validUntil) + '</span>' : ''}</div>
       <div><span class="pc-label">${t('timeframeLbl')}</span><br><b>1H</b><br><span class="fine">15M entry</span></div>
       <div><span class="pc-label">${t('liveMarketPrice')}</span><br><b id="sigLivePrice">${fmtPx(currentPair, d.price)}</b><br><span class="fine" id="sigLiveSync">${liveLine}</span></div>
+      <div><span class="pc-label">${t('livePips')}</span><br><b id="sigLivePips" class="pips-big">—</b></div>
     </div>
     ${d.direction === 'WAIT' ? `<p class="scan-line">● ${esc(t('scanningMarket'))}</p>` : ''}
   </div>`;
@@ -9577,6 +9619,14 @@ function updateTickValues(d) {
     }
   }
   set('sigLivePrice', fmtPx(currentPair, d.price));
+  // v9.8.1: Live Pips — har price tick par taaza (chal raha signal, entry se maujooda price tak).
+  const lpEl = document.getElementById('sigLivePips');
+  if (lpEl) {
+    const lp = (currentSignal && d.price != null) ? livePipsFor(currentSignal.pair, currentSignal.direction, currentSignal.entry, d.price) : null;
+    const lpTxt = lp == null ? '—' : fmtPips(lp) + ' ' + t('pips');
+    if (lpEl.textContent !== lpTxt) lpEl.textContent = lpTxt;
+    lpEl.className = 'pips-big' + (lp == null ? '' : ' ' + pipsCls(lp));
+  }
   // v9.6.2: live status rows — har tick par taaza (poora card dobara nahi banta).
   const setStatus = (id, hit) => { const el = document.getElementById(id); if (!el) return; el.className = hit ? 'buy' : 'fine'; el.innerHTML = hit ? '<b>✓ ' + esc(t('hit')) + '</b>' : esc(t('pending')); };
   const ap = d.direction === 'BUY' ? d.buyPlan : d.direction === 'SELL' ? d.sellPlan : null;
@@ -10017,28 +10067,42 @@ async function loadTerminalPerf() {
     const be = list.filter(s => s.outcome === 'Break-Even').length;
     const inflight = list.filter(s => !s.outcome).length;
     const closed = wins + losses + be;
-    return { total: list.length, wins, losses, breakEven: be, inFlight: inflight, winRate: closed ? +(wins / closed * 100).toFixed(1) : null };
+    const pipsOf = s => (typeof s.pips === 'number' ? s.pips : 0);
+    const winPips = +list.filter(s => s.outcome === 'Win').reduce((a, s) => a + pipsOf(s), 0).toFixed(1);
+    const lossPips = +list.filter(s => s.outcome === 'Loss').reduce((a, s) => a + pipsOf(s), 0).toFixed(1);
+    const netPips = +(winPips + lossPips).toFixed(1);
+    return { total: list.length, wins, losses, breakEven: be, inFlight: inflight, winRate: closed ? +(wins / closed * 100).toFixed(1) : null, winPips, lossPips, netPips, totalPips: netPips };
   } catch (e) { return null; }
 }
 async function loadPerf() {
   const el = document.getElementById('perfBody'); if (!el) return;
   const p = await loadTerminalPerf();
   if (!p) { el.innerHTML = ''; return; }
-  el.innerHTML = `<p>${t('totalExecuted')}: ${p.total} · ${t('wins')}: ${p.wins} · ${t('losses')}: ${p.losses} · ${t('breakEven')}: ${p.breakEven} · ${t('inFlight')}: ${p.inFlight} · ${t('winRate')}: ${p.winRate == null ? t('noClosed') : p.winRate + '%'}</p><p>${esc(t('perfNoteTerminal'))}</p>`;
+  el.innerHTML = `<p>${t('totalExecuted')}: ${p.total} · ${t('wins')}: ${p.wins} · ${t('losses')}: ${p.losses} · ${t('breakEven')}: ${p.breakEven} · ${t('inFlight')}: ${p.inFlight} · ${t('winRate')}: ${p.winRate == null ? t('noClosed') : p.winRate + '%'}</p><p>${t('totalPips')}: <b class="${p.netPips > 0 ? 'up' : p.netPips < 0 ? 'down' : 'wait'}">${p.netPips > 0 ? '+' : ''}${p.netPips.toFixed(1)}</b> · ${t('winPips')}: <b class="up">+${p.winPips.toFixed(1)}</b> · ${t('lossPips')}: <b class="down">${p.lossPips.toFixed(1)}</b></p><p class="fine">${esc(t('pipsNote'))}</p><p>${esc(t('perfNoteTerminal'))}</p>`;
+}
+// v9.8.1: History row ke pips — band signal: record kiye gaye pips; chal raha signal: live running pips (●).
+// Bada signed figure: +45.0 Pips green, −30.0 Pips red, 0.0 Pips amber.
+function pipsCellHtml(s) {
+  if (s.pips != null) return pipsBigHtml(s.pips);
+  if (s.runningPips != null) return pipsBigHtml(s.runningPips) + ' <span class="fine">●</span>';
+  return '—';
 }
 async function loadHistory() {
   const el = document.getElementById('historyBody');
   // v9.2: History me SIRF Terminal signals — SMC/Session records yahan nahi dikhte.
   const o = document.getElementById('fOutcome').value, en = 'terminal';
   try {
-    const d = await api('/api/history?outcome=' + o + '&engine=' + en);
+    const [d, lv] = await Promise.all([api('/api/history?outcome=' + o + '&engine=' + en), api('/api/signals/live').catch(() => null)]);
     histSignals = d.signals || [];
-    el.innerHTML = d.signals.length ? d.signals.map((s, i) => `<div class="price-cell hist-row" style="margin:6px 0" onclick="toggleHistDetails(${i})"><b>${esc(s.pair)}</b> <span class="${s.direction === 'BUY' ? 'buy' : 'sell'}">${s.direction}</span> · ${fmtPktTime(s.createdAt)}<br>${t('entry')} ${fmtPx(s.pair, s.entry)} · SL ${fmtPx(s.pair, s.sl)} · TP1 ${fmtPx(s.pair, s.tp1)} · TP2 ${fmtPx(s.pair, s.tp2)} · TP3 ${fmtPx(s.pair, s.tp3)} · Score ${s.score}% · ${esc(s.engine)} · <b>${esc(s.outcome || 'In-Flight')}</b><br><button class="btn-sig-sm" onclick="event.stopPropagation();copyHistorySignal(${i})">${esc(t('copySignal'))}</button> <button class="btn-sig-sm" onclick="event.stopPropagation();downloadHistorySignal(${i})">${esc(t('downloadSignal'))}</button> <button class="btn-sig-sm" onclick="event.stopPropagation();openShareCard(histSignals[${i}])">${esc(t('shareCard'))}</button> <button class="btn-sig-sm" onclick="event.stopPropagation();toggleHistDetails(${i})">${esc(t('detailsBtn'))}</button><div id="hist-det-${i}" style="display:${histOpenDetails[i] ? 'block' : 'none'}">${histDetailsHtml(s)}</div></div>`).join('') : '<p>' + esc(t('noSignals')) + '</p>';
+    // v9.8.1: in-flight rows ke live running pips — price ke saath badalte hain (card ki tarah).
+    if (lv && lv.signals) { const m = {}; lv.signals.forEach(x => { m[x.id] = x.runningPips; }); histSignals.forEach(s => { if (s.pips == null && m[s.id] != null) s.runningPips = m[s.id]; }); }
+    el.innerHTML = d.signals.length ? d.signals.map((s, i) => `<div class="price-cell hist-row" style="margin:6px 0" onclick="toggleHistDetails(${i})"><b>${esc(s.pair)}</b> <span class="${s.direction === 'BUY' ? 'buy' : 'sell'}">${s.direction}</span> · ${fmtPktTime(s.createdAt)}<br>${t('entry')} ${fmtPx(s.pair, s.entry)} · SL ${fmtPx(s.pair, s.sl)} · TP1 ${fmtPx(s.pair, s.tp1)} · TP2 ${fmtPx(s.pair, s.tp2)} · TP3 ${fmtPx(s.pair, s.tp3)} · Score ${s.score}% · ${esc(s.engine)} · ${t('pips')} ${pipsCellHtml(s)} · <b>${esc(s.outcome || 'In-Flight')}</b><br><button class="btn-sig-sm" onclick="event.stopPropagation();copyHistorySignal(${i})">${esc(t('copySignal'))}</button> <button class="btn-sig-sm" onclick="event.stopPropagation();downloadHistorySignal(${i})">${esc(t('downloadSignal'))}</button> <button class="btn-sig-sm" onclick="event.stopPropagation();openShareCard(histSignals[${i}])">${esc(t('shareCard'))}</button> <button class="btn-sig-sm" onclick="event.stopPropagation();toggleHistDetails(${i})">${esc(t('detailsBtn'))}</button><div id="hist-det-${i}" style="display:${histOpenDetails[i] ? 'block' : 'none'}">${histDetailsHtml(s)}</div></div>`).join('') : '<p>' + esc(t('noSignals')) + '</p>';
   } catch (e) { el.innerHTML = '<p>' + esc(e.message) + '</p>'; }
 }
 // History per-row details — RECORDED gate breakdown (audit). Purane signals me gates save nahi hue.
 function histDetailsHtml(s) {
   let h = `<h4>${t('histDetails')}</h4><p>${t('signal')}: ${esc(s.id || '—')} · ${esc(s.engine)} · ${t('gate')} ${s.gate || '—'}% · Score ${s.score}%</p>`;
+  h += `<p>${t('pips')}: ${pipsCellHtml(s)}${s.exitLevel ? ' · ' + esc(s.exitLevel) : s.runningPips != null ? ' · ' + esc(t('runningPips')) : ''}</p>`;
   if (s.gates && s.gates.length) h += s.gates.map(g => gateRowHtml(g.name, g.points, g.max)).join('');
   else h += '<p>' + esc(t('gatesNotSaved')) + '</p>';
   if (s.smcScore != null) h += `<p>SMC Score: ${s.smcScore}/100</p>`;

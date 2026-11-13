@@ -266,6 +266,7 @@ body.light .tg-card .btn{color:#111}
 .pc-col{min-width:0}
 .pc-label{color:#8ea0c2;font-size:11px;letter-spacing:.5px;text-transform:uppercase}
 .pc-big{font-size:22px;font-weight:800;color:#e8ecf5;line-height:1.2;word-break:break-all}
+.pips-big{font-size:20px;font-weight:800;line-height:1.2;white-space:nowrap}
 .pc-sub{color:#8ea0c2;font-size:12px;margin-top:2px}
 .pc-sync{grid-column:1/-1;color:#8ea0c2;font-size:12px;border-top:1px solid #22304d;padding-top:8px}
 .sig-card{background:#16223a;border:1px solid rgba(245,197,66,.5);border-radius:10px;padding:14px;margin:10px 0;box-shadow:0 0 16px rgba(245,197,66,.09)}
