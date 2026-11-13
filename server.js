@@ -26,6 +26,8 @@ function defaultDb() {
       engines: { terminal: true, smc: true, session: true, news: true },
       aiEnabled: true,
       defaultPair: 'XAUUSD',
+      priceMode: 'last', // MT5 price mode: last | bid | ask | mid (Kraken bid/ask se; na ho to last)
+      engine: { minQuality: 85, slBufferPct: 0.3, tp1R: 1, tp2R: 2, tp3R: 3, maxConcurrent: 3, sessions: { sydney: true, tokyo: true, london: true, newyork: true } },
     },
     lastPrices: {},     // pairId -> last good quote (backup)
     telegramOffset: 0,  // Telegram getUpdates ka offset (poll karte waqt aage badhta hai)
@@ -986,13 +988,14 @@ function buildPlan(livePrice, atr, side) {
   const sl = entry + 1.5 * R; // SELL ka SL HAMESHA entry se upar
   return { direction: 'SELL', entry, entryZone: [entry - 0.5 * R, entry + 0.5 * R], trigger: entry, sl, tp1: entry - 1 * R, tp2: entry - 2 * R, tp3: entry - 3 * R, rr: '1:2' };
 }
-function planStatus(score) {
-  // Gate score se status: 85%+ = gate paar, trade active (IN_ZONE);
-  // 70–84 = gate ke kareeb (APPROACHING); is se kam = WAIT.
+function planStatus(score, gate) {
+  // Gate score se status: gate+ = gate paar, trade active (IN_ZONE);
+  // gate-15 se gate-1 = gate ke kareeb (APPROACHING); is se kam = WAIT.
   // Sirf price se status nahi nikala ja sakta, kyunke entry zone live price
   // ke ird-gird banti hai — price hamesha zone ke andar hota hai.
-  if (score >= 85) return 'IN_ZONE';
-  if (score >= 70) return 'APPROACHING';
+  const g = gate || 85;
+  if (score >= g) return 'IN_ZONE';
+  if (score >= g - 15) return 'APPROACHING';
   return 'WAIT';
 }
 // Zone check: trade sirf tabhi jab us direction ke peeche koi proper zone ho
@@ -1018,7 +1021,10 @@ function zoneSupportFor(smc, demandZone, supplyZone, live, atr, dir) {
 }
 let signalCache = new Map(); // pair -> {at, data}
 async function computeSignal(pairId, lang, force) {
-  const cacheKey = pairId + '|' + (lang === 'en' ? 'en' : 'ur');
+  // v9.8: cache key me priceMode + gate bhi — setting badle to purana signal na mile.
+  const priceMode = (db.settings && db.settings.priceMode) || 'last';
+  const gate = Math.max(85, engineSettings().minQuality || 85);
+  const cacheKey = pairId + '|' + (lang === 'en' ? 'en' : 'ur') + '|' + priceMode + '|' + gate;
   if (force) signalCache.delete(cacheKey);
   const cached = signalCache.get(cacheKey);
   if (cached && Date.now() - cached.at < 30000) return cached.data;
@@ -1029,19 +1035,22 @@ async function computeSignal(pairId, lang, force) {
     return { pair: pairId, error: 'no_data', message: 'Is pair ka live data nahi mila.' };
   }
   const ind = computeIndicators(candles);
-  const live = quote.price;
+  const live = priceByMode(quote, priceMode); // MT5 price mode — Bid/Ask/Mid/Last (Kraken bid/ask se; Yahoo fallback par sirf Last).
   const buy = gateScore(candles, ind, live, 'buy');
   const sell = gateScore(candles, ind, live, 'sell');
   // SMC facts (asal 15M + 5M candles se) — Terminal par single-direction signal ke saath checklist dikhane ke liye
   // 1H candles bhi ek saath (parallel) — v4 extended confluence ke liye
   const [candles5, candles1h] = await Promise.all([getCandles(pairId, '5m'), getCandles(pairId, '1H')]);
   const smc = computeSmc(candles, candles5);
-  let direction = buy.total >= 85 ? 'BUY' : sell.total >= 85 ? 'SELL' : 'WAIT';
+  // v9.8: Terminal ke sab panels ke liye EIK source (1H) — RSI/EMA kahi bhi alag na dikhein.
+  const ind1h = computeIndicators(candles1h);
+  const swing1h = findSwings(candles1h);
+  let direction = buy.total >= gate ? 'BUY' : sell.total >= gate ? 'SELL' : 'WAIT'; // Gate kabhi 85 se neeche nahi
   const confluence = Math.max(buy.total, sell.total);
   const buyPlan = buildPlan(live, ind.atr14, 'buy');
   const sellPlan = buildPlan(live, ind.atr14, 'sell');
-  buyPlan.status = planStatus(buy.total);
-  sellPlan.status = planStatus(sell.total);
+  buyPlan.status = planStatus(buy.total, gate);
+  sellPlan.status = planStatus(sell.total, gate);
   // Sentiment: aakhri 24 candles
   const recent = candles.slice(-24);
   const bulls = recent.filter(c => c.c >= c.o).length;
@@ -1072,7 +1081,7 @@ async function computeSignal(pairId, lang, force) {
   const comments = [];
   const en = lang === 'en';
   if (zoneBlocked && zoneNote) comments.push(zoneNote);
-  if (direction === 'WAIT' && !zoneBlocked) comments.push(en ? 'WAIT — no trade. The 85% gate is not met (' + confluence + '%).' : 'WAIT — koi trade nahi. 85% gate poora nahi hua (' + confluence + '%).');
+  if (direction === 'WAIT' && !zoneBlocked) comments.push(en ? 'WAIT — no trade. The ' + gate + '% gate is not met (' + confluence + '%).' : 'WAIT — koi trade nahi. ' + gate + '% gate poora nahi hua (' + confluence + '%).');
   if (buy.total >= sell.total) comments.push(en ? 'BUY side confluence is ' + buy.total + '%.' : 'BUY taraf ' + buy.total + '% confluence hai.');
   else comments.push(en ? 'SELL side confluence is ' + sell.total + '%.' : 'SELL taraf ' + sell.total + '% confluence hai.');
   if (ind.rsi14 != null) comments.push('RSI 14: ' + ind.rsi14.toFixed(1) + (ind.rsi14 > 70 ? ' (Overbought)' : ind.rsi14 < 30 ? ' (Oversold)' : ''));
@@ -1097,8 +1106,8 @@ async function computeSignal(pairId, lang, force) {
     extended = computeExtended(candles1h, live, lastVal(emaArr(closes1h, 20)), lastVal(emaArr(closes1h, 50)), lastVal(atrArr(candles1h, 14)), dxy);
   } catch (e) { extended = null; }
   const data = {
-    pair: pairId, price: live, bid: quote.bid, ask: quote.ask, spread: quote.spread,
-    direction, confluence, threshold: 85,
+    pair: pairId, price: live, bid: quote.bid, ask: quote.ask, spread: quote.spread, priceMode,
+    direction, confluence, threshold: gate,
     buyGates: buy.gates, sellGates: sell.gates,
     buyScore: buy.total, sellScore: sell.total,
     buyPlan, sellPlan,
@@ -1116,6 +1125,8 @@ async function computeSignal(pairId, lang, force) {
     extended,
     sentiment, range: { pdh, pdl },
     rsi14: ind.rsi14, atr14: ind.atr14, ema20: ind.ema20, ema50: ind.ema50, ema200: ind.ema200,
+    ind1h: { rsi14: ind1h.rsi14, ema20: ind1h.ema20, ema50: ind1h.ema50, ema200: ind1h.ema200, atr14: ind1h.atr14 },
+    swing1h,
     comments, nextCheckInSec: 30, updatedAt: Date.now(),
     signalCode, validUntil,
   };
@@ -1165,33 +1176,47 @@ function computeSmc(candles15, candles5) {
   const prevSw = findSwings(candles15.slice(0, -5));
   if (prevSw.high != null && last.c > prevSw.high) { bos = true; mss = true; bosDir = 'up'; }
   if (prevSw.low != null && last.c < prevSw.low) { bos = true; mss = true; bosDir = 'down'; }
-  // Order blocks: strong move se pehle ki aakhri opposite candle
-  function findOB(dir) {
-    for (let i = candles15.length - 3; i >= Math.max(0, candles15.length - 40); i--) {
-      const c = candles15[i], nxt = candles15[i + 1], nxt2 = candles15[i + 2];
-      if (dir === 'bullish' && c.c < c.o && nxt.c > nxt.o && nxt2 && nxt2.c > nxt2.o) return { low: Math.min(c.l, nxt.l), high: Math.max(c.h, nxt.h), mitigated: last.c < c.l };
-      if (dir === 'bearish' && c.c > c.o && nxt.c < nxt.o && nxt2 && nxt2.c < nxt2.o) return { low: Math.min(c.l, nxt.l), high: Math.max(c.h, nxt.h), mitigated: last.c > c.h };
+  // Order blocks: strong move se pehle ki aakhri opposite candle (kisi bhi candle set par).
+  function findOBIn(cs, dir) {
+    const lc = cs[cs.length - 1];
+    for (let i = cs.length - 3; i >= Math.max(0, cs.length - 40); i--) {
+      const c = cs[i], nxt = cs[i + 1], nxt2 = cs[i + 2];
+      if (dir === 'bullish' && c.c < c.o && nxt.c > nxt.o && nxt2 && nxt2.c > nxt2.o) return { low: Math.min(c.l, nxt.l), high: Math.max(c.h, nxt.h), mitigated: lc.c < c.l };
+      if (dir === 'bearish' && c.c > c.o && nxt.c < nxt.o && nxt2 && nxt2.c < nxt2.o) return { low: Math.min(c.l, nxt.l), high: Math.max(c.h, nxt.h), mitigated: lc.c > c.h };
     }
     return null;
   }
-  const bullOB = findOB('bullish'), bearOB = findOB('bearish');
-  // FVG: candle i-1 high < candle i+1 low (bullish gap) ya ulta
-  const fvgs = [];
-  for (let i = candles15.length - 1; i >= Math.max(1, candles15.length - 30); i--) {
-    const a = candles15[i - 1], b = candles15[i + 1];
-    if (!a || !b) continue;
-    if (a.h < b.l) fvgs.push({ type: 'Bullish', low: a.h, high: b.l });
-    if (a.l > b.h) fvgs.push({ type: 'Bearish', low: b.h, high: a.l });
-    if (fvgs.length >= 4) break;
+  const bullOB = findOBIn(candles15, 'bullish'), bearOB = findOBIn(candles15, 'bearish');
+  // FVG: candle i-1 high < candle i+1 low (bullish gap) ya ulta (kisi bhi candle set par).
+  function findFVGsIn(cs) {
+    const out = [];
+    for (let i = cs.length - 1; i >= Math.max(1, cs.length - 30); i--) {
+      const a = cs[i - 1], b = cs[i + 1];
+      if (!a || !b) continue;
+      if (a.h < b.l) out.push({ type: 'Bullish', low: a.h, high: b.l });
+      if (a.l > b.h) out.push({ type: 'Bearish', low: b.h, high: a.l });
+      if (out.length >= 4) break;
+    }
+    return out;
   }
-  // 5M micro: SSL sweeps count
-  let sslSweeps = 0;
+  const fvgs = findFVGsIn(candles15);
+  // 5M micro: sweeps ki asal list (SSL + BSL) — aakhri 40 5M candles se.
+  let sslSweeps = 0; const microSweeps = [];
   if (candles5 && candles5.length) {
     const sw5 = findSwings(candles5);
     for (const c of candles5.slice(-40)) {
-      if (sw5.low != null && c.l < sw5.low && c.c > sw5.low) sslSweeps++;
+      if (sw5.low != null && c.l < sw5.low && c.c > sw5.low) { sslSweeps++; microSweeps.push({ side: 'SSL', price: c.l, time: c.t }); }
+      if (sw5.high != null && c.h > sw5.high && c.c < sw5.high) microSweeps.push({ side: 'BSL', price: c.h, time: c.t });
     }
   }
+  const microOB = { bull: candles5 && candles5.length ? findOBIn(candles5, 'bullish') : null, bear: candles5 && candles5.length ? findOBIn(candles5, 'bearish') : null };
+  const microFVGs = candles5 && candles5.length ? findFVGsIn(candles5) : [];
+  // Liquidity pools: aakhri 60 15M candles ke asal swing levels (na ke fixed number).
+  const ex = localExtrema(candles15, Math.max(2, candles15.length - 60));
+  const poolsList = [
+    ...ex.highs.map(i => ({ type: 'Resistance', price: candles15[i].h, time: candles15[i].t })),
+    ...ex.lows.map(i => ({ type: 'Support', price: candles15[i].l, time: candles15[i].t })),
+  ].sort((a, b) => b.time - a.time).slice(0, 10);
   // Score: 5 hisse x 20
   const parts = [];
   parts.push({ name: 'Liquidity Sweep', score: sweep ? 20 : 8, max: 20 });
@@ -1208,29 +1233,22 @@ function computeSmc(candles15, candles5) {
     sweep: sweep ? sweepSide : 'Aakhri candles me koi sweep nahi hua.',
     sweepFound: sweep, sweepCode,
     bos, mss, bosDir, bullOB, bearOB, fvgs, sslSweeps,
-    pools: 15, // liquidity pools ki taadad (swing levels se)
+    pools: poolsList.length, poolsList, microSweeps: microSweeps.slice(-5).reverse(), microOB, microFVGs,
     updatedAt: Date.now(),
   };
 }
 let scannerCache = { at: 0, data: null };
 async function computeScanner() {
   if (scannerCache.data && Date.now() - scannerCache.at < 45000) return scannerCache.data;
-  const uniq = ['XAUUSD', 'XAGUSD', 'EURUSD', 'GBPUSD', 'USDJPY', 'EURJPY', 'NAS100', 'BTCUSD', 'ETHUSD', 'BNBUSD', 'SOLUSD'];
+  // Scanner site ke 15 pairs par chalta hai (EURJPY/NAS100 site pairs nahi — hata diye).
+  const uniq = PAIRS.map(p => p.id);
   const prices = await fetchAllPrices();
   const rows = [];
   for (const id of uniq) {
     let candles = [], price = null;
-    if (id === 'NAS100') {
-      candles = await yahooCandles('^NDX', '15m', '5d') || [];
-      price = await fetchYahooPrice('^NDX');
-    } else if (id === 'EURJPY') {
-      candles = await getCandles('EURUSD', '15m');
-      price = await fetchYahooPrice('EURJPY=X');
-    } else {
-      candles = await getCandles(id, '15m');
-      const q = prices.pairs.find(p => p.id === id);
-      price = q ? q.price : null;
-    }
+    candles = await getCandles(id, '15m');
+    const q = prices.pairs.find(p => p.id === id);
+    price = q ? q.price : null;
     let score = null, dir = 'WAIT', smc = null;
     if (candles.length) {
       smc = computeSmc(candles, []);
@@ -1239,7 +1257,13 @@ async function computeScanner() {
     }
     // v9.5: per-pair SMC tasdeeq cards ke liye — computeSmc se pehle se nikle hue fields
     // (bias, OB, FVG) bhi row me bhejte hain. Koi naya engine nahi, sirf display data.
-    rows.push({ pair: id, price, smcScore: score, direction: dir,
+    // A+ (80%+) rows ke liye asal Entry/SL/TP — SMC ke 15M candles se (koi signal nahi, sirf setup card).
+    let plan = null;
+    if (score != null && score >= 80 && candles.length) {
+      const ind = computeIndicators(candles);
+      plan = buildPlan(price != null ? price : candles[candles.length - 1].c, ind.atr14, dir);
+    }
+    rows.push({ pair: id, price, smcScore: score, direction: dir, plan,
       bosDir: smc ? smc.bosDir : null, sweepCode: smc ? smc.sweepCode : null,
       bullOB: smc ? smc.bullOB : null, bearOB: smc ? smc.bearOB : null,
       fvgs: smc ? smc.fvgs : [] });
@@ -1358,6 +1382,28 @@ function sessionQuality(ind, candles) {
   details.push({ name: 'Structure', points: v, max: 15 });
   return { score, details };
 }
+
+// ---------------- v9.8: Engine settings + price mode + notification groups ----------------
+// Purane db.json me ye fields na hon to defaults se merge hota hai (koi crash nahi).
+const ENGINE_DEFAULTS = { minQuality: 85, slBufferPct: 0.3, tp1R: 1, tp2R: 2, tp3R: 3, maxConcurrent: 3, sessions: { sydney: true, tokyo: true, london: true, newyork: true } };
+function engineSettings() {
+  const s = (db.settings && db.settings.engine) || {};
+  return { ...ENGINE_DEFAULTS, ...s, sessions: { ...ENGINE_DEFAULTS.sessions, ...(s.sessions || {}) } };
+}
+// MT5 price mode — Kraken ticker se bid/ask aate hain; Yahoo fallback par sirf last hota hai.
+function priceByMode(q, mode) {
+  if (!q) return null;
+  if (mode === 'bid' && q.bid != null) return q.bid;
+  if (mode === 'ask' && q.ask != null) return q.ask;
+  if (mode === 'mid' && q.bid != null && q.ask != null) return (q.bid + q.ask) / 2;
+  return q.price;
+}
+// Notification groups (Hub presets + /api/alerts/feed filter) — sirf site ke 15 pairs.
+const GROUP_PAIRS = {
+  metals: ['XAUUSD', 'XAGUSD'],
+  majors: ['EURUSD', 'GBPUSD', 'USDJPY', 'USDCHF', 'USDCAD', 'AUDUSD'],
+  crypto: ['BTCUSD', 'ETHUSD', 'SOLUSD', 'BNBUSD', 'XRPUSD', 'DOGEUSD', 'ADAUSD'],
+};
 
 // ---------------- Telegram alerts + background recorder (v9) ----------------
 // Bot token SIRF env var TELEGRAM_BOT_TOKEN se aata hai — kabhi file ya code me nahi likha jata.
@@ -1821,6 +1867,7 @@ app.get('/api/sessions', requireAuth, async (req, res) => {
   if (!db.settings.engines.session) return res.json({ disabled: true, message: 'Session engine band hai.' });
   if (sessionCache.data && Date.now() - sessionCache.at < 30000) return res.json(sessionCache.data);
   const info = sessionInfo();
+  info.all = info.all.map(s => ({ ...s, enabled: engineSettings().sessions[s.id] !== false }));
   const pairs = ['EURUSD', 'GBPUSD', 'USDJPY', 'XAUUSD', 'BTCUSD', 'AUDUSD'];
   const prices = await fetchAllPrices();
   // Tamam pairs ek saath (parallel) — pehle ek ek karke 6 pairs ke candles mangwaye jate the,
@@ -1851,69 +1898,171 @@ app.get('/api/sessions', requireAuth, async (req, res) => {
   sessionCache = { at: Date.now(), data };
   res.json(data);
 });
+// ---------------- v9.8: Backtest runner (Backtest Center + Session simulator) ----------------
+// Asal candles par engine rule + TP rule + risk sizing. Data span hamesha bataya jata hai —
+// Yahoo/Kraken ki had (1H ~90 din, 15M ~5-7 din) se zyada period mango to sirf available data use hota hai.
+function walkExit(dir, entry, sl, tp1, tp2, tp3, forward) {
+  const ev = { slFirst: false, tp1: false, tp2: false, tp3: false, slAfter: false, exitIdx: forward.length };
+  let tp1Hit = false;
+  for (let k = 0; k < forward.length; k++) {
+    const c = forward[k];
+    const slHit = dir === 'BUY' ? c.l <= sl : c.h >= sl;
+    const tp1H = dir === 'BUY' ? c.h >= tp1 : c.l <= tp1;
+    const tp2H = dir === 'BUY' ? c.h >= tp2 : c.l <= tp2;
+    const tp3H = dir === 'BUY' ? c.h >= tp3 : c.l <= tp3;
+    if (!tp1Hit) {
+      if (slHit) { ev.slFirst = true; ev.exitIdx = k; return ev; }
+      if (tp1H) {
+        ev.tp1 = true; tp1Hit = true;
+        // Aik hi candle TP1 se TP3 tak chali jaye to wo bhi isi candle me ginein
+        if (tp3H) { ev.tp2 = true; ev.tp3 = true; ev.exitIdx = k; return ev; }
+        if (tp2H) ev.tp2 = true;
+      }
+      continue;
+    }
+    if (slHit) { ev.slAfter = true; ev.exitIdx = k; return ev; }
+    if (tp3H) { ev.tp2 = true; ev.tp3 = true; ev.exitIdx = k; return ev; }
+    if (tp2H) ev.tp2 = true;
+  }
+  return ev;
+}
+function rForRule(rule, ev, t1, t2, t3) {
+  if (ev.slFirst) return { r: -1, exit: 'SL', open: false };
+  if (!ev.tp1) return { r: 0, exit: 'OPEN', open: true };
+  if (rule === 'quick') return { r: t1, exit: 'TP1', open: false };
+  if (rule === 'standard') {
+    if (ev.tp2 || ev.tp3) return { r: 0.5 * t1 + 0.5 * t2, exit: 'TP2', open: false };
+    if (ev.slAfter) return { r: 0.5 * t1 - 0.5, exit: 'SL_AFTER_TP1', open: false };
+    return { r: 0, exit: 'OPEN', open: true };
+  }
+  if (ev.tp3) return { r: t3, exit: 'TP3', open: false };
+  if (ev.slAfter) return { r: 0, exit: 'BE', open: false };
+  return { r: 0, exit: 'OPEN', open: true };
+}
+function hourInSession(h, s) {
+  return s.startUTC <= s.endUTC ? (h >= s.startUTC && h < s.endUTC) : (h >= s.startUTC || h < s.endUTC);
+}
+async function runBacktest({ engine, pairs, days, balance, riskPct, tp, session }) {
+  const es = engineSettings();
+  const gate = Math.max(85, es.minQuality || 85);
+  const riskUsd = balance * riskPct / 100;
+  const maxConc = Math.max(1, Math.min(5, es.maxConcurrent || 3));
+  const trades = [];
+  let candlesUsed = 0, from = null, to = null;
+  for (const id of pairs) {
+    const tf = engine === 'smc' ? '15m' : '1H';
+    const candles = await getCandles(id, tf);
+    if (!candles.length) continue;
+    const perDay = tf === '15m' ? 96 : 24;
+    const need = Math.min(candles.length, days * perDay);
+    const slice = candles.slice(-need);
+    candlesUsed += slice.length;
+    if (!from || slice[0].t < from) from = slice[0].t;
+    if (!to || slice[slice.length - 1].t > to) to = slice[slice.length - 1].t;
+    const fwdBars = tf === '15m' ? 96 : 48;
+    const step = engine === 'smc' ? 4 : 2;
+    const startI = engine === 'smc' ? 60 : (engine === 'session' ? 50 : 220);
+    const openExits = []; // khule trades ke exit bar (max concurrent ke liye)
+    for (let i = startI; i < slice.length - 5; i += step) {
+      const window = engine === 'terminal' ? slice.slice(Math.max(0, i - 220), i + 1) : engine === 'smc' ? slice.slice(Math.max(0, i - 60), i + 1) : slice.slice(0, i + 1);
+      const lastC = window[window.length - 1];
+      let dir = null, atr = null;
+      const entry = lastC.c;
+      if (engine === 'terminal') {
+        const ind = computeIndicators(window);
+        const buy = gateScore(window, ind, entry, 'buy', { backtest: true });
+        const sell = gateScore(window, ind, entry, 'sell', { backtest: true });
+        dir = buy.total >= gate ? 'BUY' : sell.total >= gate ? 'SELL' : null;
+        if (!dir) continue;
+        atr = ind.atr14 || entry * 0.002;
+      } else if (engine === 'smc') {
+        const smc = computeSmc(window, []);
+        if (!smc || smc.error || smc.score < 80) continue;
+        dir = lastC.c >= lastC.o ? 'BUY' : 'SELL';
+        atr = lastVal(atrArr(window, 14)) || entry * 0.002;
+      } else { // session
+        const ind = computeIndicators(window);
+        const q = sessionQuality(ind, window);
+        if (q.score < 85) continue;
+        const hourUTC = new Date(lastC.t).getUTCHours();
+        if (session && session !== 'all') {
+          const ssn = SESSIONS.find(x => x.id === session);
+          if (!ssn || !hourInSession(hourUTC, ssn)) continue;
+        } else {
+          const enabled = SESSIONS.filter(x => es.sessions[x.id] !== false);
+          if (enabled.length && !enabled.some(x => hourInSession(hourUTC, x))) continue;
+        }
+        dir = ind.ema20 && entry > ind.ema20 ? 'BUY' : 'SELL';
+        atr = ind.atr14 || entry * 0.001;
+      }
+      while (openExits.length && openExits[0] <= i) openExits.shift();
+      if (openExits.length >= maxConc) continue;
+      const plan = buildPlan(entry, atr, dir);
+      const forward = slice.slice(i + 1, Math.min(slice.length, i + 1 + fwdBars));
+      const ev = walkExit(dir, entry, plan.sl, plan.tp1, plan.tp2, plan.tp3, forward);
+      const R = Math.abs(entry - plan.sl) || 1;
+      const out = rForRule(tp, ev, Math.abs(plan.tp1 - entry) / R, Math.abs(plan.tp2 - entry) / R, Math.abs(plan.tp3 - entry) / R);
+      const exitAt = forward.length ? forward[Math.min(ev.exitIdx, forward.length - 1)].t : lastC.t;
+      trades.push({ pair: id, direction: dir, entry, sl: plan.sl, tp1: plan.tp1, tp2: plan.tp2, tp3: plan.tp3, time: lastC.t, exitAt, r: +out.r.toFixed(2), usd: +(out.r * riskUsd).toFixed(2), exit: out.exit, open: out.open });
+      openExits.push(i + 1 + ev.exitIdx);
+      openExits.sort((a, b) => a - b);
+    }
+  }
+  const closed = trades.filter(x => !x.open);
+  const wins = closed.filter(x => x.r > 0), losses = closed.filter(x => x.r < 0), be = closed.filter(x => x.r === 0);
+  const grossWin = wins.reduce((x, y) => x + y.r, 0), grossLoss = losses.reduce((x, y) => x + Math.abs(y.r), 0);
+  const netR = closed.reduce((x, y) => x + y.r, 0);
+  let eq = balance, peak = balance, maxDd = 0;
+  const equity = [{ t: from, v: balance }];
+  for (const x of [...closed].sort((a, b) => a.exitAt - b.exitAt)) {
+    eq += x.usd;
+    if (eq > peak) peak = eq;
+    if (peak - eq > maxDd) maxDd = peak - eq;
+    equity.push({ t: x.exitAt, v: +eq.toFixed(2) });
+  }
+  const spanDays = from && to ? Math.max(1, Math.round((to - from) / 86400000)) : 0;
+  const eqStep = Math.max(1, Math.floor(equity.length / 100));
+  return {
+    engine, pairs, days, spanDays, candlesUsed, from, to, balance, riskPct, tp, session: session || 'all',
+    trades: closed.length, wins: wins.length, losses: losses.length, breakEven: be.length, open: trades.length - closed.length,
+    winRate: closed.length ? +(wins.length / closed.length * 100).toFixed(1) : 0,
+    profitFactor: grossLoss ? +(grossWin / grossLoss).toFixed(2) : (wins.length ? 99 : 0),
+    netR: +netR.toFixed(2), netUsd: +(netR * riskUsd).toFixed(2), maxDrawdownUsd: +maxDd.toFixed(2),
+    equity: equity.filter((_, i) => i % eqStep === 0 || i === equity.length - 1),
+    tradesList: [...closed].sort((a, b) => b.time - a.time).slice(0, 50),
+    note: 'Backtest asal ' + (engine === 'smc' ? '15M' : '1H') + ' candles par chala hai. Available data: ' + spanDays + ' din (' + candlesUsed + ' candles). Zyada period mango to bhi sirf available data use hota hai — koi number banaya nahi gaya.',
+  };
+}
+app.get('/api/backtest', requireAuth, async (req, res) => {
+  const engine = (req.query.engine || 'terminal').toLowerCase();
+  if (!['terminal', 'smc', 'session'].includes(engine)) return res.status(400).json({ error: 'bad_engine', message: 'Engine terminal, smc ya session hona chahiye.' });
+  const pair = (req.query.pair || 'XAUUSD').toUpperCase();
+  const days = Math.max(1, Math.min(parseInt(req.query.days || '30', 10) || 30, 365));
+  const balance = Math.max(100, Math.min(parseFloat(req.query.balance || '1000') || 1000, 10000));
+  const riskPct = Math.max(0.1, Math.min(parseFloat(req.query.risk || '1') || 1, 3));
+  const tp = ['quick', 'standard', 'trail'].includes((req.query.tp || '').toLowerCase()) ? req.query.tp.toLowerCase() : 'standard';
+  const session = (req.query.session || 'all').toLowerCase();
+  const pairs = engine === 'session' && !req.query.pair ? ['EURUSD', 'GBPUSD'] : [pair];
+  try { res.json(await runBacktest({ engine, pairs, days, balance, riskPct, tp, session })); }
+  catch (e) { res.status(500).json({ error: 'backtest_fail', message: e.message }); }
+});
 app.get('/api/session/backtest', requireAuth, async (req, res) => {
   const days = Math.min(parseInt(req.query.days || '30', 10) || 30, 90);
   const session = (req.query.session || 'all').toLowerCase();
-  // Asal 1H candles par session rule chalakar dekhein (EURUSD + GBPUSD)
-  let trades = 0, wins = 0, losses = 0, be = 0, grossWin = 0, grossLoss = 0;
-  for (const id of ['EURUSD', 'GBPUSD']) {
-    const candles = await getCandles(id, '1H');
-    if (candles.length < 100) continue;
-    const need = Math.min(candles.length, days * 24);
-    const slice = candles.slice(-need);
-    for (let i = 50; i < slice.length - 10; i++) {
-      const window = slice.slice(0, i + 1);
-      const ind = computeIndicators(window);
-      const q = sessionQuality(ind, window);
-      if (q.score < 85) continue;
-      const entry = window[window.length - 1].c;
-      const dir = ind.ema20 && entry > ind.ema20 ? 'BUY' : 'SELL';
-      const atr = ind.atr14 || entry * 0.001;
-      const sl = dir === 'BUY' ? entry - 1.5 * atr : entry + 1.5 * atr;
-      const tp1 = dir === 'BUY' ? entry + 1.5 * atr : entry - 1.5 * atr;
-      let outcome = null;
-      for (let j = i + 1; j < Math.min(slice.length, i + 25); j++) {
-        const c = slice[j];
-        if (dir === 'BUY') { if (c.l <= sl) { outcome = 'Loss'; break; } if (c.h >= tp1) { outcome = 'Win'; break; } }
-        else { if (c.h >= sl) { outcome = 'Loss'; break; } if (c.l <= tp1) { outcome = 'Win'; break; } }
-      }
-      if (!outcome) continue;
-      trades++;
-      if (outcome === 'Win') { wins++; grossWin += 1.5; } else { losses++; grossLoss += 1.5; }
-    }
-  }
-  res.json({ days, session, trades, wins, losses, winRate: trades ? +(wins / trades * 100).toFixed(1) : 0, profitFactor: grossLoss ? +(grossWin / grossLoss).toFixed(2) : (wins ? 99 : 0), note: 'Ye backtest asal 1H candles par chala hai — koi banaya hua number nahi.' });
+  const balance = Math.max(100, Math.min(parseFloat(req.query.balance || '1000') || 1000, 10000));
+  const riskPct = Math.max(0.1, Math.min(parseFloat(req.query.risk || '1') || 1, 3));
+  const tp = ['quick', 'standard', 'trail'].includes((req.query.tp || '').toLowerCase()) ? req.query.tp.toLowerCase() : 'standard';
+  const out = await runBacktest({ engine: 'session', pairs: ['EURUSD', 'GBPUSD'], days, balance, riskPct, tp, session });
+  res.json({ ...out, note: 'Ye backtest asal 1H candles par chala hai — koi banaya hua number nahi. ' + out.note });
 });
 app.get('/api/smc/backtest', requireAuth, async (req, res) => {
   const days = Math.min(parseInt(req.query.days || '30', 10) || 30, 30);
   const pair = (req.query.pair || 'XAUUSD').toUpperCase();
-  // Asal 15M candles par SMC rule: score 80%+ par entry, phir TP1/SL check
-  const candles = await getCandles(pair, '15m');
-  let trades = 0, wins = 0, losses = 0, grossWin = 0, grossLoss = 0;
-  if (candles.length > 100) {
-    const need = Math.min(candles.length, days * 96);
-    const slice = candles.slice(-need);
-    for (let i = 60; i < slice.length - 10; i += 4) {
-      const window = slice.slice(Math.max(0, i - 60), i + 1);
-      const smc = computeSmc(window, []);
-      if (!smc || smc.error || smc.score < 80) continue;
-      const entry = window[window.length - 1].c;
-      const dir = window[window.length - 1].c >= window[window.length - 1].o ? 'BUY' : 'SELL';
-      const atr = lastVal(atrArr(window, 14)) || entry * 0.002;
-      const sl = dir === 'BUY' ? entry - 1.5 * atr : entry + 1.5 * atr;
-      const tp1 = dir === 'BUY' ? entry + 1.5 * atr : entry - 1.5 * atr;
-      let outcome = null;
-      for (let j = i + 1; j < Math.min(slice.length, i + 33); j++) {
-        const c = slice[j];
-        if (dir === 'BUY') { if (c.l <= sl) { outcome = 'Loss'; break; } if (c.h >= tp1) { outcome = 'Win'; break; } }
-        else { if (c.h >= sl) { outcome = 'Loss'; break; } if (c.l <= tp1) { outcome = 'Win'; break; } }
-      }
-      if (!outcome) continue;
-      trades++;
-      if (outcome === 'Win') { wins++; grossWin += 1.5; } else { losses++; grossLoss += 1.5; }
-    }
-  }
-  res.json({ pair, days, trades, wins, losses, winRate: trades ? +(wins / trades * 100).toFixed(1) : 0, profitFactor: grossLoss ? +(grossWin / grossLoss).toFixed(2) : (wins ? 99 : 0), note: 'Ye backtest asal 15M candles par SMC rule (score 80%+) se chala hai — koi banaya hua number nahi.' });
+  const balance = Math.max(100, Math.min(parseFloat(req.query.balance || '1000') || 1000, 10000));
+  const riskPct = Math.max(0.1, Math.min(parseFloat(req.query.risk || '1') || 1, 3));
+  const tp = ['quick', 'standard', 'trail'].includes((req.query.tp || '').toLowerCase()) ? req.query.tp.toLowerCase() : 'standard';
+  const out = await runBacktest({ engine: 'smc', pairs: [pair], days, balance, riskPct, tp, session: 'all' });
+  res.json({ ...out, note: 'Ye backtest asal 15M candles par SMC rule (score 80%+) se chala hai — koi banaya hua number nahi. ' + out.note });
 });
 
 // History + performance + refiner
@@ -1939,21 +2088,60 @@ app.get('/api/performance', requireAuth, async (req, res) => {
     note: 'Win rate sirf record kiye gaye signals se banta hai. Abhi tak koi signal record nahi hua to win rate khaali dikhega — ye sach hai, banaya hua number nahi.',
   });
 });
+// ---------------- v9.8: Notifications Hub feed — SIRF asal record kiye gaye alerts ----------------
+// Har recorded signal par Telegram/Push alert bheja jata hai (sendSignalAlert/sendPushAlert) —
+// feed wahi signals dikhata hai, kabhi banaya hua alert nahi. telegramSent/pushSent = claim flags.
+app.get('/api/alerts/feed', requireAuth, async (req, res) => {
+  const engine = (req.query.engine || 'all').toLowerCase();
+  const group = (req.query.group || 'all').toLowerCase();
+  let list = [...db.signals].sort((a, b) => b.createdAt - a.createdAt);
+  if (engine !== 'all') list = list.filter(x => x.engine === engine);
+  if (group !== 'all' && GROUP_PAIRS[group]) list = list.filter(x => GROUP_PAIRS[group].includes(x.pair));
+  const total = list.length;
+  const out = await enrichHistory(list.slice(0, 50));
+  res.json({
+    total,
+    alerts: out.map(x => ({ id: x.id, pair: x.pair, direction: x.direction, engine: x.engine, score: x.score, createdAt: x.createdAt, signalCode: x.signalCode, outcome: x.outcome || 'In-Flight', telegramSent: !!x.telegramSent, pushSent: !!x.pushSent })),
+    note: 'Ye feed sirf asal record kiye gaye signals dikhati hai — koi alert banaya nahi gaya. Har recorded signal par Telegram + Web Push alert bheja jata hai (jo pair aapne OFF kiya hai, uska alert nahi jata).',
+  });
+});
 app.get('/api/refiner', requireAuth, async (req, res) => {
   const cutoff = parseInt(req.query.cutoff || '85', 10) || 85;
   // v9.3: engine filter — UI hamesha engine=terminal bhejta hai (Terminal-only).
   // Param na ho to purana all-engine hisaab (backward compatible).
   const engine = (req.query.engine || '').toLowerCase();
-  let eligible = db.signals.filter(s => typeof s.score === 'number');
-  if (engine) eligible = eligible.filter(s => s.engine === engine);
-  const list = await enrichHistory(eligible.filter(s => s.score >= cutoff));
-  const closed = list.filter(s => s.outcome && s.outcome !== 'In-Flight');
-  const wins = list.filter(s => s.outcome === 'Win').length;
+  const tpSel = ['quick', 'standard', 'trail'].includes((req.query.tp || '').toLowerCase()) ? req.query.tp.toLowerCase() : 'standard';
+  let eligible = db.signals.filter(x => typeof x.score === 'number');
+  if (engine) eligible = eligible.filter(x => x.engine === engine);
+  const list = await enrichHistory(eligible.filter(x => x.score >= cutoff));
+  // Profit-target rules — har qualifying signal ke liye 15M candles par asal exit check.
+  const byPair = {};
+  const mk = () => ({ trades: 0, wins: 0, losses: 0, breakEven: 0, open: 0, netR: 0, grossWin: 0, grossLoss: 0 });
+  const rules = { quick: mk(), standard: mk(), trail: mk() };
+  for (const sg of list) {
+    if (!byPair[sg.pair]) byPair[sg.pair] = await getCandles(sg.pair, '15m');
+    const R = Math.abs(sg.entry - sg.sl) || 0;
+    if (!R) continue;
+    const ev = walkExit(sg.direction, sg.entry, sg.sl, sg.tp1, sg.tp2, sg.tp3, byPair[sg.pair].filter(c => c.t > sg.createdAt));
+    for (const rule of ['quick', 'standard', 'trail']) {
+      const out = rForRule(rule, ev, Math.abs(sg.tp1 - sg.entry) / R, Math.abs(sg.tp2 - sg.entry) / R, Math.abs(sg.tp3 - sg.entry) / R);
+      const st = rules[rule];
+      if (out.open) { st.open++; continue; }
+      st.trades++;
+      if (out.r > 0) { st.wins++; st.grossWin += out.r; }
+      else if (out.r < 0) { st.losses++; st.grossLoss += Math.abs(out.r); }
+      else st.breakEven++;
+      st.netR += out.r;
+    }
+  }
+  const fin = (st) => ({ trades: st.trades, wins: st.wins, losses: st.losses, breakEven: st.breakEven, open: st.open, netR: +st.netR.toFixed(2), winRate: st.trades ? +(st.wins / st.trades * 100).toFixed(1) : null, profitFactor: st.grossLoss ? +(st.grossWin / st.grossLoss).toFixed(2) : (st.wins ? 99 : 0) });
+  const rulesOut = { quick: fin(rules.quick), standard: fin(rules.standard), trail: fin(rules.trail) };
   res.json({
-    cutoff, engine: engine || null, qualifying: list.length,
-    winRate: closed.length ? +(wins / closed.length * 100).toFixed(1) : null,
+    cutoff, engine: engine || null, qualifying: list.length, tp: tpSel,
+    winRate: rulesOut[tpSel].winRate,
+    rules: rulesOut,
     signals: list.slice(0, 50),
-    note: db.buildNote + ' Purane signals (jinke score nahi hain) is me nahi aate.',
+    note: db.buildNote + ' Purane signals (jinke score nahi hain) is me nahi aate. Rules asal 15M candles se check kiye gaye hain — Quick = 100% TP1 par band, Standard = 50% TP1 + 50% TP2, Trail = TP3 tak, TP1 ke baad SL breakeven par.',
   });
 });
 
@@ -1986,8 +2174,13 @@ app.get('/api/news', requireAuth, async (req, res) => {
     catch (e) { return { name: f.name, ok: false, items: [] }; }
   }));
   const all = results.flatMap(r => r.items).sort((a, b) => b.time - a.time).slice(0, 12);
+  // Red-folder shock alerts — sirf asal headlines me high-impact keywords (CPI/NFP/FOMC...).
+  const HI_RE = [/cpi/i, /nonfarm|nfp/i, /fomc/i, /interest rate decision/i, /rate decision/i, /\bfed\b/i, /\becb\b/i, /inflation report/i, /\bgdp\b/i, /jobs report/i, /unemployment rate/i, /central bank/i];
+  const highImpact = all.filter(n => HI_RE.some(r => r.test(n.title || ''))).slice(0, 10);
   const data = {
     news: all,
+    highImpact,
+    engineOn: db.settings.engines.news !== false,
     sources: results.map(r => ({ name: r.name, status: r.ok ? 'CONNECTED' : 'RETRY' })),
     updatedAt: Date.now(),
     available: all.length > 0,
@@ -2048,13 +2241,30 @@ app.get('/api/terminal/backtest', requireAuth, async (req, res) => {
 });
 
 // Settings + logs + export + AI (in-app only)
-app.get('/api/settings', requireAuth, (req, res) => res.json({ settings: db.settings }));
+app.get('/api/settings', requireAuth, (req, res) => res.json({ settings: { ...db.settings, priceMode: (db.settings && db.settings.priceMode) || 'last', engine: engineSettings() } }));
 app.post('/api/settings', requireAdmin, (req, res) => {
-  const { engines, defaultPair } = req.body || {};
+  const { engines, defaultPair, priceMode, engine } = req.body || {};
   if (engines) db.settings.engines = { ...db.settings.engines, ...engines };
   if (defaultPair) db.settings.defaultPair = defaultPair;
+  if (priceMode && ['last', 'bid', 'ask', 'mid'].includes(priceMode)) db.settings.priceMode = priceMode;
+  if (engine && typeof engine === 'object') {
+    const cur = engineSettings();
+    const cl = (v, lo, hi, d) => { const num = parseFloat(v); return isFinite(num) ? Math.max(lo, Math.min(hi, num)) : d; };
+    const next = { ...cur };
+    if (engine.minQuality != null) next.minQuality = Math.round(cl(engine.minQuality, 85, 98, 85)); // Gate kabhi 85 se neeche nahi
+    if (engine.slBufferPct != null) next.slBufferPct = +cl(engine.slBufferPct, 0, 2, 0.3).toFixed(2);
+    if (engine.tp1R != null) next.tp1R = +cl(engine.tp1R, 0.5, 5, 1).toFixed(1);
+    if (engine.tp2R != null) next.tp2R = +cl(engine.tp2R, 0.5, 5, 2).toFixed(1);
+    if (engine.tp3R != null) next.tp3R = +cl(engine.tp3R, 0.5, 5, 3).toFixed(1);
+    if (engine.maxConcurrent != null) next.maxConcurrent = Math.round(cl(engine.maxConcurrent, 1, 5, 3));
+    if (engine.sessions && typeof engine.sessions === 'object') {
+      next.sessions = { ...cur.sessions };
+      for (const k of ['sydney', 'tokyo', 'london', 'newyork']) if (engine.sessions[k] != null) next.sessions[k] = !!engine.sessions[k];
+    }
+    db.settings.engine = next;
+  }
   saveDb();
-  res.json({ settings: db.settings });
+  res.json({ settings: { ...db.settings, priceMode: db.settings.priceMode || 'last', engine: engineSettings() } });
 });
 app.get('/api/logs', requireAdmin, (req, res) => res.json({ logs: db.logs })); // v9.3-sec: tracking logs me buyer usernames + admin activity hoti hai — sirf admin.
 app.get('/api/export.csv', requireAuth, async (req, res) => {
@@ -2211,5 +2421,5 @@ app.listen(PORT, () => console.log('Forex Trading Pro chal raha hai: http://loca
 
 // Test ke liye (NODE_ENV=test) — production me kuch nahi badalta.
 if (process.env.NODE_ENV === 'test') {
-  module.exports = { recordTerminalSignal, sendSignalAlert, sendPushAlert, buildPushPayload, notifyPairOn, buildTelegramMessage, parseTelegramUpdates, applyTelegramUpdates, telegramPollUpdates, recorderTick, backgroundTick, ensureTgCode, buyerActive, gateScore, isMarketClosed, computeZones, computeTrendPanel, getDb: () => db, telegramDryRunSent, pushDryRunSent, webpush };
+  module.exports = { recordTerminalSignal, sendSignalAlert, sendPushAlert, buildPushPayload, notifyPairOn, buildTelegramMessage, parseTelegramUpdates, applyTelegramUpdates, telegramPollUpdates, recorderTick, backgroundTick, ensureTgCode, buyerActive, gateScore, isMarketClosed, computeZones, computeTrendPanel, getDb: () => db, telegramDryRunSent, pushDryRunSent, webpush, engineSettings, priceByMode, walkExit, rForRule, runBacktest, computeSmc, computeScanner, GROUP_PAIRS };
 }
