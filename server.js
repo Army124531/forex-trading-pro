@@ -22,6 +22,7 @@ function defaultDb() {
     sessions: [],       // {token, username, createdAt}
     signals: [],        // {id, pair, direction, entry, sl, tp1, tp2, tp3, score, gate, engine, createdAt, outcome, outcomeAt, pips, exitLevel}
     logs: [],           // {at, text}
+    newsBlocks: [],     // {at, pair, wouldBe, wouldBeScore, events:[titles]} — news window me roke gaye signals (aakhri 50)
     settings: {
       engines: { terminal: true, smc: true, session: true, news: true },
       aiEnabled: true,
@@ -1114,9 +1115,27 @@ async function computeSignal(pairId, lang, force) {
     }
   }
   direction = direction2;
+  // News filter (Forex Factory calendar): High-impact event ke ±30 min me naya
+  // BUY/SELL nahi — WAIT + wajah. Gate/weights ko nahi chhoota; in-flight
+  // signals ko nahi chhoota (ye sirf naye signal ko rokta hai).
+  let newsBlock = { blocked: false, events: [], untilMs: null };
+  let wouldBe = null, wouldBeScore = null;
+  try {
+    const nb = await isNewsBlocked(pairId, Date.now());
+    if (nb.blocked) {
+      newsBlock = { blocked: true, events: nb.events, untilMs: nb.untilMs };
+      if (direction !== 'WAIT') {
+        wouldBe = direction;
+        wouldBeScore = direction === 'BUY' ? buy.total : sell.total;
+        logNewsBlock(pairId, wouldBe, wouldBeScore, nb.events);
+        direction = 'WAIT';
+      }
+    }
+  } catch (e) { /* calendar fail-open — signals normal chalte hain */ }
   const comments = [];
   const en = lang === 'en';
   if (zoneBlocked && zoneNote) comments.push(zoneNote);
+  if (newsBlock.blocked) comments.push(en ? 'News window: ' + newsBlock.events.map(e => e.title).join(' / ') + ' — new signals paused until ' + fmtTgTime(newsBlock.untilMs) + '.' : 'News time: ' + newsBlock.events.map(e => e.title).join(' / ') + ' — naya signal ' + fmtTgTime(newsBlock.untilMs) + ' tak band hai.');
   if (direction === 'WAIT' && !zoneBlocked) comments.push(en ? 'WAIT — no trade. The ' + gate + '% gate is not met (' + confluence + '%).' : 'WAIT — koi trade nahi. ' + gate + '% gate poora nahi hua (' + confluence + '%).');
   if (buy.total >= sell.total) comments.push(en ? 'BUY side confluence is ' + buy.total + '%.' : 'BUY taraf ' + buy.total + '% confluence hai.');
   else comments.push(en ? 'SELL side confluence is ' + sell.total + '%.' : 'SELL taraf ' + sell.total + '% confluence hai.');
@@ -1150,6 +1169,7 @@ async function computeSignal(pairId, lang, force) {
     buyScore: buy.total, sellScore: sell.total,
     buyPlan, sellPlan,
     tradeZone, zoneBlocked, blockedDirection, zoneNote,
+    newsBlock, wouldBe, wouldBeScore,
     // SMC confluence (asal data — checklist ke liye; signal logic nahi badalti)
     smc: smc.error ? null : {
       score: smc.score, gate: 80, parts: smc.parts,
@@ -1411,7 +1431,7 @@ function sessionInfo(now = new Date()) {
     next: { ...next, inMin: Math.round(nextInMin * 60) },
     nowPKT: pkt(utcH),
     all: SESSIONS.map(s => ({ ...s, startPKT: pkt(s.startUTC), endPKT: pkt(s.endUTC), isActive: s.id === active.id })),
-    newsBlackout: { available: false, note: 'News blackout nahi lag sakta — koi free news source nahi hai. Is liye is ko jhoota nahi dikhaya gaya.' },
+    newsBlackout: newsBlackoutInfo(now),
   };
 }
 function sessionQuality(ind, candles) {
@@ -1515,7 +1535,7 @@ function fmtTgTime(ms) {
 function buildTelegramMessage(sig) {
   const validUntil = sig.createdAt ? Math.floor(sig.createdAt / 3600000) * 3600000 + 3600000 : Date.now() + 3600000;
   return [
-    '🔔 Forex Trading Pro — NAYA SIGNAL',
+    '🔔 Forex Trading Pro — NEW SIGNAL',
     'Pair: ' + sig.pair,
     'Direction: ' + sig.direction,
     'Entry: ' + fmtTgPrice(sig.entry),
@@ -2266,6 +2286,104 @@ function parseRss(xml, sourceName) {
   }
   return items;
 }
+// ---------------- Forex Factory news calendar (news filter) ----------------
+// Unofficial, key-less feed — no SLA, kabhi bhi band ho sakta hai. Is liye:
+// - 30-min cache + week-rollover refetch; feed band ho to FAIL OPEN (signals
+//   normal chalte hain, block nahi lagta) + screen par saaf notice.
+// - Sirf High events block karte hain; Medium sirf list me dikhte hain.
+// - Gate/weights ko nahi chhoota; in-flight trades ko nahi chhoota.
+const FF_CALENDAR_URL = 'https://nfs.faireconomy.media/ff_calendar_thisweek.json';
+const NEWS_WINDOW_MS = 30 * 60 * 1000; // event se 30 min pehle se 30 min baad tak
+function pairsForCurrency(country) {
+  const c = String(country || '').toUpperCase();
+  if (c === 'USD' || c === 'ALL') return PAIRS.map(p => p.id);
+  const map = { EUR: ['EURUSD'], GBP: ['GBPUSD'], JPY: ['USDJPY'], AUD: ['AUDUSD'], CAD: ['USDCAD'], CHF: ['USDCHF'] };
+  return map[c] || [];
+}
+// Feed ka JSON parse karein — sirf High + Medium rakhte hain (Low/Holiday ignore).
+// `date` ka offset string se parse hota hai (EST/EDT khud) — kabhi hardcode nahi.
+// `actual` field feed me hoti hi nahi — is liye actual-vs-forecast kabhi nahi dikhaya jata.
+function parseFFCalendar(json) {
+  if (!Array.isArray(json)) return [];
+  const out = [];
+  for (const e of json) {
+    if (!e || typeof e.title !== 'string' || typeof e.date !== 'string') continue;
+    const timeMs = Date.parse(e.date);
+    if (!isFinite(timeMs)) continue;
+    const impact = String(e.impact || '');
+    if (impact !== 'High' && impact !== 'Medium') continue;
+    out.push({ title: e.title, country: String(e.country || ''), impact, timeMs, forecast: e.forecast != null && e.forecast !== '' ? String(e.forecast) : null, previous: e.previous != null && e.previous !== '' ? String(e.previous) : null });
+  }
+  out.sort((a, b) => a.timeMs - b.timeMs);
+  return out;
+}
+let ffCache = { at: 0, events: [], available: false };
+async function getFFCalendar() {
+  // Test-only injection (NODE_ENV=test): FF_TEST_EVENTS env JSON — network ke
+  // baghair window simulate karne ke liye. Production me kabhi nahi chalta.
+  if (process.env.NODE_ENV === 'test' && process.env.FF_TEST_EVENTS) {
+    try {
+      const evs = parseFFCalendar(JSON.parse(process.env.FF_TEST_EVENTS));
+      // Injected events bhi cache me daalein — taake /api/sessions (newsBlackoutInfo)
+      // bhi wahi windows dikhaye jo /api/news-calendar dikhata hai.
+      ffCache = { at: Date.now(), events: evs, available: evs.length > 0 };
+      return { events: evs, available: evs.length > 0, injected: true, updatedAt: Date.now() };
+    }
+    catch (e) { return { events: [], available: false, updatedAt: Date.now() }; }
+  }
+  const now = Date.now();
+  const cacheFresh = ffCache.events.length > 0 && (now - ffCache.at < 30 * 60 * 1000);
+  // Week rollover (Sunday): cached week me aaj ke aas-paas koi event na ho to refetch.
+  const weekHasToday = ffCache.events.some(e => e.timeMs >= now - 86400000 && e.timeMs <= now + 2 * 86400000);
+  if (cacheFresh && weekHasToday) return { events: ffCache.events, available: ffCache.available, updatedAt: ffCache.at };
+  try {
+    const evs = parseFFCalendar(JSON.parse(await fetchText(FF_CALENDAR_URL, 6000)));
+    if (!evs.length) throw new Error('empty calendar');
+    ffCache = { at: now, events: evs, available: true };
+  } catch (e) {
+    // Fail open: purana cache sirf tab tak jab tak wo is hafte ka hai.
+    if (!(ffCache.events.length > 0 && weekHasToday)) ffCache = { at: ffCache.at, events: [], available: false };
+  }
+  return { events: ffCache.events, available: ffCache.available, updatedAt: ffCache.at };
+}
+// Kya is pair par abhi High-impact news window chal rahi hai?
+// eventsOverride sirf tests ke liye (network ke baghair window math check karne ke liye).
+async function isNewsBlocked(pairId, nowMs, eventsOverride) {
+  const now = nowMs || Date.now();
+  let events;
+  if (eventsOverride) events = eventsOverride;
+  else { const cal = await getFFCalendar(); if (!cal.available) return { blocked: false, events: [], untilMs: null }; events = cal.events; }
+  const pid = String(pairId || '').toUpperCase();
+  const active = [];
+  for (const ev of events) {
+    if (ev.impact !== 'High') continue;
+    if (now < ev.timeMs - NEWS_WINDOW_MS || now > ev.timeMs + NEWS_WINDOW_MS) continue;
+    if (!pairsForCurrency(ev.country).includes(pid)) continue;
+    active.push({ title: ev.title, country: ev.country, timeMs: ev.timeMs });
+  }
+  if (!active.length) return { blocked: false, events: [], untilMs: null };
+  return { blocked: true, events: active, untilMs: Math.max(...active.map(e => e.timeMs + NEWS_WINDOW_MS)) };
+}
+// Session tab ke liye (sync — sirf cached calendar se; cache khali ho to unavailable).
+function newsBlackoutInfo(now = new Date()) {
+  const nowMs = now.getTime();
+  if (!ffCache.available || !ffCache.events.length) return { available: false, note: 'News calendar abhi nahi mil raha — is liye news-time block band hai, signals normal chal rahe hain.' };
+  const active = [];
+  for (const ev of ffCache.events) {
+    if (ev.impact !== 'High') continue;
+    if (nowMs < ev.timeMs - NEWS_WINDOW_MS || nowMs > ev.timeMs + NEWS_WINDOW_MS) continue;
+    active.push({ title: ev.title, country: ev.country, timeMs: ev.timeMs, untilMs: ev.timeMs + NEWS_WINDOW_MS, pairs: pairsForCurrency(ev.country) });
+  }
+  const next = ffCache.events.find(e => e.impact === 'High' && e.timeMs + NEWS_WINDOW_MS > nowMs) || null;
+  return { available: true, active, next: next ? { title: next.title, country: next.country, timeMs: next.timeMs, pairs: pairsForCurrency(next.country) } : null };
+}
+// Roka gaya signal — audit trail (History me kabhi nahi, alert kabhi nahi).
+function logNewsBlock(pair, wouldBe, wouldBeScore, events) {
+  if (!Array.isArray(db.newsBlocks)) db.newsBlocks = [];
+  db.newsBlocks.unshift({ at: Date.now(), pair, wouldBe, wouldBeScore, events: (events || []).map(e => e.title) });
+  if (db.newsBlocks.length > 50) db.newsBlocks.length = 50;
+  try { saveDb(); } catch (e) {}
+}
 let newsCache = { at: 0, data: null };
 app.get('/api/news', requireAuth, async (req, res) => {
   if (newsCache.data && Date.now() - newsCache.at < 300000) return res.json(newsCache.data);
@@ -2292,6 +2410,37 @@ app.get('/api/news', requireAuth, async (req, res) => {
   };
   newsCache = { at: Date.now(), data };
   res.json(data);
+});
+
+// ---------------- Forex Factory news calendar (News section + filter) ----------------
+// Sirf schedule batata hai (High/Medium events, PKT time) — koi outcome, koi
+// trade call nahi. Calendar band ho to available:false — block fail-open rehta hai.
+app.get('/api/news-calendar', requireAuth, async (req, res) => {
+  const cal = await getFFCalendar();
+  const now = Date.now();
+  const pktDate = (ms) => { try { return new Date(ms).toLocaleDateString('en-CA', { timeZone: 'Asia/Karachi' }); } catch (e) { return new Date(ms).toISOString().slice(0, 10); } };
+  const today = pktDate(now);
+  const todayEvents = cal.events.filter(e => pktDate(e.timeMs) === today);
+  const activeWindows = [];
+  const seen = new Set();
+  for (const ev of cal.events) {
+    if (ev.impact !== 'High') continue;
+    if (now < ev.timeMs - NEWS_WINDOW_MS || now > ev.timeMs + NEWS_WINDOW_MS) continue;
+    const key = ev.title + '|' + ev.timeMs;
+    if (seen.has(key)) continue; seen.add(key);
+    activeWindows.push({ title: ev.title, country: ev.country, timeMs: ev.timeMs, untilMs: ev.timeMs + NEWS_WINDOW_MS, pairs: pairsForCurrency(ev.country) });
+  }
+  const nextRaw = cal.events.find(e => e.impact === 'High' && e.timeMs + NEWS_WINDOW_MS > now) || null;
+  const blockedToday = (db.newsBlocks || []).filter(b => pktDate(b.at) === today).length;
+  res.json({
+    available: cal.available,
+    source: 'Forex Factory (unofficial)',
+    events: todayEvents,
+    activeWindows,
+    nextEvent: nextRaw ? { title: nextRaw.title, country: nextRaw.country, timeMs: nextRaw.timeMs, impact: nextRaw.impact, pairs: pairsForCurrency(nextRaw.country) } : null,
+    blockedToday,
+    updatedAt: cal.updatedAt || now,
+  });
 });
 
 // ---------------- Terminal backtest (signal quality review — asal 1H candles) ----------------
@@ -2525,5 +2674,5 @@ app.listen(PORT, () => console.log('Forex Trading Pro chal raha hai: http://loca
 
 // Test ke liye (NODE_ENV=test) — production me kuch nahi badalta.
 if (process.env.NODE_ENV === 'test') {
-  module.exports = { recordTerminalSignal, sendSignalAlert, sendPushAlert, buildPushPayload, notifyPairOn, buildTelegramMessage, parseTelegramUpdates, applyTelegramUpdates, telegramPollUpdates, recorderTick, backgroundTick, ensureTgCode, buyerActive, gateScore, isMarketClosed, computeZones, computeTrendPanel, getDb: () => db, telegramDryRunSent, pushDryRunSent, webpush, engineSettings, priceByMode, walkExit, rForRule, runBacktest, computeSmc, computeScanner, GROUP_PAIRS, computePips, pipSize, PIP_SIZE, runningPips };
+  module.exports = { recordTerminalSignal, sendSignalAlert, sendPushAlert, buildPushPayload, notifyPairOn, buildTelegramMessage, parseTelegramUpdates, applyTelegramUpdates, telegramPollUpdates, recorderTick, backgroundTick, ensureTgCode, buyerActive, gateScore, isMarketClosed, computeZones, computeTrendPanel, getDb: () => db, telegramDryRunSent, pushDryRunSent, webpush, engineSettings, priceByMode, walkExit, rForRule, runBacktest, computeSmc, computeScanner, GROUP_PAIRS, computePips, pipSize, PIP_SIZE, runningPips, parseFFCalendar, pairsForCurrency, isNewsBlocked, getFFCalendar, newsBlackoutInfo, logNewsBlock };
 }
