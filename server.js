@@ -20,7 +20,7 @@ function defaultDb() {
   return {
     users: [],          // {username, passHash, salt, role:'admin'|'buyer', plan, createdAt, expiresAt, suspended, tgCode, tgChatId, pushSubscriptions:[], notifyPairs:null|[]|['XAUUSD',...]}
     sessions: [],       // {token, username, createdAt}
-    signals: [],        // {id, pair, direction, entry, sl, tp1, tp2, tp3, score, gate, engine, createdAt, outcome, outcomeAt}
+    signals: [],        // {id, pair, direction, entry, sl, tp1, tp2, tp3, score, gate, engine, createdAt, outcome, outcomeAt, pips, exitLevel}
     logs: [],           // {at, text}
     settings: {
       engines: { terminal: true, smc: true, session: true, news: true },
@@ -120,6 +120,42 @@ const PAIRS = [
   { id: 'USDCAD', label: 'USD/CAD', name: 'Dollar / CAD', type: 'forex', kraken: 'USDCAD', yahoo: 'USDCAD=X', dec: 5 },
   { id: 'USDCHF', label: 'USD/CHF', name: 'Dollar / Franc', type: 'forex', kraken: 'USDCHF', yahoo: 'USDCHF=X', dec: 5 },
 ];
+
+// ---------------- Pips (har signal ka profit/loss pips me) ----------------
+// 1 pip ka matlab (honest convention — UI me bhi likha hai):
+//   forex (EURUSD/GBPUSD/AUDUSD/USDCAD/USDCHF): 0.0001 = 1 pip
+//   JPY pairs (USDJPY): 0.01 = 1 pip
+//   Gold (XAUUSD): 0.10 = 1 pip (0.01 pipette hai) — is liye entry 3913.85, SL 3905.35
+//     wala Loss -85.0 pips banta hai (8.496 / 0.10), -849.6 nahi.
+//   Silver (XAGUSD): 0.01 = 1 pip
+//   Crypto ka koi standard pip nahi — $1 = 1 pip (BTC/ETH/SOL/BNB), 0.0001 (XRP/DOGE/ADA).
+//     Is se pips parhne layak rehte hain (BTC ka $1000 move = 1000 pips, 100,000 nahi).
+// Pips SIRF asal entry/SL/TP1 aur outcome se bante hain — kabhi banaye nahi jate.
+const PIP_SIZE = { XAUUSD: 0.1, XAGUSD: 0.01, BTCUSD: 1, ETHUSD: 1, SOLUSD: 1, BNBUSD: 1, XRPUSD: 0.0001, DOGEUSD: 0.0001, ADAUSD: 0.0001, EURUSD: 0.0001, GBPUSD: 0.0001, USDJPY: 0.01, AUDUSD: 0.0001, USDCAD: 0.0001, USDCHF: 0.0001 };
+function pipSize(pairId) { return PIP_SIZE[(pairId || '').toUpperCase()] || 0.0001; }
+// outcome se pips + exit: Win = +|TP1-entry| (exit TP1), Loss = -|entry-SL| (exit SL),
+// Break-Even = 0 (exit BE). In-flight (outcome nahi) = pips null.
+function computePips(sig) {
+  if (!sig || !sig.outcome) return { pips: null, exitLevel: null };
+  const ps = pipSize(sig.pair);
+  if (sig.outcome === 'Break-Even') return { pips: 0, exitLevel: 'BE' };
+  if (sig.outcome === 'Win') {
+    const d = sig.direction === 'BUY' ? sig.tp1 - sig.entry : sig.entry - sig.tp1;
+    return { pips: +(Math.abs(d) / ps).toFixed(1), exitLevel: 'TP1' };
+  }
+  if (sig.outcome === 'Loss') {
+    const d = sig.direction === 'BUY' ? sig.entry - sig.sl : sig.sl - sig.entry;
+    return { pips: -+(Math.abs(d) / ps).toFixed(1), exitLevel: 'SL' };
+  }
+  return { pips: null, exitLevel: null };
+}
+// Chal raha signal: maujooda price se running pips (BUY: price-entry, SELL: entry-price).
+// Price na mile to null — koi number banaya nahi jata.
+function runningPips(sig, price) {
+  if (!sig || price == null || sig.entry == null) return null;
+  const d = sig.direction === 'BUY' ? price - sig.entry : sig.entry - price;
+  return +(d / pipSize(sig.pair)).toFixed(1);
+}
 const KRAKEN_TICKER_PAIRS = ['PAXGUSD', 'XBTUSD', 'ETHUSD', 'SOLUSD', 'BNBUSD', 'XRPUSD', 'DOGEUSD', 'ADAUSD', 'EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'USDCHF'];
 function krakenKeyToPair(key) {
   // 'XXBTZUSD' -> 'XBTUSD', 'ZEURZUSD' -> 'EURUSD', 'PAXGUSD' -> 'PAXGUSD'
@@ -1084,9 +1120,11 @@ async function computeSignal(pairId, lang, force) {
   if (direction === 'WAIT' && !zoneBlocked) comments.push(en ? 'WAIT — no trade. The ' + gate + '% gate is not met (' + confluence + '%).' : 'WAIT — koi trade nahi. ' + gate + '% gate poora nahi hua (' + confluence + '%).');
   if (buy.total >= sell.total) comments.push(en ? 'BUY side confluence is ' + buy.total + '%.' : 'BUY taraf ' + buy.total + '% confluence hai.');
   else comments.push(en ? 'SELL side confluence is ' + sell.total + '%.' : 'SELL taraf ' + sell.total + '% confluence hai.');
-  if (ind.rsi14 != null) comments.push('RSI 14: ' + ind.rsi14.toFixed(1) + (ind.rsi14 > 70 ? ' (Overbought)' : ind.rsi14 < 30 ? ' (Oversold)' : ''));
-  if (ind.ema200 && live > ind.ema200) comments.push(en ? 'Price is above EMA 200 — the big trend is up.' : 'Price EMA 200 ke upar hai — bara trend upar.');
-  else if (ind.ema200) comments.push(en ? 'Price is below EMA 200 — the big trend is down.' : 'Price EMA 200 ke neeche hai — bara trend neeche.');
+  // v9.8-fix2: Live Comments RSI/EMA200 bhi 1H (ind1h) se — baaki Terminal panels ki tarah.
+  // Pehle 15m `ind` use hota tha, is liye Comments ka RSI (48.4) baaki panels (42.1) se alag dikhta tha.
+  if (ind1h.rsi14 != null) comments.push('RSI 14: ' + ind1h.rsi14.toFixed(1) + (ind1h.rsi14 > 70 ? ' (Overbought)' : ind1h.rsi14 < 30 ? ' (Oversold)' : ''));
+  if (ind1h.ema200 && live > ind1h.ema200) comments.push(en ? 'Price is above EMA 200 — the big trend is up.' : 'Price EMA 200 ke upar hai — bara trend upar.');
+  else if (ind1h.ema200) comments.push(en ? 'Price is below EMA 200 — the big trend is down.' : 'Price EMA 200 ke neeche hai — bara trend neeche.');
   const pdh = Math.max(...candles.slice(-96).map(c => c.h));
   const pdl = Math.min(...candles.slice(-96).map(c => c.l));
   // Signal code + validity: pair + aaj ki tareekh (YYMMDD) + aaj ka sequence number.
@@ -1322,19 +1360,30 @@ async function checkOutcome(sig) {
       }
     }
   }
-  if (outcome) { sig.outcome = outcome; sig.outcomeAt = Date.now(); saveDb(); }
+  if (outcome) { sig.outcome = outcome; sig.outcomeAt = Date.now(); const cp = computePips(sig); sig.pips = cp.pips; sig.exitLevel = cp.exitLevel; saveDb(); }
   return sig;
 }
 async function enrichHistory(signals) {
   const out = [];
   for (const s of signals) out.push(await checkOutcome({ ...s }));
-  // db me outcome wapas likhein
+  // db me outcome + pips wapas likhein — purane rows ka backfill bhi yahin hota hai
+  // (jin rows me outcome hai lekin pips nahi, unke pips entry/SL/TP1 se ban jate hain).
   for (const s of out) {
     const row = db.signals.find(x => x.id === s.id);
-    if (row && s.outcome && !row.outcome) { row.outcome = s.outcome; row.outcomeAt = s.outcomeAt; }
+    if (row) {
+      if (s.outcome && !row.outcome) { row.outcome = s.outcome; row.outcomeAt = s.outcomeAt; }
+      if (row.outcome && (row.pips == null || row.exitLevel == null)) {
+        const cp = computePips(row);
+        row.pips = cp.pips; row.exitLevel = cp.exitLevel;
+      }
+    }
   }
   saveDb();
-  return out.map(s => ({ ...s, status: s.outcome || 'In-Flight' }));
+  return out.map(s => {
+    let pips = s.pips, exitLevel = s.exitLevel;
+    if (s.outcome && pips == null) { const cp = computePips(s); pips = cp.pips; exitLevel = cp.exitLevel; }
+    return { ...s, pips, exitLevel, status: s.outcome || 'In-Flight' };
+  });
 }
 
 // ---------------- Sessions ----------------
@@ -2082,10 +2131,65 @@ app.get('/api/performance', requireAuth, async (req, res) => {
   const losses = list.filter(s => s.outcome === 'Loss').length;
   const be = list.filter(s => s.outcome === 'Break-Even').length;
   const inflight = list.filter(s => !s.outcome).length;
+  const pipsOf = s => (typeof s.pips === 'number' ? s.pips : 0);
+  const winPips = +list.filter(s => s.outcome === 'Win').reduce((a, s) => a + pipsOf(s), 0).toFixed(1);
+  const lossPips = +list.filter(s => s.outcome === 'Loss').reduce((a, s) => a + pipsOf(s), 0).toFixed(1);
+  const netPips = +(winPips + lossPips).toFixed(1);
   res.json({
     total: list.length, wins, losses, breakEven: be, inFlight: inflight,
+    winPips, lossPips, netPips, totalPips: netPips,
     winRate: closed.length ? +(wins / closed.length * 100).toFixed(1) : null,
     note: 'Win rate sirf record kiye gaye signals se banta hai. Abhi tak koi signal record nahi hua to win rate khaali dikhega — ye sach hai, banaya hua number nahi.',
+  });
+});
+// ---------------- v9.8.1: Live-signal monitoring — band hue signals (pips ke saath) ----------------
+// Scheduled monitor is endpoint se naye band hue signals padhta hai (?since=<epoch ms>).
+// Sirf asal record kiye gaye signals — outcome + pips entry/SL/TP se bante hain, kabhi banaye nahi jate.
+app.get('/api/signals/closed', requireAuth, async (req, res) => {
+  const raw = req.query.since;
+  const since = raw == null ? Date.now() - 86400000 : parseInt(raw, 10);
+  if (!Number.isFinite(since)) return res.status(400).json({ error: 'bad_since', message: 'since ms me hona chahiye.' });
+  const list = await enrichHistory([...db.signals]);
+  const closed = list.filter(s => s.outcome && s.outcomeAt && s.outcomeAt > since)
+    .sort((a, b) => b.outcomeAt - a.outcomeAt).slice(0, 100);
+  const pipsOf = s => (typeof s.pips === 'number' ? s.pips : 0);
+  const winPips = +closed.filter(s => s.outcome === 'Win').reduce((a, s) => a + pipsOf(s), 0).toFixed(1);
+  const lossPips = +closed.filter(s => s.outcome === 'Loss').reduce((a, s) => a + pipsOf(s), 0).toFixed(1);
+  res.json({
+    since,
+    total: closed.length,
+    totals: {
+      wins: closed.filter(s => s.outcome === 'Win').length,
+      losses: closed.filter(s => s.outcome === 'Loss').length,
+      breakEven: closed.filter(s => s.outcome === 'Break-Even').length,
+      winPips, lossPips, netPips: +(winPips + lossPips).toFixed(1),
+    },
+    signals: closed.map(s => ({ id: s.id, pair: s.pair, direction: s.direction, entry: s.entry, sl: s.sl, tp1: s.tp1, score: s.score, engine: s.engine, signalCode: s.signalCode || null, outcome: s.outcome, outcomeAt: s.outcomeAt, pips: s.pips, exitLevel: s.exitLevel || null })),
+    note: 'Sirf asal band hue signals — pips entry/SL/TP1 aur outcome se bante hain (Win = +|TP1-entry|, Loss = -|entry-SL|, Break-Even = 0).',
+  });
+});
+// ---------------- v9.8.1: Live running pips — abhi chal rahe (in-flight) signals ----------------
+// Monitor is endpoint ko poll karke live running pips dikhata hai — price badalte hi pips badalte hain.
+// Sirf asal record kiye gaye in-flight signals; running pips maujooda price se bante hain.
+app.get('/api/signals/live', requireAuth, async (req, res) => {
+  const list = await enrichHistory([...db.signals]);
+  const inflight = list.filter(s => !s.outcome);
+  let prices = {};
+  let priceAt = null;
+  try {
+    const data = await fetchAllPrices();
+    priceAt = data.updatedAt;
+    for (const p of (data.pairs || [])) if (p.price != null) prices[p.id] = p.price;
+  } catch (e) { /* price na mile to runningPips null — koi number banaya nahi jata */ }
+  res.json({
+    asOf: Date.now(),
+    priceAt,
+    total: inflight.length,
+    signals: inflight
+      .sort((a, b) => b.createdAt - a.createdAt)
+      .slice(0, 100)
+      .map(s => ({ id: s.id, pair: s.pair, direction: s.direction, entry: s.entry, sl: s.sl, tp1: s.tp1, tp2: s.tp2, tp3: s.tp3, score: s.score, engine: s.engine, signalCode: s.signalCode || null, createdAt: s.createdAt, price: prices[s.pair] != null ? prices[s.pair] : null, runningPips: runningPips(s, prices[s.pair]) })),
+    note: 'Chal rahe signals ke live running pips — maujooda price se (BUY: price-entry, SELL: entry-price). Price na mile to runningPips null hota hai.',
   });
 });
 // ---------------- v9.8: Notifications Hub feed — SIRF asal record kiye gaye alerts ----------------
@@ -2101,7 +2205,7 @@ app.get('/api/alerts/feed', requireAuth, async (req, res) => {
   const out = await enrichHistory(list.slice(0, 50));
   res.json({
     total,
-    alerts: out.map(x => ({ id: x.id, pair: x.pair, direction: x.direction, engine: x.engine, score: x.score, createdAt: x.createdAt, signalCode: x.signalCode, outcome: x.outcome || 'In-Flight', telegramSent: !!x.telegramSent, pushSent: !!x.pushSent })),
+    alerts: out.map(x => ({ id: x.id, pair: x.pair, direction: x.direction, engine: x.engine, score: x.score, createdAt: x.createdAt, signalCode: x.signalCode, outcome: x.outcome || 'In-Flight', pips: x.pips != null ? x.pips : null, exitLevel: x.exitLevel || null, telegramSent: !!x.telegramSent, pushSent: !!x.pushSent })),
     note: 'Ye feed sirf asal record kiye gaye signals dikhati hai — koi alert banaya nahi gaya. Har recorded signal par Telegram + Web Push alert bheja jata hai (jo pair aapne OFF kiya hai, uska alert nahi jata).',
   });
 });
@@ -2274,8 +2378,8 @@ app.get('/api/export.csv', requireAuth, async (req, res) => {
   let rows = [...db.signals];
   if (engine) rows = rows.filter(s => s.engine === engine);
   const list = await enrichHistory(rows);
-  let csv = 'id,pair,direction,entry,sl,tp1,tp2,tp3,score,engine,createdAt,outcome\n';
-  for (const s of list) csv += [s.id, s.pair, s.direction, s.entry, s.sl, s.tp1, s.tp2, s.tp3, s.score, s.engine, new Date(s.createdAt).toISOString(), s.outcome || 'In-Flight'].join(',') + '\n';
+  let csv = 'id,pair,direction,entry,sl,tp1,tp2,tp3,score,engine,createdAt,outcome,pips,exitLevel\n';
+  for (const s of list) csv += [s.id, s.pair, s.direction, s.entry, s.sl, s.tp1, s.tp2, s.tp3, s.score, s.engine, new Date(s.createdAt).toISOString(), s.outcome || 'In-Flight', s.pips == null ? '' : s.pips, s.exitLevel || ''].join(',') + '\n';
   res.setHeader('Content-Type', 'text/csv');
   res.setHeader('Content-Disposition', 'attachment; filename="forex-trading-pro-signals.csv"');
   res.send(csv);
@@ -2421,5 +2525,5 @@ app.listen(PORT, () => console.log('Forex Trading Pro chal raha hai: http://loca
 
 // Test ke liye (NODE_ENV=test) — production me kuch nahi badalta.
 if (process.env.NODE_ENV === 'test') {
-  module.exports = { recordTerminalSignal, sendSignalAlert, sendPushAlert, buildPushPayload, notifyPairOn, buildTelegramMessage, parseTelegramUpdates, applyTelegramUpdates, telegramPollUpdates, recorderTick, backgroundTick, ensureTgCode, buyerActive, gateScore, isMarketClosed, computeZones, computeTrendPanel, getDb: () => db, telegramDryRunSent, pushDryRunSent, webpush, engineSettings, priceByMode, walkExit, rForRule, runBacktest, computeSmc, computeScanner, GROUP_PAIRS };
+  module.exports = { recordTerminalSignal, sendSignalAlert, sendPushAlert, buildPushPayload, notifyPairOn, buildTelegramMessage, parseTelegramUpdates, applyTelegramUpdates, telegramPollUpdates, recorderTick, backgroundTick, ensureTgCode, buyerActive, gateScore, isMarketClosed, computeZones, computeTrendPanel, getDb: () => db, telegramDryRunSent, pushDryRunSent, webpush, engineSettings, priceByMode, walkExit, rForRule, runBacktest, computeSmc, computeScanner, GROUP_PAIRS, computePips, pipSize, PIP_SIZE, runningPips };
 }
