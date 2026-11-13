@@ -384,6 +384,21 @@ const I18N = {
     newsFail: "News abhi nahi mil rahi — thodi der baad dobara koshish karein.",
     newsFallbackNote: "Ek feed band hai — jo headlines dikh rahi hain wo chalti hui feed se hain",
     newsUpdated: "Updated",
+    newsCalTitle: "Aaj ki Bari News — Forex Factory",
+    newsCalUnavailable: "News calendar abhi nahi mil raha — is liye news-time block band hai, signals normal chal rahe hain.",
+    newsNoEventsToday: "Aaj koi high-impact news nahi hai.",
+    newsTime: "NEWS TIME",
+    newsTimeNow: "News time chal raha hai",
+    newsWindowEnds: "Window khatam",
+    newsRiskWarning: "News ke waqt spread barh jata hai aur price dono taraf tezi se bhag sakti hai. Is liye news time par naya signal band hai — pehle se khula trade is filter se band nahi hota.",
+    newsSuppressed: "news window mein naya signal band hai (warna {dir} {score} tha)",
+    newsNextEvent: "Agli bari news",
+    newsInMin: "{m} min baad",
+    newsInHM: "{h} ghante {m} min baad",
+    newsAffects: "Asar",
+    newsBlockedToday: "Aaj news ki wajah se {n} signals roke gaye",
+    newsNoData: "Live data nahi mila",
+    newsBlackoutOn: "ON — naye signals news window mein band rehte hain",
     newSignal: "Naya Signal!",
     alertsNote: "Alerts sirf tab kaam karte hain jab site khuli ho — band tab ya band phone par nahi.",
     sound: "Sound",
@@ -1087,6 +1102,21 @@ const I18N = {
     newsFail: "News is not available right now — please try again shortly.",
     newsFallbackNote: "One feed is down — headlines shown are from the working feed",
     newsUpdated: "Updated",
+    newsCalTitle: "Today's Big News — Forex Factory",
+    newsCalUnavailable: "The news calendar is unavailable right now — the news-time block is off, so signals are running normally.",
+    newsNoEventsToday: "No high-impact news today.",
+    newsTime: "NEWS TIME",
+    newsTimeNow: "News time is active now",
+    newsWindowEnds: "Window ends",
+    newsRiskWarning: "Spreads widen at news time and price can swing both ways. New signals are paused during the news window — an already open trade is not closed by this filter.",
+    newsSuppressed: "new signals paused in the news window (would have been {dir} {score})",
+    newsNextEvent: "Next big news",
+    newsInMin: "in {m} min",
+    newsInHM: "in {h}h {m}m",
+    newsAffects: "Affects",
+    newsBlockedToday: "{n} signals blocked by news today",
+    newsNoData: "No live data",
+    newsBlackoutOn: "ON — new signals pause during news windows",
     newSignal: "New Signal!",
     alertsNote: "Alerts only work while this site is open — not on a closed tab or phone.",
     sound: "Sound",
@@ -8290,19 +8320,68 @@ async function loadIndStrip() {
 }
 
 // ---------------- Fundamental News ----------------
+let newsRefreshTimer = null; // News Time card dikh raha ho to 60s baad dobara load karein
 async function loadNews() {
   const el = document.getElementById('newsBody'); if (!el) return;
+  if (newsRefreshTimer) { clearTimeout(newsRefreshTimer); newsRefreshTimer = null; }
   el.innerHTML = '<p>' + esc(t('loading')) + '</p>';
+  // ---- Forex Factory calendar block (upar) — sirf schedule, koi trade call nahi.
+  let calHtml = '';
+  let activeWindows = [];
+  try {
+    const c = await api('/api/news-calendar');
+    if (c.available) {
+      const todayEv = c.events || [];
+      const evHtml = todayEv.length ? todayEv.map(e => `<div class="gate"><span>${e.impact === 'High' ? '🔴' : '🟡'} <b>${esc(e.country)}</b> · ${esc(e.title)}<br><small style="color:#8ea0c2">${fmtPktTimeShort(e.timeMs)} PKT${e.forecast != null ? ' · Fcst ' + esc(e.forecast) : ''}${e.previous != null ? ' · Prev ' + esc(e.previous) : ''}${e.impact === 'Medium' ? ' · Medium' : ''}</small></span></div>`).join('') : `<p class="fine">${esc(t('newsNoEventsToday'))}</p>`;
+      calHtml = `<h4>📰 ${esc(t('newsCalTitle'))}</h4>` + evHtml;
+      activeWindows = c.activeWindows || [];
+      if (activeWindows.length) {
+        // Live per-pair states — sirf affected pairs, sirf window chalte hue.
+        const pairs = [...new Set(activeWindows.flatMap(w => w.pairs || []))];
+        const states = await Promise.all(pairs.map(async (p) => {
+          try { const s = await api('/api/signal?pair=' + p); return { pair: p, s }; }
+          catch (e) { return { pair: p, s: null }; }
+        }));
+        const rows = states.map(({ pair, s }) => {
+          if (!s || s.error || s.marketClosed) return `<div class="gate"><span>${esc(pairLabel(pair))} — ${esc(t('newsNoData'))}</span></div>`;
+          const dir = s.direction;
+          const suppressed = s.newsBlock && s.newsBlock.blocked && s.wouldBe;
+          const dirHtml = suppressed
+            ? `<span class="wait">WAIT</span> <small style="color:#8ea0c2">${esc(t('newsSuppressed').replace('{dir}', s.wouldBe).replace('{score}', String(s.wouldBeScore ?? '')))}</small>`
+            : `<span class="${dir === 'BUY' ? 'buy' : dir === 'SELL' ? 'sell' : 'wait'}">${esc(dir)}</span>${dir === 'WAIT' ? '' : ` <small style="color:#8ea0c2">${s.confluence != null ? s.confluence + '%' : ''}</small>`}`;
+          return `<div class="gate"><span>${esc(pairLabel(pair))} — ${dirHtml}</span></div>`;
+        }).join('');
+        const titles = [...new Set(activeWindows.map(w => w.title))].join(' / ');
+        const untilMs = Math.max(...activeWindows.map(w => w.untilMs));
+        calHtml += `<div class="news-time-card">
+          <div class="news-risky-label">⚠️ NEWS SIGNAL RISKY</div>
+          <h4>🔴 ${esc(t('newsTime'))} — ${esc(titles)}</h4>
+          <p class="fine">${esc(t('newsWindowEnds'))}: ${fmtPktTimeShort(untilMs)} PKT</p>
+          ${rows}
+          <p>${esc(t('newsRiskWarning'))}</p>
+        </div>`;
+      } else if (c.nextEvent) {
+        const mins = Math.max(0, Math.round((c.nextEvent.timeMs - Date.now()) / 60000));
+        const when = mins < 60 ? t('newsInMin').replace('{m}', String(mins)) : t('newsInHM').replace('{h}', String(Math.floor(mins / 60))).replace('{m}', String(mins % 60));
+        calHtml += `<p>${esc(t('newsNextEvent'))}: <b>${esc(c.nextEvent.title)}</b> — ${fmtPktTimeShort(c.nextEvent.timeMs)} PKT (${esc(when)}) · ${esc(t('newsAffects'))}: ${(c.nextEvent.pairs || []).map(pairLabel).join(', ')}</p>`;
+      }
+      if (c.blockedToday > 0) calHtml += `<p class="fine">${esc(t('newsBlockedToday').replace('{n}', String(c.blockedToday)))}</p>`;
+    } else {
+      calHtml = `<p class="fine">${esc(t('newsCalUnavailable'))}</p>`;
+    }
+  } catch (e) { calHtml = `<p class="fine">${esc(t('newsCalUnavailable'))}</p>`; }
   try {
     const d = await api('/api/news');
-    if (!d.available || !d.news.length) { el.innerHTML = '<p>' + esc(t('newsFail')) + '</p>'; return; }
+    if (!d.available || !d.news.length) { el.innerHTML = calHtml + '<p>' + esc(t('newsFail')) + '</p>'; return; }
     const hi = (d.engineOn === false) ? [] : (d.highImpact || []);
     const hiHtml = hi.length ? `<h4>🔴 ${esc(t('newsHighImpact'))}</h4>` + hi.map(x => `<div class="gate"><span><a href="${esc(x.link)}" target="_blank" rel="noopener" style="color:#f5c542">${esc(x.title)}</a><br><small style="color:#8ea0c2">${esc(x.source)} · ${fmtPktTime(x.time)}</small></span></div>`).join('') : `<p class="fine">${esc(t('newsNoHighImpact'))}</p>`;
-    el.innerHTML = hiHtml + d.news.map(n => `<div class="gate"><span><a href="${esc(n.link)}" target="_blank" rel="noopener" style="color:#e8ecf5">${esc(n.title)}</a><br><small style="color:#8ea0c2">${esc(n.source)} · ${fmtPktTime(n.time)}</small></span></div>`).join('') +
+    el.innerHTML = calHtml + hiHtml + d.news.map(n => `<div class="gate"><span><a href="${esc(n.link)}" target="_blank" rel="noopener" style="color:#e8ecf5">${esc(n.title)}</a><br><small style="color:#8ea0c2">${esc(n.source)} · ${fmtPktTime(n.time)}</small></span></div>`).join('') +
       // v9.5: ek feed band ho to sirf "RETRY" na dikhayein — saaf bataein ke headlines chalti hui feed se hain.
       (d.sources && d.sources.some(s => s.status === 'RETRY') ? `<p class="fine">${esc(t('newsFallbackNote'))}</p>` : '') +
       `<p class="fine">${esc(t('newsUpdated'))}: ${fmtPktTimeShort(d.updatedAt)} · ${d.sources.map(s => esc(s.name) + ': ' + esc(s.status)).join(' · ')}</p>`;
-  } catch (e) { el.innerHTML = '<p>' + esc(t('newsFail')) + '</p>'; }
+    // Window chalte hue card ko 60s baad refresh karein (khatam ho to khud gayab ho jaye).
+    if (activeWindows.length) newsRefreshTimer = setTimeout(loadNews, 60000);
+  } catch (e) { el.innerHTML = calHtml + '<p>' + esc(t('newsFail')) + '</p>'; }
 }
 
 // ---------------- SMC extras: feed + backtest ----------------
@@ -10047,10 +10126,20 @@ async function loadSession() {
   try {
     const d = await api('/api/sessions');
     if (d.disabled) { el.innerHTML = '<p>' + esc(d.message) + '</p>'; return; }
+    // News blackout — available ho to active/next window dikhayein, warna purana note.
+    const nb = d.newsBlackout || {};
+    let nbHtml;
+    if (nb.available) {
+      if (nb.active && nb.active.length) nbHtml = `<p>🔴 ${esc(t('newsTimeNow'))}: ${nb.active.map(w => esc(w.title) + ' — ' + fmtPktTimeShort(w.untilMs) + ' PKT').join(' · ')}</p>`;
+      else if (nb.next) nbHtml = `<p>${esc(t('newsBlackout'))}: <b>${esc(t('newsBlackoutOn'))}</b> — ${esc(t('newsNextEvent'))}: ${esc(nb.next.title)} — ${fmtPktTimeShort(nb.next.timeMs)} PKT</p>`;
+      else nbHtml = `<p>${esc(t('newsBlackout'))}: <b>${esc(t('newsBlackoutOn'))}</b></p>`;
+    } else {
+      nbHtml = `<p>${t('newsBlackout')}: <b>${t('notAvailable')}</b> — ${esc(nb.note || '')}</p>`;
+    }
     el.innerHTML = `
       <p><b>${esc(d.active.name)}</b> ${t('sessionActive')} — ${fmtHm12(d.active.startPKT)} – ${fmtHm12(d.active.endPKT)} PKT · ${t('nowPkt')}: ${fmtHm12(d.nowPKT)}</p>
       <p>${t('nextSession')}: ${esc(d.next.name)} — ${d.next.inMin} ${t('minutes')}</p>
-      <p>${t('newsBlackout')}: <b>${t('notAvailable')}</b> — ${esc(d.newsBlackout.note)}</p>
+      ${nbHtml}
       <h4>${t('allSessions')}</h4>
       <div class="table-wrap"><table><tr><th>${t('session')}</th><th>${t('pktTime')}</th><th>${t('status')}</th></tr>
       ${d.all.map(s => `<tr><td>${esc(s.name)}</td><td>${fmtHm12(s.startPKT)} – ${fmtHm12(s.endPKT)}</td><td>${s.isActive ? '<span class="buy">' + esc(t('sessionActive')) + '</span>' : '—'}</td></tr>`).join('')}</table></div>`;
