@@ -82,6 +82,7 @@
       <button data-tab="indicators" data-i18n="tabIndicators" onclick="showTab('indicators')">Indicators</button>
       <button data-tab="smc" data-i18n="tabSmc" onclick="showTab('smc')">SMC</button>
       <button data-tab="session" data-i18n="tabSession" onclick="showTab('session')">Session</button>
+      <button data-tab="hub" data-i18n="tabHub" onclick="showTab('hub')">🔔 Notifications</button>
       <button data-tab="history" data-i18n="tabHistory" onclick="showTab('history')">History</button>
       <button data-tab="account" data-i18n="tabAccount" onclick="showTab('account')">Account</button>
       <button data-tab="admin" id="adminTabBtn" data-i18n="tabAdmin" onclick="showTab('admin')" style="display:none">Admin</button>
@@ -107,7 +108,7 @@
       <p id="tgLinkStatus" class="fine" style="margin:8px 0 0"></p></div>
       <div class="card"><h3 data-i18n="chartTitle">Price Chart — Candles + EMA 20/50/200</h3>
       <div class="chart-tf" id="chartTf"></div>
-      <canvas id="chartCanvas" width="900" height="320"></canvas>
+      <canvas id="chartCanvas" width="900" height="320" dir="ltr"></canvas>
       <p id="chartBidAsk" class="fine"></p>
       <p><span id="countdown"></span></p></div>
       <div class="card"><h3><span data-i18n="indStripTitle">Live Indicators</span> — <span id="indStripPair"></span></h3><div id="indStrip" class="price-grid"></div></div>
@@ -155,15 +156,41 @@
       <div class="card"><h3 data-i18n="smcBacktestTitle">SMC Backtest</h3>
       <p><span data-i18n="smcBacktestNote">Asal 15M candles par SMC rule (score 80%+) — koi banaya hua number nahi.</span> <button class="btn small gold" data-i18n="smcBacktestBtn" onclick="runSmcBacktest()">SMC Backtest Chalayein (30 din)</button></p>
       <div id="smcBacktestBody"></div></div>
-      <div class="card"><h3 data-i18n="scannerTitle">Global Market Scanner (11 pairs, har 45 second)</h3><p class="tab-banner" data-i18n="bannerScanner">YE SIRF DHOONDTA HAI — signal Terminal mein banta hai</p><p class="notice-banner" data-i18n="notASignalNote">Ye signal nahi hai — trade sirf Terminal signal par lein.</p><div id="scannerBody"></div></div>
+      <div class="card"><h3 data-i18n="scannerTitle">Global Market Scanner (15 pairs, har 45 second)</h3><p class="tab-banner" data-i18n="bannerScanner">YE SIRF DHOONDTA HAI — signal Terminal mein banta hai</p><p class="notice-banner" data-i18n="notASignalNote">Ye signal nahi hai — trade sirf Terminal signal par lein.</p><div id="scannerBody"></div></div>
     </section>
 
     <!-- SESSION -->
     <section id="tab-session" class="tab" style="display:none">
       <div class="card"><div class="tab-banner" data-i18n="bannerSession">YE SIRF WAQT BATATA HAI — signal nahi deta</div><h3 data-i18n="sessionTitle">Session Engine</h3><p class="notice-banner" data-i18n="notASignalNote">Ye signal nahi hai — trade sirf Terminal signal par lein.</p><div id="sessionBody"></div></div>
+      <div class="card"><h3 data-i18n="sessionSimTitle">Session Simulator</h3>
+      <p data-i18n="sessionSimText">Asal 1H candles par Session rule — period, session, balance, risk aur TP rule chunein.</p>
+      <div class="filters">
+        <label><span data-i18n="simPeriod">Period</span>: <select id="simDays"><option value="15">15 din</option><option value="30" selected>30 din</option><option value="60">60 din</option><option value="90">90 din</option></select></label>
+        <label><span data-i18n="simSession">Session</span>: <select id="simSession"><option value="all">Sab</option><option value="sydney">Sydney</option><option value="tokyo">Tokyo / Asian</option><option value="london">London</option><option value="newyork">New York</option></select></label>
+        <label><span data-i18n="simBalance">Balance $</span>: <input id="simBalance" type="number" min="100" max="10000" value="1000" style="width:90px"></label>
+        <label><span data-i18n="simRisk">Risk %</span>: <input id="simRisk" type="number" min="0.1" max="3" step="0.1" value="1" style="width:60px"></label>
+        <label><span data-i18n="tpRule">TP Rule</span>: <select id="simTp"><option value="quick" data-i18n="tpQuick">100% TP1 Quick Scalp</option><option value="standard" selected data-i18n="tpStandard">50% TP1 / 50% TP2 Standard</option><option value="trail" data-i18n="tpTrail">Trail to TP3 Full Target</option></select></label>
+        <button class="btn small gold" data-i18n="btRun" onclick="runSessionSim()">Backtest Chalayein</button>
+      </div>
+      <div id="sessionSimBody"></div></div>
       <div class="card"><h3 data-i18n="newsTitle">Fundamental News</h3>
       <p data-i18n="newsText">Taza forex/market headlines — FXStreet aur ForexLive ke free RSS feeds se.</p>
       <div id="newsBody"></div></div>
+    </section>
+
+    <!-- NOTIFICATIONS HUB -->
+    <section id="tab-hub" class="tab" style="display:none">
+      <div class="card"><div class="tab-banner" data-i18n="bannerHub">SIRF ASAL ALERTS — koi alert banaya nahi jata</div><h3 data-i18n="hubTitle">Notifications Hub</h3>
+      <p data-i18n="hubText">Telegram + Browser Push alerts ka central page — pairs, engines aur feed.</p>
+      <h4 data-i18n="hubControls">Controls</h4><div id="hubControls"><p data-i18n="loading">Loading…</p></div>
+      <h4 data-i18n="hubChannels">Engine Channels</h4><div id="hubChannels"></div>
+      <h4 data-i18n="hubFeed">Notification Feed</h4>
+      <div class="filters">
+        <select id="hubEngine" onchange="loadHubFeed()"><option value="all" data-i18n="hubAllEngines">Sab engines</option><option value="terminal">Terminal</option><option value="smc">SMC</option><option value="session">Session</option></select>
+        <select id="hubGroup" onchange="loadHubFeed()"><option value="all" data-i18n="hubAllPairs">All Approved Pairs</option><option value="metals">Gold &amp; Metals</option><option value="majors">Forex Majors</option><option value="crypto">Cryptocurrencies</option></select>
+        <button class="btn small" data-i18n="refresh" onclick="loadHubFeed()">Refresh</button>
+      </div>
+      <div id="hubFeed"></div></div>
     </section>
 
     <!-- HISTORY -->
@@ -178,7 +205,7 @@
       <div id="historyBody"></div>
       <h4 data-i18n="refinerTitle">Strategy Refiner</h4>
       <p data-i18n="refinerText">Cutoff sirf is build ke baad record hone wale signals par lagta hai, kyunke purane signals me gate score save nahi hua.</p>
-      <div class="filters">Cutoff: <select id="refCutoff" onchange="loadRefiner()"><option>80</option><option selected>85</option><option>90</option><option>98</option></select></div>
+      <div class="filters">Cutoff: <select id="refCutoff" onchange="loadRefiner()"><option>80</option><option selected>85</option><option>90</option><option>98</option></select> <span data-i18n="tpRule">TP Rule</span>: <select id="refTp" onchange="loadRefiner()"><option value="quick" data-i18n="tpQuick">100% TP1 Quick Scalp</option><option value="standard" selected data-i18n="tpStandard">50% TP1 / 50% TP2 Standard</option><option value="trail" data-i18n="tpTrail">Trail to TP3 Full Target</option></select></div>
       <div id="refinerBody"></div></div>
       <div class="card"><h3 data-i18n="termBacktestTitle">Terminal Backtest (30 din)</h3>
       <p><button class="btn small gold" data-i18n="termBacktestBtn" onclick="runTerminalBacktest()">Terminal Backtest Chalayein</button></p>

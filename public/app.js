@@ -17,6 +17,9 @@ let popupSignal = null, shareSignal = null;
 let histOpenDetails = {};
 let riskProfile = localStorage.getItem('ftp_risk_profile') || 'moderate';
 let theme = localStorage.getItem('ftp_theme') || 'dark';
+let lastChartCandles = []; // v9.8 (c): loadTerminal se pehle bhi defined rahe — race fix
+// v9.8 (a): pair label hamesha "USD/JPY" jaisa — replace('USD','/USD') pehli 'USD' badal deta tha (USDJPY -> "/USDJPY").
+function pairLabel(id) { const x = String(id || ''); return x.length > 3 ? x.slice(0, 3) + '/' + x.slice(3) : x; }
 function applyTheme() { try { document.body.classList.toggle('light', theme === 'light'); } catch (e) {} }
 applyTheme();
 function riskProfileText() {
@@ -101,7 +104,7 @@ const I18N = {
     indTfNote: "Neeche ki values 1H timeframe ki hain — 15M aur Daily alag se neeche likhe hain",
     smcTitle: "SMC (Smart Money Concepts)",
     smcText: "SMC ke levels asal 15M candles ke swing high/low se nikale jate hain — jahan bade kharidar/bechne wale aam tor par rukte hain. SMC score 5 hisse x 20 points se banta hai, gate 80% hai. Terminal ka BUY/SELL is tab se nahi banta; wo Terminal ki apni 85% wali sharton se banta hai.",
-    scannerTitle: "Global Market Scanner (11 pairs, har 45 second)",
+    scannerTitle: "Global Market Scanner (15 pairs, har 45 second)",
     smcPairCardsTitle: "SMC Tasdeeq — Har Pair",
     sessionTitle: "Session Engine",
     backtestTitle: "Session Backtest Simulator",
@@ -693,8 +696,77 @@ const I18N = {
     bannerTerminal: "SIGNAL SIRF YAHAN SE — BUY/SELL card par trade lein",
     bannerSmc: "YE SIGNAL NAHI HAI — sirf tasdeeq (confirmation) hai",
     bannerSession: "YE SIRF WAQT BATATA HAI — signal nahi deta",
+    bannerHub: "SIRF ASAL ALERTS — koi alert banaya nahi jata",
     bannerHistory: "YE PURANE SIGNALS HAIN — in par trade na lein, sirf nateeje dekhein",
-    bannerScanner: "YE SIRF DHOONDTA HAI — signal Terminal mein banta hai"
+    bannerScanner: "YE SIRF DHOONDTA HAI — signal Terminal mein banta hai",
+    tabHub: "🔔 Notifications",
+    hubTitle: "Notifications Hub",
+    hubText: "Telegram + Browser Push alerts ka central page — pairs, engines aur feed.",
+    hubControls: "Controls",
+    hubControlsText: "Jo pair OFF hai, uska alert nahi jata — ye pasand Telegram aur Browser Push dono par lagti hai.",
+    hubChannels: "Engine Channels",
+    hubFeed: "Notification Feed",
+    hubAllEngines: "Sab engines",
+    hubAllEngines: "All engines",
+    hubAllPairs: "All Approved Pairs",
+    hubPreset_all: "All Approved Pairs",
+    hubPreset_metals: "Gold & Metals",
+    hubPreset_majors: "Forex Majors",
+    hubPreset_crypto: "Cryptocurrencies",
+    hubNoAlert: "abhi koi alert nahi",
+    hubNewsHint: "Red-folder alerts Session tab ki News me dikhte hain",
+    hubNoAlerts: "Is filter me koi alert nahi mila.",
+    openSession: "Session kholein",
+    backtestCenter: "Backtest Center",
+    engineSettings: "Engine Settings",
+    btText: "Asal candles par engine rule chalakar dekhein — balance, period, risk aur TP rule chunein. Data ki had (1H ~90 din, 15M ~5-7 din) se zyada period mango to sirf available data use hota hai.",
+    btEngine: "Engine",
+    btPair: "Pair",
+    btPeriod: "Period",
+    btRisk: "Risk %",
+    btRun: "Backtest Chalayein",
+    btTrades: "Trades",
+    btNetR: "Net R",
+    btNetUsd: "Net $",
+    btMaxDd: "Max Drawdown $",
+    btOpen: "Open",
+    btBreakEven: "Break-Even",
+    btRecentTrades: "Recent Trades",
+    tpRule: "TP Rule",
+    tpQuick: "100% TP1 Quick Scalp",
+    tpStandard: "50% TP1 / 50% TP2 Standard",
+    tpTrail: "Trail to TP3 Full Target",
+    engSetText: "Engine ki tafseel — admin badal sakta hai, buyer sirf dekh sakta hai.",
+    engSetGateNote: "Min Quality kabhi 85% se neeche nahi jata — gate sirf sakht ho sakta hai, halka nahi.",
+    engMinQuality: "Min Quality (Gate)",
+    engSlBuffer: "SL Buffer",
+    engMaxConc: "Max Concurrent Signals",
+    engSessions: "Sessions",
+    engPriceMode: "MT5 Broker Price Mode",
+    engSimNote: "SL Buffer aur TP rules (TP1/TP2/TP3) sirf Backtest Center + Refiner simulations par lagte hain — live signals engine ke fixed rules use karte hain.",
+    engReadOnly: "Sirf admin badal sakta hai.",
+    priceMode: "Price Mode",
+    priceModeNote: "Last = aakhri price, Bid/Ask = Kraken ticker se, Mid = (Bid+Ask)/2. Yahoo fallback par sirf Last milta hai.",
+    harmonicTone: "Harmonic Audio Tone",
+    harmonicNote: "Naye signal par chord (C–E–G) bajta hai; band ho to purana beep.",
+    saved: "Save ho gaya.",
+    sessionSimTitle: "Session Simulator",
+    sessionSimText: "Asal 1H candles par Session rule — period, session, balance, risk aur TP rule chunein.",
+    simPeriod: "Period",
+    simSession: "Session",
+    simBalance: "Balance $",
+    simRisk: "Risk %",
+    newsHighImpact: "Red Folder — High-Impact News",
+    newsNoHighImpact: "Aaj ki headlines me koi high-impact event (CPI / NFP / FOMC) nahi mila.",
+    smcAplusTitle: "SMC Global Scanner — A+ Setups",
+    smcAplusNone: "Abhi koi A+ setup (SMC 80%+) nahi mila.",
+    smcAplusNote: "Sirf 80%+ wale pairs — asal Entry/SL/TP, SMC ke 15M candles se. Ye signal nahi hai.",
+    noPools: "Koi liquidity pool nahi mila.",
+    microSweepHist: "Sweep History (5M)",
+    noSweeps: "Aakhri 40 5M candles me koi sweep nahi hua.",
+    microNote: "5M Micro sirf entry ki tafseel hai — signal Terminal se banta hai.",
+    exportIndBtn: "Indicator Report Download Karein",
+    gateTfNote: "Gate 15M par chalta hai — ye indicators 1H ke hain (Terminal, Live Indicators aur Indicators tab — sab eik source)."
   },
   en: {
     tagline: "Live signals for Gold, Bitcoin and Forex",
@@ -727,7 +799,7 @@ const I18N = {
     indTfNote: "Values below are 1H timeframe — 15M and Daily are listed separately below",
     smcTitle: "SMC (Smart Money Concepts)",
     smcText: "SMC levels come from real 15M candle swing highs/lows — where big buyers and sellers usually wait. The SMC score is 5 parts × 20 points, gate 80%. Terminal BUY/SELL does not come from this tab; it uses the Terminal’s own 85% conditions.",
-    scannerTitle: "Global Market Scanner (11 pairs, every 45 seconds)",
+    scannerTitle: "Global Market Scanner (15 pairs, every 45 seconds)",
     smcPairCardsTitle: "SMC Confirmation — Every Pair",
     sessionTitle: "Session Engine",
     backtestTitle: "Session Backtest Simulator",
@@ -1319,8 +1391,75 @@ const I18N = {
     bannerTerminal: "SIGNALS COME ONLY FROM HERE — trade on the BUY/SELL card",
     bannerSmc: "THIS IS NOT A SIGNAL — it is only confirmation",
     bannerSession: "THIS ONLY TELLS THE TIME — it gives no signal",
+    bannerHub: "ONLY REAL ALERTS — no alert is ever invented",
     bannerHistory: "THESE ARE OLD SIGNALS — do not trade on them, only check the results",
-    bannerScanner: "THIS ONLY SEARCHES — the signal is made in the Terminal"
+    bannerScanner: "THIS ONLY SEARCHES — the signal is made in the Terminal",
+    tabHub: "🔔 Notifications",
+    hubTitle: "Notifications Hub",
+    hubText: "Central page for Telegram + Browser Push alerts — pairs, engines and feed.",
+    hubControls: "Controls",
+    hubControlsText: "A pair that is OFF gets no alert — this choice applies to both Telegram and Browser Push.",
+    hubChannels: "Engine Channels",
+    hubFeed: "Notification Feed",
+    hubAllPairs: "All Approved Pairs",
+    hubPreset_all: "All Approved Pairs",
+    hubPreset_metals: "Gold & Metals",
+    hubPreset_majors: "Forex Majors",
+    hubPreset_crypto: "Cryptocurrencies",
+    hubNoAlert: "no alert yet",
+    hubNewsHint: "Red-folder alerts appear in the Session tab news",
+    hubNoAlerts: "No alerts found for this filter.",
+    openSession: "Open Session",
+    backtestCenter: "Backtest Center",
+    engineSettings: "Engine Settings",
+    btText: "Run the engine rule on real candles — choose balance, period, risk and TP rule. If you ask for more than the data allows (1H ~90 days, 15M ~5-7 days), only the available data is used.",
+    btEngine: "Engine",
+    btPair: "Pair",
+    btPeriod: "Period",
+    btRisk: "Risk %",
+    btRun: "Run Backtest",
+    btTrades: "Trades",
+    btNetR: "Net R",
+    btNetUsd: "Net $",
+    btMaxDd: "Max Drawdown $",
+    btOpen: "Open",
+    btBreakEven: "Break-Even",
+    btRecentTrades: "Recent Trades",
+    tpRule: "TP Rule",
+    tpQuick: "100% TP1 Quick Scalp",
+    tpStandard: "50% TP1 / 50% TP2 Standard",
+    tpTrail: "Trail to TP3 Full Target",
+    engSetText: "Engine details — the admin can change them, buyers can only view.",
+    engSetGateNote: "Min Quality never goes below 85% — the gate can only get stricter, never looser.",
+    engMinQuality: "Min Quality (Gate)",
+    engSlBuffer: "SL Buffer",
+    engMaxConc: "Max Concurrent Signals",
+    engSessions: "Sessions",
+    engPriceMode: "MT5 Broker Price Mode",
+    engSimNote: "SL Buffer and TP rules (TP1/TP2/TP3) apply only to Backtest Center + Refiner simulations — live signals use the engine's fixed rules.",
+    engReadOnly: "Only the admin can change this.",
+    priceMode: "Price Mode",
+    priceModeNote: "Last = last price, Bid/Ask = from the Kraken ticker, Mid = (Bid+Ask)/2. The Yahoo fallback only has Last.",
+    harmonicTone: "Harmonic Audio Tone",
+    harmonicNote: "A chord (C–E–G) plays on a new signal; the old beep when off.",
+    saved: "Saved.",
+    sessionSimTitle: "Session Simulator",
+    sessionSimText: "Session rule on real 1H candles — choose period, session, balance, risk and TP rule.",
+    simPeriod: "Period",
+    simSession: "Session",
+    simBalance: "Balance $",
+    simRisk: "Risk %",
+    newsHighImpact: "Red Folder — High-Impact News",
+    newsNoHighImpact: "No high-impact event (CPI / NFP / FOMC) found in today's headlines.",
+    smcAplusTitle: "SMC Global Scanner — A+ Setups",
+    smcAplusNone: "No A+ setup (SMC 80%+) right now.",
+    smcAplusNote: "Only pairs at 80%+ — real Entry/SL/TP from the SMC 15M candles. This is not a signal.",
+    noPools: "No liquidity pool found.",
+    microSweepHist: "Sweep History (5M)",
+    noSweeps: "No sweep in the last 40 5M candles.",
+    microNote: "5M Micro is only entry detail — the signal comes from the Terminal.",
+    exportIndBtn: "Download Indicator Report",
+    gateTfNote: "The gate runs on 15M — these indicators are 1H (Terminal, Live Indicators and Indicators tab — all one source)."
   },
   ar: {
     tagline: "إشارات مباشرة للذهب والبيتكوين والفوركس",
@@ -7846,15 +7985,19 @@ let notifOn = localStorage.getItem('ftp_notif') !== 'off';
 let lastSeenSignalId = localStorage.getItem('ftp_last_sig') || null;
 let alertTimer = null;
 let audioCtx = null;
+// v9.8: Harmonic Audio Tone — naya signal confirm hone par chord (C–E–G); band ho to purana beep.
+// Preference localStorage me (ftp_harmonic), default ON; master sound toggle (soundOn) wahi rehta hai.
+function harmonicOn() { return localStorage.getItem('ftp_harmonic') !== '0'; }
 function playAlertSound() {
   if (!soundOn) return;
   try {
     if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     if (audioCtx.state === 'suspended') audioCtx.resume();
     const now = audioCtx.currentTime;
-    [0, 0.25].forEach((off, i) => {
+    const notes = harmonicOn() ? [[0, 523.25], [0.12, 659.25], [0.24, 783.99]] : [[0, 880], [0.25, 1174]];
+    notes.forEach(([off, freq]) => {
       const o = audioCtx.createOscillator(), g = audioCtx.createGain();
-      o.type = 'sine'; o.frequency.value = i === 0 ? 880 : 1174;
+      o.type = 'sine'; o.frequency.value = freq;
       g.gain.setValueAtTime(0.0001, now + off);
       g.gain.exponentialRampToValueAtTime(0.25, now + off + 0.02);
       g.gain.exponentialRampToValueAtTime(0.0001, now + off + 0.22);
@@ -7990,6 +8133,10 @@ async function loadChart() {
 function drawChart(cv, candles) {
   fitChartCanvas(cv);
   const ctx = cv.getContext('2d'); const W = cv.width, H = cv.height;
+  // v9.8 (a): canvas text hamesha left-aligned — RTL page par default 'start' right hota hai,
+  // is liye labels (EMA 20, zone bands) left edge se cut jate the.
+  ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+  const fitTxt = (txt, maxW) => { let t2 = txt; while (t2.length > 4 && ctx.measureText(t2).width > maxW) t2 = t2.slice(0, -2); return t2.length < txt.length ? t2.slice(0, -1) + '…' : t2; };
   ctx.clearRect(0, 0, W, H);
   if (!candles || candles.length < 5) { ctx.fillStyle = '#8ea0c2'; ctx.font = '14px sans-serif'; ctx.fillText(t('chartNoData'), 10, 24); return; }
   const closes = candles.map(c => c.c);
@@ -8044,7 +8191,7 @@ function drawChart(cv, candles) {
     let prevY = 30;
     bandLabels.sort((a, b) => a.y - b.y).forEach(l => {
       const y = Math.max(prevY, Math.min(H - 4, l.y));
-      ctx.fillStyle = l.col; ctx.fillText(l.txt, 10, y);
+      ctx.fillStyle = l.col; ctx.fillText(fitTxt(l.txt, W - 20), 10, y);
       prevY = y + 12;
     });
   }
@@ -8055,7 +8202,7 @@ function drawChart(cv, candles) {
       if (v == null || v < lo || v > hi) return;
       ctx.strokeStyle = col; ctx.setLineDash([6, 4]); ctx.beginPath();
       ctx.moveTo(8, Y(v)); ctx.lineTo(W - 8, Y(v)); ctx.stroke(); ctx.setLineDash([]);
-      ctx.fillStyle = col; ctx.fillText(lbl + ' ' + fmtPx(currentPair, v), 10, Y(v) - 4);
+      ctx.fillStyle = col; ctx.fillText(fitTxt(lbl + ' ' + fmtPx(currentPair, v), W - 20), 10, Y(v) - 4);
     });
   }
   // v9.6: Terminal signal band — SIRF display (signal card ke Entry/SL/TP1 numbers, koi naya level nahi).
@@ -8084,24 +8231,37 @@ function drawChart(cv, candles) {
       prevY = y + 12;
     });
   }
-  ctx.font = '11px sans-serif';
-  ctx.fillStyle = '#f5c542'; ctx.fillText('— EMA 20', 10, 14);
-  ctx.fillStyle = '#4da3ff'; ctx.fillText('— EMA 50', 90, 14);
-  ctx.fillStyle = '#ff9a9a'; ctx.fillText('— EMA 200', 170, 14);
-  if (zonesDrawn) { // v9.7 Feature C: zone legend (doosri row — phone par bhi fit)
-    ctx.fillStyle = '#3ddc84'; ctx.fillText('— BUY zone', 10, 28);
-    ctx.fillStyle = '#ff6b6b'; ctx.fillText('— SELL zone', 100, 28);
+  // Legend — measured widths se, doosri row par wrap (kabhi left edge se cut na ho). (v9.8 a)
+  ctx.font = '11px system-ui, sans-serif'; ctx.textBaseline = 'middle';
+  let lx = 10, ly = 14;
+  for (const [lbl, col] of [['— EMA 20', '#f5c542'], ['— EMA 50', '#4da3ff'], ['— EMA 200', '#ff9a9a']]) {
+    const w = ctx.measureText(lbl).width;
+    if (lx + w > W - 8 && lx > 10) { lx = 10; ly += 14; }
+    ctx.fillStyle = col; ctx.fillText(lbl, lx, ly);
+    lx += w + 12;
+  }
+  if (zonesDrawn) { // zone legend — agle row se (phone par bhi fit)
+    ly += 14; lx = 10;
+    for (const [lbl, col] of [['— BUY zone', '#3ddc84'], ['— SELL zone', '#ff6b6b']]) {
+      const w = ctx.measureText(lbl).width;
+      if (lx + w > W - 8 && lx > 10) { lx = 10; ly += 14; }
+      ctx.fillStyle = col; ctx.fillText(lbl, lx, ly);
+      lx += w + 12;
+    }
   }
 }
 
 // ---------------- Terminal indicators strip ----------------
+// v9.8 (a): window resize/rotate par chart dobara fit + redraw (canvas scale na ho).
+if (typeof window !== 'undefined' && window.addEventListener) window.addEventListener('resize', () => { const cv = document.getElementById('chartCanvas'); if (cv && currentTab === 'terminal' && lastChartCandles.length) drawChart(cv, lastChartCandles); });
 async function loadIndStrip() {
   const el = document.getElementById('indStrip'); if (!el) return;
   try {
     const d = await api('/api/indicators?pair=' + currentPair);
-    const tfKey = chartTf === '1D' ? '1D' : chartTf === '1H' ? '1H' : '15m';
-    const tf = (d.timeframes[tfKey] && !d.timeframes[tfKey].error) ? d.timeframes[tfKey] : d.timeframes['1H'];
-    const lbl = document.getElementById('indStripPair'); if (lbl) lbl.textContent = currentPair.replace('USD', '/USD') + ' · ' + tfKey;
+    // v9.8 (b): strip hamesha 1H — Terminal ke sab panels ke liye eik source.
+    const tfKey = '1H';
+    const tf = (d.timeframes['1H'] && !d.timeframes['1H'].error) ? d.timeframes['1H'] : d.timeframes['15m'];
+    const lbl = document.getElementById('indStripPair'); if (lbl) lbl.textContent = pairLabel(currentPair) + ' · ' + tfKey;
     const cell = (k, v) => `<div class="price-cell"><div>${k}</div><b>${v}</b></div>`;
     el.innerHTML =
       cell('RSI 14', fmt(tf.rsi14, 1)) + cell('MACD', fmtPx(currentPair, tf.macd)) +
@@ -8118,7 +8278,9 @@ async function loadNews() {
   try {
     const d = await api('/api/news');
     if (!d.available || !d.news.length) { el.innerHTML = '<p>' + esc(t('newsFail')) + '</p>'; return; }
-    el.innerHTML = d.news.map(n => `<div class="gate"><span><a href="${esc(n.link)}" target="_blank" rel="noopener" style="color:#e8ecf5">${esc(n.title)}</a><br><small style="color:#8ea0c2">${esc(n.source)} · ${fmtPktTime(n.time)}</small></span></div>`).join('') +
+    const hi = (d.engineOn === false) ? [] : (d.highImpact || []);
+    const hiHtml = hi.length ? `<h4>🔴 ${esc(t('newsHighImpact'))}</h4>` + hi.map(x => `<div class="gate"><span><a href="${esc(x.link)}" target="_blank" rel="noopener" style="color:#f5c542">${esc(x.title)}</a><br><small style="color:#8ea0c2">${esc(x.source)} · ${fmtPktTime(x.time)}</small></span></div>`).join('') : `<p class="fine">${esc(t('newsNoHighImpact'))}</p>`;
+    el.innerHTML = hiHtml + d.news.map(n => `<div class="gate"><span><a href="${esc(n.link)}" target="_blank" rel="noopener" style="color:#e8ecf5">${esc(n.title)}</a><br><small style="color:#8ea0c2">${esc(n.source)} · ${fmtPktTime(n.time)}</small></span></div>`).join('') +
       // v9.5: ek feed band ho to sirf "RETRY" na dikhayein — saaf bataein ke headlines chalti hui feed se hain.
       (d.sources && d.sources.some(s => s.status === 'RETRY') ? `<p class="fine">${esc(t('newsFallbackNote'))}</p>` : '') +
       `<p class="fine">${esc(t('newsUpdated'))}: ${fmtPktTimeShort(d.updatedAt)} · ${d.sources.map(s => esc(s.name) + ': ' + esc(s.status)).join(' · ')}</p>`;
@@ -8133,7 +8295,7 @@ function smcFeedCardHtml(s, i) {
   const bias = s.direction === 'BUY' ? t('smcBiasBullish') : t('smcBiasBearish');
   return `<div class="sig-card smc-feed-card">
     <div class="sig-head">
-      <div><span class="sig-pair">${esc(s.pair.replace('USD', '/USD'))}</span> <span class="pair-badge">${esc(t('confirmationLbl'))}</span>
+      <div><span class="sig-pair">${esc(pairLabel(s.pair))}</span> <span class="pair-badge">${esc(t('confirmationLbl'))}</span>
       <div class="sig-dir wait">${esc(t('smcBias'))}: ${esc(bias)}</div></div>
       ${confRingHtml(s.score, 80)}
     </div>
@@ -8344,7 +8506,7 @@ async function applyDefaultPair() {
 }
 function buildPairSelect() {
   document.getElementById('pairSelect').innerHTML = PAIR_IDS.map(id =>
-    `<button class="${id === currentPair ? 'active' : ''}" onclick="selectPair('${id}')">${id.replace('USD', '/USD')}</button>`).join('');
+    `<button class="${id === currentPair ? 'active' : ''}" onclick="selectPair('${id}')">${pairLabel(id)}</button>`).join('');
 }
 function selectPair(id) { currentPair = id; buildPairSelect(); loadTerminal(); loadIndicators(); loadSmc(); loadTfMatrix(); loadChart(); loadIndStrip(); if (currentTab === 'indicators') initTvChart(); }
 function showTab(t) {
@@ -8363,6 +8525,7 @@ function showTab(t) {
   if (t === 'indicators') { loadIndicators(); initTvChart(); }
   if (t === 'smc') { loadSmc(); loadScanner(); loadSmcFeed(); }
   if (t === 'session') { loadSession(); loadNews(); }
+  if (t === 'hub') { loadHub(); }
   if (t === 'history') { loadHistory(); loadPerf(); loadRefiner(); }
   if (t === 'account') buildAcctSubtabs();
   if (t === 'admin') loadAdmin();
@@ -8459,7 +8622,7 @@ function renderSignalBanner(d) {
   if (lastBannerSig === bsig) return;
   lastBannerSig = bsig;
   if (!d || d.error || d.disabled) { el.innerHTML = ''; return; }
-  const pair = currentPair.replace('USD', '/USD');
+  const pair = pairLabel(currentPair);
   if (d.direction === 'BUY') {
     const p = d.buyPlan;
     el.innerHTML = `<div class="signal-banner buy"><div class="sb-title">${esc(t('buyNow'))} — ${esc(pair)}</div>
@@ -9234,26 +9397,31 @@ function pairBadge() {
 // Har gate ke peeche asal number (koi wajah banayi nahi jati) — confirmed/awaiting + Why Wait dono isi se bante hain.
 function gateDetail(gName, d, dir, passed) {
   const s = d.smc || {};
+  // v9.8 (b): dikhaye gaye indicators SAB 1H (d.ind1h) — gate 15M par chalta hai, note panel ke neeche hai.
+  const h = d.ind1h || {};
   if (gName.indexOf('Indicator Trend') === 0) {
-    return 'EMA20 ' + fmtPx(currentPair, d.ema20) + ' · EMA50 ' + fmtPx(currentPair, d.ema50) + ' · ' + t('price') + ' ' + fmtPx(currentPair, d.price) + ' (1H)';
+    return 'EMA20 ' + fmtPx(currentPair, h.ema20 != null ? h.ema20 : d.ema20) + ' · EMA50 ' + fmtPx(currentPair, h.ema50 != null ? h.ema50 : d.ema50) + ' · ' + t('price') + ' ' + fmtPx(currentPair, d.price) + ' (1H)';
   }
   if (gName === 'Structure Swing') {
-    return t('swingHigh') + ' ' + fmtPx(currentPair, s.swingHigh) + ' · ' + t('swingLow') + ' ' + fmtPx(currentPair, s.swingLow) + ' (15M)';
+    const sh = d.swing1h ? d.swing1h.high : s.swingHigh, sl2 = d.swing1h ? d.swing1h.low : s.swingLow;
+    return t('swingHigh') + ' ' + fmtPx(currentPair, sh) + ' · ' + t('swingLow') + ' ' + fmtPx(currentPair, sl2) + ' (1H)';
   }
   if (gName === 'RSI Recovery') {
-    if (passed) return 'RSI 14: ' + fmt(d.rsi14, 1) + ' (' + (dir === 'BUY' ? '50–70' : '30–50') + ') (1H)';
-    return 'RSI 14: ' + fmt(d.rsi14, 1) + ' — ' + t(dir === 'BUY' ? 'rsiNeedBuy' : 'rsiNeedSell') + ' (1H)';
+    const rsi = h.rsi14 != null ? h.rsi14 : d.rsi14;
+    if (passed) return 'RSI 14: ' + fmt(rsi, 1) + ' (1H)';
+    return 'RSI 14: ' + fmt(rsi, 1) + ' — ' + t(dir === 'BUY' ? 'rsiNeedBuy' : 'rsiNeedSell') + ' (1H)';
   }
   if (gName === 'R/R Geometry') {
+    const sh = d.swing1h ? d.swing1h.high : s.swingHigh, sl2 = d.swing1h ? d.swing1h.low : s.swingLow;
     let rr = null;
-    if (s.swingHigh != null && s.swingLow != null) {
-      rr = dir === 'BUY' ? (s.swingHigh - d.price) / Math.max(d.price - s.swingLow, 1e-9) : (d.price - s.swingLow) / Math.max(s.swingHigh - d.price, 1e-9);
+    if (sh != null && sl2 != null) {
+      rr = dir === 'BUY' ? (sh - d.price) / Math.max(d.price - sl2, 1e-9) : (d.price - sl2) / Math.max(sh - d.price, 1e-9);
     }
     if (rr == null || !isFinite(rr)) return 'R:R —';
-    return passed ? 'R:R ' + rr.toFixed(2) + ' (1.5+) (15M)' : 'R:R ' + rr.toFixed(2) + ' — ' + t('rrNeed') + ' (15M)';
+    return passed ? 'R:R ' + rr.toFixed(2) + ' (1.5+) (1H)' : 'R:R ' + rr.toFixed(2) + ' — ' + t('rrNeed') + ' (1H)';
   }
   if (gName === 'Macro EMA200') {
-    return 'EMA200 ' + fmtPx(currentPair, d.ema200) + ' · ' + t('price') + ' ' + fmtPx(currentPair, d.price) + ' (1H)';
+    return 'EMA200 ' + fmtPx(currentPair, h.ema200 != null ? h.ema200 : d.ema200) + ' · ' + t('price') + ' ' + fmtPx(currentPair, d.price) + ' (1H)';
   }
   if (gName === 'Data Freshness') {
     return lastKrakenAgeSec != null ? 'Kraken: ' + lastKrakenAgeSec + 's' : t('gateLblFresh');
@@ -9280,7 +9448,7 @@ function confirmedHtml(d) {
     count += 1;
   }
   if (!rows) return '';
-  return `<h4>${t('confirmedTitle')} <span class="badge-conf">${count} ${t('passedLbl')}</span></h4>${rows}`;
+  return `<h4>${t('confirmedTitle')} <span class="badge-conf">${count} ${t('passedLbl')}</span></h4>${rows}<p class="fine">${esc(t('gateTfNote'))}</p>`;
 }
 // HTF + ADX ki rows (tfmatrix se) — awaiting list aur Why Wait dono me istemal hoti hain.
 function htfAdxRows() {
@@ -9338,7 +9506,7 @@ function priceCardHtml(d) {
   const syncTxt = marketClosedNow(currentPair) ? t('marketClosedShort') : t('lastUpdate') + ' · ' + (age == null ? '—' : age + ' ' + t('secAgo')) + (lastSourcesText ? ' · ' + t('pcSources') + ': ' + lastSourcesText : '');
   return `<div class="price-card">
     <div class="pc-col"><div class="pc-label">${t('pcMarketPrice')}</div><div class="pc-big" id="pcPrice">${fmtPx(currentPair, d.price)}</div><div class="pc-sub">Bid <b id="pcBid">${fmtPx(currentPair, d.bid)}</b> · Ask <b id="pcAsk">${fmtPx(currentPair, d.ask)}</b></div></div>
-    <div class="pc-col"><div class="pc-label">${t('pcChange24h')}</div><div class="pc-big" id="pcChg">${chgHtml}</div><div class="pc-sub">${esc(currentPair.replace('USD', '/USD'))}</div></div>
+    <div class="pc-col"><div class="pc-label">${t('pcChange24h')}</div><div class="pc-big" id="pcChg">${chgHtml}</div><div class="pc-sub">${esc(pairLabel(currentPair))}</div></div>
     <div class="pc-col"><div class="pc-label">${t('pcSpread')}</div><div class="pc-big" id="pcSpread">${fmtPx(currentPair, d.spread)}</div><div class="pc-sub">Ask − Bid</div></div>
     <div class="pc-col"><div class="pc-label">${t('pcKeyLevels')}</div><div class="pc-sub">PDH <b>${fmtPx(currentPair, d.range.pdh)}</b> · PDL <b>${fmtPx(currentPair, d.range.pdl)}</b></div><div class="pc-sub">Range ${fmtPx(currentPair, d.range.pdl)} – ${fmtPx(currentPair, d.range.pdh)}</div></div>
     <div class="pc-sync" id="pcSync">${esc(syncTxt)}</div>
@@ -9364,12 +9532,12 @@ function signalCardHeadHtml(d) {
       : esc(t('lastUpdate')) + ' · ' + (ageSec == null ? '—' : ageSec + ' ' + t('secAgo'));
   return `<div class="sig-card">
     <div class="sig-head">
-      <div><span class="sig-pair">${esc(currentPair.replace('USD', '/USD'))}</span> <span class="pair-badge">${esc(pairBadge())}</span>
+      <div><span class="sig-pair">${esc(pairLabel(currentPair))}</span> <span class="pair-badge">${esc(pairBadge())}</span>
       <div class="sig-dir ${dirCls}">${d.direction}${d.direction === 'WAIT' ? ' (' + esc(t('awaitingConf')) + ')' : ''}</div></div>
       ${confRingHtml(d.confluence)}
     </div>
     <div class="sig-meta">
-      <div><span class="pc-label">${t('confidenceLbl')}</span><br><b>${d.confluence}%</b> (${t('gate')} 85%)</div>
+      <div><span class="pc-label">${t('confidenceLbl')}</span><br><b>${d.confluence}%</b> (${t('gate')} ${d.threshold || 85}%)</div>
       <div><span class="pc-label">${t('signalCode')}</span><br><b>${d.signalCode ? esc(d.signalCode) : '—'}</b>${d.signalCode ? '<br><span class="fine">' + t('validUntil') + ': ' + fmtPktTimeShort(d.validUntil) + '</span>' : ''}</div>
       <div><span class="pc-label">${t('timeframeLbl')}</span><br><b>1H</b><br><span class="fine">15M entry</span></div>
       <div><span class="pc-label">${t('liveMarketPrice')}</span><br><b id="sigLivePrice">${fmtPx(currentPair, d.price)}</b><br><span class="fine" id="sigLiveSync">${liveLine}</span></div>
@@ -9682,7 +9850,8 @@ async function loadIndicators() {
       ${trendPanelHtml(d)}
       ${matrixHtml(d)}
       ${zonesCardHtml(d)}
-      <h4>${t('fearGreedTitle')}</h4><div id="fngBody"><p>${esc(t('loading'))}</p></div>`;
+      <h4>${t('fearGreedTitle')}</h4><div id="fngBody"><p>${esc(t('loading'))}</p></div>
+      <p><button class="btn small gold" onclick="exportIndicatorReport()">${esc(t('exportIndBtn'))}</button></p>`;
     loadFearGreed();
   } catch (e) { body.innerHTML = '<p>' + t('indLoadFail') + ' ' + esc(e.message) + '</p>'; }
 }
@@ -9697,7 +9866,7 @@ async function loadFearGreed() {
 // SMC tab ka pair select — Terminal wale selectPair se jura hai (ek hi currentPair).
 function buildSmcPairSelect() {
   const sel = document.getElementById('smcPairSel'); if (!sel) return;
-  if (!sel.options.length) sel.innerHTML = PAIR_IDS.map(p => `<option value="${p}">${p.replace('USD', '/USD')}</option>`).join('');
+  if (!sel.options.length) sel.innerHTML = PAIR_IDS.map(p => `<option value="${p}">${pairLabel(p)}</option>`).join('');
   sel.value = currentPair;
 }
 // Setup Quality — sirf apne SMC score se (90+ Strong, 80+ Moderate, 60+ Developing, warna Weak).
@@ -9726,7 +9895,7 @@ function smcSetupCardHtml(d, sig) {
   const ok = d.score >= 80;
   return `<div class="sig-card">
     <div class="sig-head">
-      <div><span class="sig-pair">${esc(currentPair.replace('USD', '/USD'))}</span> <span class="pair-badge">SMC</span>
+      <div><span class="sig-pair">${esc(pairLabel(currentPair))}</span> <span class="pair-badge">SMC</span>
       <div class="sig-dir ${ok ? 'buy' : 'wait'}">${ok ? esc(t('smcConfirmStrong')) : 'WAIT (' + esc(t('awaitingConf')) + ')'}</div></div>
       ${confRingHtml(d.score, 80)}
     </div>
@@ -9764,9 +9933,26 @@ async function loadSmc() {
       ${d.fvgs.length ? d.fvgs.map(f => `<p>${f.type}: ${fmtPx(currentPair, f.low)} – ${fmtPx(currentPair, f.high)}</p>`).join('') : '<p>' + esc(t('noFvg')) + '</p>'}
       <p>${t('microSweeps')}: ${d.sslSweeps} · ${t('liqPools')}: ${d.pools}</p>`;
     const macro = document.getElementById('smcMacro');
-    if (macro) macro.innerHTML = `<p><b>${t('macroTitle')}</b> — ${t('bos')}: ${d.bos ? '✓' : '—'} · ${t('mss')}: ${d.mss ? '✓' : '—'} · ${t('swingHigh')}: ${fmtPx(currentPair, d.swingHigh)} · ${t('swingLow')}: ${fmtPx(currentPair, d.swingLow)} · ${t('liqPools')}: ${d.pools}</p>`;
+    if (macro) {
+      const pools = (d.poolsList || []).map(p => `<div class="gate"><span>${esc(p.type)} — ${fmtPx(currentPair, p.price)}</span><span>${fmtPktTimeShort(p.time)}</span></div>`).join('');
+      macro.innerHTML = `<p><b>${t('macroTitle')}</b> — ${t('bos')}: ${d.bos ? '✓' : '—'} · ${t('mss')}: ${d.mss ? '✓' : '—'} · ${t('swingHigh')}: ${fmtPx(currentPair, d.swingHigh)} · ${t('swingLow')}: ${fmtPx(currentPair, d.swingLow)}</p>
+      <h4>${t('liqPools')} (${d.pools})</h4>${pools || '<p>' + esc(t('noPools')) + '</p>'}
+      <h4>${t('orderBlocks')}</h4>
+      <p>${t('bullOB')}: ${d.bullOB ? fmtPx(currentPair, d.bullOB.low) + ' – ' + fmtPx(currentPair, d.bullOB.high) + (d.bullOB.mitigated ? ' (' + t('mitigated') + ')' : ' (' + t('fresh') + ')') : '—'}</p>
+      <p>${t('bearOB')}: ${d.bearOB ? fmtPx(currentPair, d.bearOB.low) + ' – ' + fmtPx(currentPair, d.bearOB.high) + (d.bearOB.mitigated ? ' (' + t('mitigated') + ')' : ' (' + t('fresh') + ')') : '—'}</p>
+      <h4>${t('fvg')}</h4>${d.fvgs.length ? d.fvgs.map(f => `<p>${f.type}: ${fmtPx(currentPair, f.low)} – ${fmtPx(currentPair, f.high)}</p>`).join('') : '<p>' + esc(t('noFvg')) + '</p>'}
+      <p class="fine">${esc(t('bannerSmc'))}</p>`;
+    }
     const micro = document.getElementById('smcMicro');
-    if (micro) micro.innerHTML = `<p>${t('microSweeps')}: <b>${d.sslSweeps}</b> · FVG: ${d.fvgs.length} · ${t('bullOB')}: ${d.bullOB ? (d.bullOB.mitigated ? t('mitigated') : t('fresh')) : '—'} · ${t('bearOB')}: ${d.bearOB ? (d.bearOB.mitigated ? t('mitigated') : t('fresh')) : '—'}</p>`;
+    if (micro) {
+      const sw = (d.microSweeps || []).map(x => `<div class="gate"><span>${esc(x.side)} — ${fmtPx(currentPair, x.price)}</span><span>${fmtPktTimeShort(x.time)}</span></div>`).join('');
+      const obLine = (ob) => ob ? fmtPx(currentPair, ob.low) + ' – ' + fmtPx(currentPair, ob.high) + (ob.mitigated ? ' (' + t('mitigated') + ')' : ' (' + t('fresh') + ')') : '—';
+      micro.innerHTML = `<p>${t('microSweeps')}: <b>${d.sslSweeps}</b> · 5M FVG: ${(d.microFVGs || []).length}</p>
+      <h4>${t('microSweepHist')}</h4>${sw || '<p>' + esc(t('noSweeps')) + '</p>'}
+      <h4>${t('orderBlocks')} (5M)</h4><p>${t('bullOB')}: ${obLine(d.microOB ? d.microOB.bull : null)}</p><p>${t('bearOB')}: ${obLine(d.microOB ? d.microOB.bear : null)}</p>
+      <h4>${t('fvg')} (5M)</h4>${(d.microFVGs || []).length ? d.microFVGs.map(f => `<p>${f.type}: ${fmtPx(currentPair, f.low)} – ${fmtPx(currentPair, f.high)}</p>`).join('') : '<p>' + esc(t('noFvg')) + '</p>'}
+      <p class="fine">${esc(t('microNote'))}</p>`;
+    }
   } catch (e) { el.innerHTML = '<p>' + t('smcLoadFail') + ' ' + esc(e.message) + '</p>'; }
 }
 async function loadScanner() {
@@ -9776,7 +9962,7 @@ async function loadScanner() {
     el.innerHTML = `<div class="table-wrap"><table><tr><th>${t('pair')}</th><th>${t('price')}</th><th>${t('smcScore')}</th><th>${t('direction')}</th></tr>` +
       d.rows.map(r => `<tr><td>${esc(r.pair)}</td><td>${fmtPx(r.pair, r.price)}</td><td>${r.smcScore == null ? '—' : r.smcScore + '/100'}</td><td>${esc(r.direction)}</td></tr>`).join('') + `</table></div>
       <p>${t('confirmedSignals')}: ${d.confirmedSignals} · ${t('cycleEvery')} ${d.cycleSec} ${t('cycleSec')}</p>` +
-      smcPairCardsHtml(d.rows);
+      smcPairCardsHtml(d.rows) + smcAplusHtml(d.rows);
   } catch (e) { el.innerHTML = '<p>' + t('scannerFail') + ' ' + esc(e.message) + '</p>'; }
 }
 // v9.5: SMC per-pair tasdeeq cards — scanner ke rows se (koi naya engine nahi, koi signal nahi).
@@ -9788,7 +9974,7 @@ function smcPairCardHtml(r) {
     : esc(t('noFvg'));
   return `<div class="sig-card smc-pair-card">
     <div class="sig-head">
-      <div><span class="sig-pair">${esc(r.pair.replace('USD', '/USD'))}</span> <span class="pair-badge">SMC</span>
+      <div><span class="sig-pair">${esc(pairLabel(r.pair))}</span> <span class="pair-badge">SMC</span>
       <div class="sig-dir wait">${esc(t('smcBias'))}: ${esc(smcBiasOf(r))}</div></div>
       ${r.smcScore == null ? '' : confRingHtml(r.smcScore, 80)}
     </div>
@@ -9866,9 +10052,15 @@ function toggleHistDetails(i) {
 async function loadRefiner() {
   const el = document.getElementById('refinerBody');
   const c = document.getElementById('refCutoff').value;
+  const tp = (document.getElementById('refTp') || {}).value || 'standard';
   try {
-    const d = await api('/api/refiner?cutoff=' + c + '&engine=terminal');
-    el.innerHTML = `<p>${t('cutoff')} ${d.cutoff}% — ${t('qualifying')}: ${d.qualifying} · ${t('simWinRate')}: ${d.winRate == null ? '—' : d.winRate + '%'}</p><p>${esc(d.note)}</p>`;
+    const d = await api('/api/refiner?cutoff=' + c + '&engine=terminal&tp=' + tp);
+    if (!d.rules) { el.innerHTML = `<p>${t('cutoff')} ${d.cutoff}% — ${t('qualifying')}: ${d.qualifying} · ${t('simWinRate')}: ${d.winRate == null ? '—' : d.winRate + '%'}</p><p>${esc(d.note)}</p>`; return; }
+    const r = (name, s2) => `<tr><td>${esc(name)}</td><td>${s2.trades}</td><td>${s2.wins}</td><td>${s2.losses}</td><td>${s2.breakEven}</td><td>${s2.winRate == null ? '—' : s2.winRate + '%'}</td><td>${s2.profitFactor}</td><td>${s2.netR > 0 ? '+' : ''}${s2.netR}R</td></tr>`;
+    el.innerHTML = `<p>${t('cutoff')} ${d.cutoff}% — ${t('qualifying')}: ${d.qualifying}</p>
+    <div class="table-wrap"><table><tr><th>${t('tpRule')}</th><th>${t('trades')}</th><th>${t('wins')}</th><th>${t('losses')}</th><th>${t('breakEven')}</th><th>${t('winRate')}</th><th>${t('profitFactor')}</th><th>Net R</th></tr>
+    ${r(t('tpQuick'), d.rules.quick)}${r(t('tpStandard'), d.rules.standard)}${r(t('tpTrail'), d.rules.trail)}</table></div>
+    <p class="fine">${esc(d.note)}</p>`;
   } catch (e) { el.innerHTML = '<p>' + esc(e.message) + '</p>'; }
 }
 // v9.6.1: Bearer token ke baghair plain navigation /api/export.csv par
@@ -9886,8 +10078,179 @@ async function exportCsv() {
   } catch (e) { alert(e.message); }
 }
 
+// ---------------- v9.8: Backtest result renderer (Backtest Center + Session simulator) ----------------
+function backtestResultHtml(d) {
+  if (!d || d.trades == null) return '<p>' + esc(t('noSignals')) + '</p>';
+  const row = (k, v) => `<div class="gate"><span>${k}</span><span>${v}</span></div>`;
+  const trades = (d.tradesList || []).slice(0, 10).map(x => `<div class="gate"><span>${esc(pairLabel(x.pair))} ${x.direction} · ${fmtPktTimeShort(x.time)}</span><span>${x.r > 0 ? '+' : ''}${x.r}R · $${x.usd} · ${esc(x.exit)}</span></div>`).join('');
+  const eq = d.equity && d.equity.length > 1 ? `<canvas width="600" height="120" style="width:100%;max-width:600px;background:#0a0f1e;border:1px solid #2a3550;border-radius:10px"></canvas>` : '';
+  return `<p><b>${esc(t('btEngine'))}: ${esc(d.engine)} · ${esc(t('btPair'))}: ${(d.pairs || []).map(pairLabel).join(', ')} · ${esc(t('btPeriod'))}: ${d.spanDays}d</b></p>
+  ${row(t('btTrades'), d.trades)}${row(t('winRate'), d.winRate + '%')}${row(t('profitFactor'), d.profitFactor)}${row(t('btNetR'), (d.netR > 0 ? '+' : '') + d.netR + 'R')}${row(t('btNetUsd'), '$' + d.netUsd)}${row(t('btMaxDd'), '$' + d.maxDrawdownUsd)}${row(t('btOpen'), d.open)}${row(t('btBreakEven'), d.breakEven)}
+  ${eq}
+  <p class="fine">${esc(d.note || '')}</p>
+  ${trades ? '<h4>' + esc(t('btRecentTrades')) + '</h4>' + trades : ''}`;
+}
+function drawBtEquity(canvas, points) {
+  if (!canvas || !points || points.length < 2) return;
+  try {
+    const ctx = canvas.getContext('2d'); const W = canvas.width, H = canvas.height;
+    const vs = points.map(p => p.v); let hi = Math.max(...vs), lo = Math.min(...vs);
+    if (hi === lo) { hi += 1; lo -= 1; }
+    const X = i => 8 + (i / Math.max(points.length - 1, 1)) * (W - 16);
+    const Y = v => 8 + (1 - (v - lo) / (hi - lo)) * (H - 16);
+    ctx.clearRect(0, 0, W, H);
+    ctx.strokeStyle = '#2a3550'; ctx.beginPath(); ctx.moveTo(0, Y(points[0].v)); ctx.lineTo(W, Y(points[0].v)); ctx.stroke();
+    ctx.strokeStyle = '#f5c542'; ctx.lineWidth = 2; ctx.beginPath();
+    points.forEach((p, i) => { if (i === 0) ctx.moveTo(X(i), Y(p.v)); else ctx.lineTo(X(i), Y(p.v)); });
+    ctx.stroke(); ctx.lineWidth = 1;
+  } catch (e) {}
+}
+async function runBacktestCenter() {
+  const el = document.getElementById('btBody'); if (!el) return;
+  el.innerHTML = '<p>' + esc(t('loading')) + '</p>';
+  try {
+    const q = 'engine=' + document.getElementById('btEngine').value + '&pair=' + document.getElementById('btPair').value + '&days=' + document.getElementById('btDays').value + '&balance=' + document.getElementById('btBalance').value + '&risk=' + document.getElementById('btRisk').value + '&tp=' + document.getElementById('btTp').value;
+    const d = await api('/api/backtest?' + q);
+    el.innerHTML = backtestResultHtml(d);
+    drawBtEquity(document.querySelector('#btBody canvas'), d.equity);
+  } catch (e) { el.innerHTML = '<p>' + esc(e.message) + '</p>'; }
+}
+async function saveEngineSettings() {
+  const msg = document.getElementById('esMsg');
+  try {
+    const body = { engine: { minQuality: +document.getElementById('esMinQ').value, slBufferPct: +document.getElementById('esSlBuf').value, tp1R: +document.getElementById('esTp1').value, tp2R: +document.getElementById('esTp2').value, tp3R: +document.getElementById('esTp3').value, maxConcurrent: +document.getElementById('esMaxC').value }, priceMode: document.getElementById('esPriceMode').value };
+    await api('/api/settings', { method: 'POST', body: JSON.stringify(body) });
+    if (msg) msg.textContent = t('saved');
+    loadAcct();
+  } catch (e) { if (msg) msg.textContent = e.message; }
+}
+async function toggleEngSession(k) {
+  try {
+    const s = await api('/api/settings');
+    const cur = (s.settings.engine && s.settings.engine.sessions) || {};
+    const next = { ...cur, [k]: !(cur[k] !== false) };
+    await api('/api/settings', { method: 'POST', body: JSON.stringify({ engine: { sessions: next } }) });
+    loadAcct();
+  } catch (e) { alert(e.message); }
+}
+function toggleHarmonic() { localStorage.setItem('ftp_harmonic', harmonicOn() ? '0' : '1'); if (typeof loadAcct === 'function') loadAcct(); }
+// ---------------- v9.8: Session simulator ----------------
+async function runSessionSim() {
+  const el = document.getElementById('sessionSimBody'); if (!el) return;
+  el.innerHTML = '<p>' + esc(t('loading')) + '</p>';
+  try {
+    const days = document.getElementById('simDays').value;
+    const session = document.getElementById('simSession').value;
+    const balance = document.getElementById('simBalance').value;
+    const risk = document.getElementById('simRisk').value;
+    const tp = document.getElementById('simTp').value;
+    const d = await api('/api/session/backtest?days=' + days + '&session=' + session + '&balance=' + balance + '&risk=' + risk + '&tp=' + tp);
+    el.innerHTML = backtestResultHtml(d);
+    drawBtEquity(document.querySelector('#sessionSimBody canvas'), d.equity);
+  } catch (e) { el.innerHTML = '<p>' + esc(e.message) + '</p>'; }
+}
+// ---------------- v9.8: SMC Global Scanner board — A+ setup cards ----------------
+function smcAplusHtml(rows) {
+  const aplus = (rows || []).filter(r => r.smcScore != null && r.smcScore >= 80 && r.plan);
+  if (!aplus.length) return `<h4>${esc(t('smcAplusTitle'))}</h4><p>${esc(t('smcAplusNone'))}</p>`;
+  return `<h4>${esc(t('smcAplusTitle'))}</h4><p class="fine">${esc(t('smcAplusNote'))}</p><div class="smc-pair-cards">` + aplus.map(r => {
+    const p = r.plan;
+    return `<div class="sig-card smc-pair-card">
+    <div class="sig-head"><div><span class="sig-pair">${esc(pairLabel(r.pair))}</span> <span class="pair-badge">A+</span>
+    <div class="sig-dir ${r.direction === 'BUY' ? 'buy' : 'sell'}">${r.direction} · ${r.smcScore}/100</div></div>${confRingHtml(r.smcScore, 80)}</div>
+    <div class="sig-meta">
+      <div><span class="pc-label">${t('entry')}</span><br><b>${fmtPx(r.pair, p.entry)}</b></div>
+      <div><span class="pc-label">SL</span><br><b>${fmtPx(r.pair, p.sl)}</b></div>
+      <div><span class="pc-label">TP1</span><br><b>${fmtPx(r.pair, p.tp1)}</b></div>
+      <div><span class="pc-label">TP2</span><br><b>${fmtPx(r.pair, p.tp2)}</b></div>
+      <div><span class="pc-label">TP3</span><br><b>${fmtPx(r.pair, p.tp3)}</b></div>
+      <div><span class="pc-label">${t('liveMarketPrice')}</span><br><b>${r.price == null ? '—' : fmtPx(r.pair, r.price)}</b></div>
+    </div>
+    <p class="fine">${esc(t('bannerSmc'))}</p>
+  </div>`;
+  }).join('') + `</div>`;
+}
+// ---------------- v9.8: Notifications Hub ----------------
+const HUB_GROUPS = { all: null, metals: ['XAUUSD', 'XAGUSD'], majors: ['EURUSD', 'GBPUSD', 'USDJPY', 'USDCHF', 'USDCAD', 'AUDUSD'], crypto: ['BTCUSD', 'ETHUSD', 'SOLUSD', 'BNBUSD', 'XRPUSD', 'DOGEUSD', 'ADAUSD'] };
+async function loadHub() {
+  const c = document.getElementById('hubControls');
+  if (c) {
+    try {
+      const s = await api('/api/settings');
+      const np = await api('/api/notify-pairs');
+      const on = new Set(np.notifyPairs == null ? PAIR_IDS : np.notifyPairs);
+      c.innerHTML = `<p class="fine">${esc(t('hubControlsText'))}</p>
+      <div class="filters">${Object.keys(HUB_GROUPS).map(g => `<button class="btn small" onclick="hubApplyPreset('${g}')">${esc(t('hubPreset_' + g))}</button>`).join('')}</div>
+      <div id="hubPairs">` + PAIR_IDS.map(p => `<div class="gate"><span>${esc(pairLabel(p))}</span><button class="btn small ${on.has(p) ? 'gold' : ''}" onclick="hubTogglePair('${p}')">${on.has(p) ? 'ON' : 'OFF'}</button></div>`).join('') + `</div>
+      <h4>${esc(t('engines'))}</h4>` + ['terminal', 'smc', 'session', 'news'].map(k => `<div class="gate"><span>${k === 'terminal' ? t('mainTerminal') : k === 'smc' ? t('smcEngine') : k === 'session' ? t('sessionEngine') : t('newsIntel')}</span><span>${s.settings.engines[k] ? 'ON' : 'OFF'}</span></div>`).join('') +
+      `<p>${t('sound')}: <button class="btn small ${soundOn ? 'gold' : ''}" onclick="toggleSound();loadHub()">${soundOn ? 'ON' : 'OFF'}</button> · ${t('harmonicTone')}: <button class="btn small ${harmonicOn() ? 'gold' : ''}" onclick="toggleHarmonic();loadHub()">${harmonicOn() ? 'ON' : 'OFF'}</button></p>`;
+    } catch (e) { c.innerHTML = '<p>' + esc(e.message) + '</p>'; }
+  }
+  loadHubChannels();
+  loadHubFeed();
+}
+async function hubApplyPreset(g) {
+  try { await api('/api/notify-pairs', { method: 'POST', body: JSON.stringify({ pairs: HUB_GROUPS[g] }) }); loadHub(); } catch (e) { alert(e.message); }
+}
+async function hubTogglePair(p) {
+  try {
+    const np = await api('/api/notify-pairs');
+    const cur = np.notifyPairs == null ? [...PAIR_IDS] : [...np.notifyPairs];
+    const i = cur.indexOf(p);
+    if (i >= 0) cur.splice(i, 1); else cur.push(p);
+    await api('/api/notify-pairs', { method: 'POST', body: JSON.stringify({ pairs: cur }) });
+    loadHub();
+  } catch (e) { alert(e.message); }
+}
+async function loadHubChannels() {
+  const el = document.getElementById('hubChannels'); if (!el) return;
+  try {
+    const d = await api('/api/alerts/feed?engine=all&group=all');
+    const byEng = {};
+    for (const a of (d.alerts || [])) { if (!byEng[a.engine]) byEng[a.engine] = a; }
+    const card = (eng, label) => { const a = byEng[eng]; return `<div class="gate"><span><b>${esc(label)}</b>${a ? ` — ${esc(pairLabel(a.pair))} ${a.direction} · ${a.score}% · ${fmtPktTimeShort(a.createdAt)}` : ' — ' + esc(t('hubNoAlert'))}</span><span>${a ? (a.telegramSent ? '✉️' : '') + (a.pushSent ? ' 🔔' : '') : '—'}</span></div>`; };
+    el.innerHTML = card('terminal', t('mainTerminal')) + card('smc', t('smcEngine')) + card('session', t('sessionEngine')) + `<div class="gate"><span><b>${esc(t('newsIntel'))}</b> — ${esc(t('hubNewsHint'))}</span><span><button class="btn small" onclick="showTab('session')">${esc(t('openSession'))}</button></span></div>`;
+  } catch (e) { el.innerHTML = '<p>' + esc(e.message) + '</p>'; }
+}
+async function loadHubFeed() {
+  const el = document.getElementById('hubFeed'); if (!el) return;
+  el.innerHTML = '<p>' + esc(t('loading')) + '</p>';
+  try {
+    const eng = (document.getElementById('hubEngine') || {}).value || 'all';
+    const grp = (document.getElementById('hubGroup') || {}).value || 'all';
+    const d = await api('/api/alerts/feed?engine=' + eng + '&group=' + grp);
+    el.innerHTML = d.alerts.length ? d.alerts.map(a => `<div class="gate"><span><b>${esc(pairLabel(a.pair))}</b> ${a.direction} · ${a.score}% · ${esc(a.engine)} · ${fmtPktTime(a.createdAt)}${a.signalCode ? ' · ' + esc(a.signalCode) : ''}</span><span>${esc(a.outcome)}${a.telegramSent ? ' · ✉️' : ''}${a.pushSent ? ' · 🔔' : ''}</span></div>`).join('') + `<p class="fine">${esc(d.note || '')}</p>` : '<p>' + esc(t('hubNoAlerts')) + '</p><p class="fine">' + esc(d.note || '') + '</p>';
+  } catch (e) { el.innerHTML = '<p>' + esc(e.message) + '</p>'; }
+}
+// ---------------- v9.8: Export Indicator Report ----------------
+async function exportIndicatorReport() {
+  try {
+    const d = await api('/api/indicators?pair=' + currentPair);
+    const tf = d.timeframes['1H'] || {};
+    const zn = (z, key) => (z && z[key]) ? fmtPx(currentPair, z[key].low) + ' – ' + fmtPx(currentPair, z[key].high) + ' (' + (z[key].status || '') + ')' : '—';
+    const lines = ['Forex Trading Pro — Indicator Report', 'Pair: ' + currentPair, 'Time: ' + new Date().toISOString(), 'Scorecard: ' + (d.scorecard ? d.scorecard.score : '—') + '/100', '',
+      '1H — RSI 14: ' + (tf.rsi14 ?? '—'), 'EMA 20: ' + (tf.ema20 ?? '—'), 'EMA 50: ' + (tf.ema50 ?? '—'), 'EMA 200: ' + (tf.ema200 ?? '—'),
+      'MACD: ' + (tf.macd ?? '—') + ' / Signal ' + (tf.macdSignal ?? '—') + ' / Hist ' + (tf.macdHist ?? '—'),
+      'ADX 14: ' + (tf.adx14 ?? '—'), 'ATR 14: ' + (tf.atr14 ?? '—'), 'Stochastic K/D: ' + (tf.stochK ?? '—') + ' / ' + (tf.stochD ?? '—'),
+      'CCI 20: ' + (tf.cci ?? '—'), 'Williams %R: ' + (tf.williamsR ?? '—'),
+      'Bollinger: ' + (tf.bbUpper ?? '—') + ' / ' + (tf.bbMiddle ?? '—') + ' / ' + (tf.bbLower ?? '—'),
+      'OBV: ' + (tf.obv ?? '—'), 'CMF: ' + (tf.cmf ?? '—'), 'MFI 14: ' + (tf.mfi ?? '—'),
+      'Support: ' + (tf.support ?? '—'), 'Resistance: ' + (tf.resistance ?? '—'),
+      'Fib 38.2%: ' + (tf.fib ? tf.fib['38.2'] : '—'), 'Fib 61.8%: ' + (tf.fib ? tf.fib['61.8'] : '—'),
+      'VWAP: ' + (tf.vwap ?? '—'), 'Parabolic SAR: ' + (tf.sar ?? '—'), '',
+      'Trend Panel: ' + (d.panel ? d.panel.overall : '—') + ' (' + (d.panel ? d.panel.score : '—') + '/100)',
+      'Zones (XAUUSD only): nearest SELL ' + zn(d.zones, 'nearestSell') + ' · nearest BUY ' + zn(d.zones, 'nearestBuy'),
+      'Pivots: ' + (d.pivots ? JSON.stringify(d.pivots) : '—'),
+      '', 'Note: ye report asal 1H candles se bani hai — koi number banaya nahi gaya.'];
+    const blob = new Blob([lines.join('\n')], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = 'forex-trading-pro-indicators-' + currentPair + '.txt'; a.click();
+    setTimeout(() => { try { URL.revokeObjectURL(url); } catch (e) {} }, 2000);
+  } catch (e) { alert(e.message); }
+}
+
 // ---- Account: 9 sub-tabs ----
-const ACCT_TAB_KEYS = ['overview', 'engineControls', 'signalDetails', 'signalHistory', 'tfMatrix', 'trackingLogs', 'exportCsv', 'aiAgent', 'preferences'];
+const ACCT_TAB_KEYS = ['overview', 'engineControls', 'signalDetails', 'signalHistory', 'backtestCenter', 'engineSettings', 'tfMatrix', 'trackingLogs', 'exportCsv', 'aiAgent', 'preferences'];
 let acctTab = 'overview';
 function buildAcctSubtabs() {
   // v9.3-sec: Tracking Logs me admin activity + buyer usernames hote hain — buyer ko ye sub-tab dikhe hi nahi.
@@ -9969,6 +10332,39 @@ async function loadAcct() {
         : '<p>' + esc(t('waitNoTrade')) + ' — ' + t('confluence') + ' ' + d.confluence + '%</p><p class="fine">📌 ' + esc(t('oneTradeNote')) + '</p>';
     } else if (acctTab === 'signalHistory') {
       el.innerHTML = `<p>${esc(t('historyTabText'))}</p><button class="btn small gold" onclick="showTab('history')">${t('openHistory')}</button>`;
+    } else if (acctTab === 'backtestCenter') {
+      el.innerHTML = `<p>${esc(t('btText'))}</p>
+      <div class="filters">
+        <label>${t('btEngine')}: <select id="btEngine"><option value="terminal">Terminal</option><option value="smc">SMC</option><option value="session">Session</option></select></label>
+        <label>${t('pair')}: <select id="btPair">${PAIR_IDS.map(p => `<option value="${p}" ${p === currentPair ? 'selected' : ''}>${pairLabel(p)}</option>`).join('')}</select></label>
+        <label>${t('btPeriod')}: <select id="btDays"><option value="30">1M</option><option value="90" selected>3M</option><option value="180">6M</option><option value="365">1Y</option></select></label>
+        <label>Balance $: <input id="btBalance" type="number" min="100" max="10000" value="1000" style="width:90px"></label>
+        <label>${t('btRisk')}: <input id="btRisk" type="number" min="0.1" max="3" step="0.1" value="1" style="width:60px"></label>
+        <label>${t('tpRule')}: <select id="btTp"><option value="quick">${t('tpQuick')}</option><option value="standard" selected>${t('tpStandard')}</option><option value="trail">${t('tpTrail')}</option></select></label>
+        <button class="btn small gold" onclick="runBacktestCenter()">${esc(t('btRun'))}</button>
+      </div>
+      <div id="btBody"></div>`;
+    } else if (acctTab === 'engineSettings') {
+      const s = await api('/api/settings');
+      const e = s.settings.engine || {};
+      const isAdmin = me.role === 'admin';
+      const dis = isAdmin ? '' : 'disabled';
+      const sess = e.sessions || {};
+      el.innerHTML = `<p>${esc(t('engSetText'))}</p>
+      <p class="fine">${esc(t('engSetGateNote'))}</p>
+      <div class="gate"><span>${t('engMinQuality')} (85–98)</span><span><input id="esMinQ" type="number" min="85" max="98" value="${e.minQuality ?? 85}" ${dis} style="width:70px"> %</span></div>
+      <div class="gate"><span>${t('engSlBuffer')} %</span><span><input id="esSlBuf" type="number" min="0" max="2" step="0.1" value="${e.slBufferPct ?? 0.3}" ${dis} style="width:70px"></span></div>
+      <div class="gate"><span>TP1 (R)</span><span><input id="esTp1" type="number" min="0.5" max="5" step="0.1" value="${e.tp1R ?? 1}" ${dis} style="width:70px"></span></div>
+      <div class="gate"><span>TP2 (R)</span><span><input id="esTp2" type="number" min="0.5" max="5" step="0.1" value="${e.tp2R ?? 2}" ${dis} style="width:70px"></span></div>
+      <div class="gate"><span>TP3 (R)</span><span><input id="esTp3" type="number" min="0.5" max="5" step="0.1" value="${e.tp3R ?? 3}" ${dis} style="width:70px"></span></div>
+      <div class="gate"><span>${t('engMaxConc')}</span><span><input id="esMaxC" type="number" min="1" max="5" value="${e.maxConcurrent ?? 3}" ${dis} style="width:70px"></span></div>
+      <h4>${t('engSessions')}</h4>
+      ${['sydney', 'tokyo', 'london', 'newyork'].map(k => `<div class="gate"><span>${k === 'tokyo' ? 'Tokyo / Asian' : k.charAt(0).toUpperCase() + k.slice(1)}</span><button class="btn small ${sess[k] !== false ? 'gold' : ''}" ${dis} onclick="toggleEngSession('${k}')">${sess[k] !== false ? 'ON' : 'OFF'}</button></div>`).join('')}
+      <h4>${t('engPriceMode')}</h4>
+      <p>${t('priceMode')}: <select id="esPriceMode" ${dis}>${['last', 'bid', 'ask', 'mid'].map(m => `<option value="${m}" ${s.settings.priceMode === m ? 'selected' : ''}>${m === 'last' ? 'Last' : m === 'bid' ? 'Bid' : m === 'ask' ? 'Ask' : 'Mid (Bid+Ask)/2'}</option>`).join('')}</select> <span class="fine">${esc(t('priceModeNote'))}</span></p>
+      <p>${t('harmonicTone')}: <button class="btn small ${harmonicOn() ? 'gold' : ''}" onclick="toggleHarmonic()">${harmonicOn() ? 'ON' : 'OFF'}</button> <span class="fine">${esc(t('harmonicNote'))}</span></p>
+      <p class="fine">${esc(t('engSimNote'))}</p>
+      ${isAdmin ? `<button class="btn small gold" onclick="saveEngineSettings()">${esc(t('saveBtn'))}</button> <span id="esMsg" class="fine"></span>` : `<p class="fine">${esc(t('engReadOnly'))}</p>`}`;
     } else if (acctTab === 'tfMatrix') {
       await loadTfMatrix();
     } else if (acctTab === 'trackingLogs') {
@@ -10104,7 +10500,7 @@ async function refreshPairsCard() {
   try {
     const d = await api('/api/notify-pairs');
     const on = new Set(d.pairs || []);
-    el.innerHTML = PAIR_IDS.map(p => `<div class="gate"><span>${esc(p.replace('USD', '/USD'))}</span><button class="btn small ${on.has(p) ? 'gold' : ''}" onclick="toggleNotifyPair('${p}')">${on.has(p) ? 'ON' : 'OFF'}</button></div>`).join('');
+    el.innerHTML = PAIR_IDS.map(p => `<div class="gate"><span>${esc(pairLabel(p))}</span><button class="btn small ${on.has(p) ? 'gold' : ''}" onclick="toggleNotifyPair('${p}')">${on.has(p) ? 'ON' : 'OFF'}</button></div>`).join('');
   } catch (e) { el.innerHTML = '<p>' + esc(e.message) + '</p>'; }
 }
 async function toggleNotifyPair(pair) {

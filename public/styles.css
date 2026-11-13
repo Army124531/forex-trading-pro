@@ -3,32 +3,32 @@ h1,h2,h3{color:#f5c542}h1{margin:0 0 4px}h3{margin:0 0 8px}
 .auth-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:16px}
 .auth-card{background:#111a30;border:1px solid #2a3550;border-radius:14px;padding:24px;max-width:420px;width:100%}
 .tagline{color:#9fb0d0;margin:0 0 16px}
-input,select{width:100%;padding:10px;margin:6px 0;border-radius:8px;border:1px solid #2a3550;background:#0a0f1e;color:#e8ecf5}
-.btn{background:#22304d;color:#fff;border:0;border-radius:8px;padding:10px 16px;cursor:pointer}
+input,select{width:100%;padding:10px;margin:6px 0;border-radius:8px;border:1px solid rgba(245,197,66,.4);background:#0a0f1e;color:#e8ecf5}
+.btn{background:#22304d;color:#fff;border:1px solid rgba(245,197,66,.4);border-radius:8px;padding:10px 16px;cursor:pointer}
 .btn.gold{background:#f5c542;color:#111;font-weight:700}
 .btn.small{padding:6px 10px;font-size:13px}
 .btn:disabled{opacity:.5;cursor:wait}
 .msg{color:#ff9a9a;min-height:18px}
 .fine{color:#8ea0c2;font-size:12px}
-header{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;background:#111a30;border-bottom:1px solid #2a3550}
+header{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;background:#111a30;border-bottom:1px solid rgba(245,197,66,.45);box-shadow:0 0 18px rgba(245,197,66,.07)}
 .brand{font-size:20px;font-weight:800;color:#f5c542}
 .userbox{display:flex;gap:8px;align-items:center}
 .badge{background:#f5c542;color:#111;border-radius:20px;padding:2px 10px;font-size:12px;font-weight:700}
 .livebar{display:flex;gap:12px;align-items:center;padding:8px 16px;background:#0d1526;font-size:13px;flex-wrap:wrap}
 .api-health{color:#8ea0c2;font-size:12px}
 .tabs{display:flex;gap:6px;padding:10px 16px;flex-wrap:wrap}
-.tabs button{background:#16213a;color:#cdd8ee;border:1px solid #2a3550;border-radius:20px;padding:8px 16px;cursor:pointer}
+.tabs button{background:#16213a;color:#cdd8ee;border:1px solid rgba(245,197,66,.4);border-radius:20px;padding:8px 16px;cursor:pointer}
 .tabs button.active{background:#f5c542;color:#111;font-weight:700}
 .tab{padding:0 16px 24px}
-.card{background:#111a30;border:1px solid #2a3550;border-radius:12px;padding:16px;margin:10px 0}
+.card{background:#111a30;border:1px solid rgba(245,197,66,.45);border-radius:12px;padding:16px;margin:10px 0;box-shadow:0 0 18px rgba(245,197,66,.07)}
 .price-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
-.price-cell{background:#0a0f1e;border:1px solid #2a3550;border-radius:10px;padding:10px}
+.price-cell{background:#0a0f1e;border:1px solid rgba(245,197,66,.35);border-radius:10px;padding:10px}
 .price-cell b{font-size:16px}
 .up{color:#3ddc84}.down{color:#ff6b6b}.wait{color:#f5c542}.buy{color:#3ddc84}.sell{color:#ff6b6b}
 .pair-select{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0}
-.pair-select button{background:#16213a;color:#cdd8ee;border:1px solid #2a3550;border-radius:16px;padding:6px 12px;cursor:pointer}
+.pair-select button{background:#16213a;color:#cdd8ee;border:1px solid rgba(245,197,66,.4);border-radius:16px;padding:6px 12px;cursor:pointer}
 .pair-select button.active{background:#f5c542;color:#111;font-weight:700}
-.gate{display:flex;justify-content:space-between;border-bottom:1px solid #22304d;padding:6px 0}
+.gate{display:flex;justify-content:space-between;border-bottom:1px solid rgba(245,197,66,.22);padding:6px 0}
 .score{font-size:22px;font-weight:800;color:#f5c542;margin:8px 0}
 table{width:100%;border-collapse:collapse;font-size:13px}
 td,th{border-bottom:1px solid #22304d;padding:6px;text-align:left}
@@ -45,9 +45,9 @@ td,th{border-bottom:1px solid #22304d;padding:6px;text-align:left}
 .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 10001; background: #f5c542; color: #0a0f1e; border-radius: 12px; padding: 14px 18px; max-width: min(92vw, 560px); box-shadow: 0 8px 30px rgba(0,0,0,.5); font-size: 15px; line-height: 1.5; }
 .toast b { font-size: 16px; }
 .chart-tf { display: flex; gap: 6px; flex-wrap: wrap; margin: 6px 0 10px; }
-.chart-tf button { padding: 5px 10px; border: 1px solid #2a3550; background: #141b2e; color: #e8ecf5; border-radius: 999px; cursor: pointer; }
+.chart-tf button { padding: 5px 10px; border: 1px solid rgba(245,197,66,.4); background: #141b2e; color: #e8ecf5; border-radius: 999px; cursor: pointer; }
 .chart-tf button.active { background: #f5c542; color: #0a0f1e; border-color: #f5c542; }
-#chartCanvas { width: 100%; height: auto; background: #0a0f1e; border: 1px solid #2a3550; border-radius: 10px; }
+#chartCanvas { display: block; width: 100%; height: auto; background: #0a0f1e; border: 1px solid rgba(245,197,66,.4); border-radius: 10px; }
 
 /* Big BUY/SELL signal banner */
 .signal-banner { border-radius: 14px; padding: 18px 16px; margin: 10px 0; text-align: center; border: 2px solid transparent; }
@@ -59,7 +59,7 @@ td,th{border-bottom:1px solid #22304d;padding:6px;text-align:left}
 .sb-vals { margin-top: 10px; font-size: 17px; line-height: 1.8; }
 
 /* Single-direction signal plan card (ek direction, ek trade) */
-.plan-card { border: 1px solid #2a3550; border-radius: 10px; padding: 10px; margin: 6px 0; line-height: 1.8; }
+.plan-card { border: 1px solid rgba(245,197,66,.4); border-radius: 10px; padding: 10px; margin: 6px 0; line-height: 1.8; box-shadow:0 0 14px rgba(245,197,66,.06); }
 .plan-card.active-buy { border-color: #3ddc84; box-shadow: 0 0 0 1px #3ddc84 inset; }
 .plan-card.active-sell { border-color: #ff6b6b; box-shadow: 0 0 0 1px #ff6b6b inset; }
 /* SMC confluence checklist marks */
@@ -68,9 +68,9 @@ td,th{border-bottom:1px solid #22304d;padding:6px;text-align:left}
 .risk-box{border:1px dashed #f5c542;border-radius:10px;padding:10px;margin-top:8px;font-size:13px;line-height:1.7;background:#0d1526}
 /* v5: Copy Signal + Download Signal Image buttons */
 .sig-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
-.btn-sig{background:#22304d;color:#fff;border:1px solid #2a3550;border-radius:8px;padding:8px 14px;cursor:pointer;font-size:14px}
+.btn-sig{background:#22304d;color:#fff;border:1px solid rgba(245,197,66,.4);border-radius:8px;padding:8px 14px;cursor:pointer;font-size:14px}
 .btn-sig:hover{background:#2c3d63}
-.btn-sig-sm{background:#16213a;color:#cdd8ee;border:1px solid #2a3550;border-radius:8px;padding:4px 10px;cursor:pointer;font-size:12px;margin:4px 4px 0 0}
+.btn-sig-sm{background:#16213a;color:#cdd8ee;border:1px solid rgba(245,197,66,.4);border-radius:8px;padding:4px 10px;cursor:pointer;font-size:12px;margin:4px 4px 0 0}
 .btn-sig-sm:hover{background:#22304d}
 .plan-head { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 4px; }
 .status-badge { padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; }
@@ -152,7 +152,7 @@ html,body{overflow-x:hidden}
 /* v9.5: SMC per-pair tasdeeq cards — 2-col grid (phone par 1 col) */
 .smc-pair-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;margin-top:10px}
 @media (max-width:480px){.smc-pair-cards{grid-template-columns:1fr}}
-.share-box{border:1px solid #2a3550;border-radius:10px;padding:8px}
+.share-box{border:1px solid rgba(245,197,66,.4);border-radius:10px;padding:8px}
 .share-box-label{color:#8ea0c2;font-size:12px}
 .share-box-val{font-size:20px;font-weight:800}
 .share-box-status{font-size:11px;color:#8ea0c2}
@@ -190,6 +190,11 @@ body.light .modal-card{background:#fff;border-color:#8a6d00}
 body.light .share-text-preview{background:#f7f9fc;border-color:#d5dce8}
 body.light .share-box{border-color:#d5dce8}
 body.light .sent-bar,body.light .corr-track{background:#dfe6f2}
+/* v9.8: light mode me bhi gold borders (halka gold, safed background par nazar aaye) */
+body.light .card,body.light .sig-card,body.light .plan-card,body.light .price-cell,body.light .share-box,body.light #chartCanvas{border-color:rgba(180,140,20,.5)}
+body.light .btn,body.light .btn-sig,body.light .btn-sig-sm,body.light .tabs button,body.light .pair-select button,body.light .chart-tf button,body.light input,body.light select{border-color:rgba(180,140,20,.5)}
+body.light header{border-bottom-color:rgba(180,140,20,.5)}
+body.light .gate{border-bottom-color:rgba(180,140,20,.3)}
 /* v8: beginner guide + why-trade box + Terminal-only notices */
 .guide-box ol{margin:8px 0 0;padding-left:22px;line-height:1.9;font-size:15px}
 .guide-box li{margin-bottom:4px}
@@ -263,7 +268,7 @@ body.light .tg-card .btn{color:#111}
 .pc-big{font-size:22px;font-weight:800;color:#e8ecf5;line-height:1.2;word-break:break-all}
 .pc-sub{color:#8ea0c2;font-size:12px;margin-top:2px}
 .pc-sync{grid-column:1/-1;color:#8ea0c2;font-size:12px;border-top:1px solid #22304d;padding-top:8px}
-.sig-card{background:#16223a;border:1px solid #22304d;border-radius:10px;padding:14px;margin:10px 0}
+.sig-card{background:#16223a;border:1px solid rgba(245,197,66,.5);border-radius:10px;padding:14px;margin:10px 0;box-shadow:0 0 16px rgba(245,197,66,.09)}
 .sig-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
 .sig-pair{font-size:20px;font-weight:800;color:#e8ecf5}
 .pair-badge{background:#f5c542;color:#111;border-radius:4px;padding:2px 8px;font-size:11px;font-weight:800;vertical-align:middle}
