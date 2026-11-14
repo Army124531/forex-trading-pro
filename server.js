@@ -7,6 +7,19 @@ const path = require('path');
 const crypto = require('crypto');
 
 const app = express();
+app.set('trust proxy', 1); // Render proxy ke peeche asal client IP ke liye (login limit sahi kaam kare)
+app.disable('x-powered-by'); // Server apna naam chhupaye (v9.9-sec)
+// Security headers (v9.9-sec) — har response par
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  // CSP: inline onclick handlers site me hain, is liye script/style me 'unsafe-inline' lazmi hai;
+  // phir bhi bahari scripts sirf TradingView se, frame sirf TradingView ka, object koi nahi.
+  res.setHeader('Content-Security-Policy', "object-src 'none'; base-uri 'self'; frame-ancestors 'none'; script-src 'self' https://s3.tradingview.com 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self'; font-src 'self' data:; frame-src https://www.tradingview.com https://s3.tradingview.com; media-src 'self' data:");
+  next();
+});
 const PORT = process.env.PORT || 3000;
 const DATA_DIR = path.join(__dirname, 'data');
 const DB_FILE = path.join(DATA_DIR, 'db.json');
@@ -52,6 +65,34 @@ function hashPassword(password, salt) {
   return crypto.scryptSync(password, salt, 64).toString('hex');
 }
 function makeToken() { return crypto.randomBytes(32).toString('hex'); }
+// v9.9-sec: login session 30 din baad khud khatam
+const SESSION_MAX_AGE_MS = 30 * 24 * 3600 * 1000;
+// v9.9-sec: timing-safe compare (hash barabar hai ya nahi, waqt se pata na chale)
+function safeEqual(a, b) {
+  const ba = Buffer.from(String(a || ''), 'utf8'), bb = Buffer.from(String(b || ''), 'utf8');
+  if (ba.length !== bb.length) return false;
+  return crypto.timingSafeEqual(ba, bb);
+}
+// v9.9-sec: login brute-force rokna — 5 ghalat koshish (IP + username) par 15 min lock
+const LOGIN_MAX_FAILS = 5, LOGIN_WINDOW_MS = 15 * 60 * 1000;
+const loginFails = new Map(); // key: ip|username -> {count, firstAt, lockedUntil}
+function loginKey(req, username) { return (req.ip || 'unknown') + '|' + String(username || '').toLowerCase(); }
+function loginLocked(req, username) {
+  const e = loginFails.get(loginKey(req, username));
+  if (!e) return false;
+  if (e.lockedUntil && Date.now() < e.lockedUntil) return true;
+  if (Date.now() - e.firstAt > LOGIN_WINDOW_MS) { loginFails.delete(loginKey(req, username)); return false; }
+  return false;
+}
+function loginFail(req, username) {
+  const k = loginKey(req, username), now = Date.now();
+  const e = loginFails.get(k) || { count: 0, firstAt: now, lockedUntil: 0 };
+  if (now - e.firstAt > LOGIN_WINDOW_MS) { e.count = 0; e.firstAt = now; e.lockedUntil = 0; }
+  e.count++;
+  if (e.count >= LOGIN_MAX_FAILS) e.lockedUntil = now + LOGIN_WINDOW_MS;
+  loginFails.set(k, e);
+}
+function loginOk(req, username) { loginFails.delete(loginKey(req, username)); }
 function findUser(username) { return db.users.find(u => u.username === username); }
 function authUser(req) {
   const h = req.headers.authorization || '';
@@ -59,6 +100,11 @@ function authUser(req) {
   if (!token) return null;
   const s = db.sessions.find(x => x.token === token);
   if (!s) return null;
+  if (Date.now() - (s.createdAt || 0) > SESSION_MAX_AGE_MS) { // v9.9-sec: 30 din purana token khatam
+    db.sessions = db.sessions.filter(x => x.token !== token);
+    saveDb();
+    return null;
+  }
   const u = findUser(s.username);
   if (!u) return null;
   return u;
@@ -1775,7 +1821,7 @@ app.post('/api/auth/setup', (req, res) => {
   if (db.users.some(u => u.role === 'admin')) return res.status(400).json({ error: 'setup_done', message: 'Admin pehle se bana hua hai.' });
   const { username, password } = req.body || {};
   if (!username || username.length < 3) return res.status(400).json({ error: 'bad_username', message: 'Username kam se kam 3 harf ka ho.' });
-  if (!password || password.length < 6) return res.status(400).json({ error: 'bad_password', message: 'Password kam se kam 6 harf ka ho.' });
+  if (!password || password.length < 8) return res.status(400).json({ error: 'bad_password', message: 'Password kam se kam 8 harf ka ho.' }); // v9.9-sec: 6 se 8
   const salt = crypto.randomBytes(16).toString('hex');
   const adminUser = { username, passHash: hashPassword(password, salt), salt, role: 'admin', plan: 'Lifetime', createdAt: Date.now(), expiresAt: null, suspended: false, tgCode: crypto.randomBytes(8).toString('hex'), tgChatId: null };
   db.users.push(adminUser);
@@ -1787,10 +1833,16 @@ app.post('/api/auth/setup', (req, res) => {
 });
 app.post('/api/auth/login', (req, res) => {
   const { username, password } = req.body || {};
+  if (loginLocked(req, username)) return res.status(429).json({ error: 'locked_out', message: 'Bohat zyada ghalat koshish — 15 minute baad dobara try karein.' }); // v9.9-sec
   const u = findUser(username);
-  if (!u || hashPassword(password || '', u.salt) !== u.passHash) return res.status(401).json({ error: 'wrong_login', message: 'Username ya password ghalat hai.' });
+  // v9.9-sec: user na bhi ho to dummy hash banayein, taake waqt se pata na chale ke username hai ya nahi
+  const salt = u ? u.salt : '00'.repeat(16);
+  const expect = u ? u.passHash : hashPassword('__no_such_user__', salt);
+  if (!u || !safeEqual(hashPassword(password || '', salt), expect)) { loginFail(req, username); return res.status(401).json({ error: 'wrong_login', message: 'Username ya password ghalat hai.' }); }
   if (u.suspended) return res.status(403).json({ error: 'suspended', message: 'Account band hai. Admin se rabta karein.' });
   if (u.role === 'buyer' && u.expiresAt && Date.now() > u.expiresAt) return res.status(403).json({ error: 'expired', message: 'Plan khatam ho gaya hai. Admin se renew karwayein.' });
+  loginOk(req, username); // v9.9-sec: sahi login par ghalat koshishon ka hisaab saaf
+  db.sessions = db.sessions.filter(x => Date.now() - (x.createdAt || 0) <= SESSION_MAX_AGE_MS); // v9.9-sec: purane tokens saaf
   const token = makeToken();
   db.sessions.push({ token, username, createdAt: Date.now() });
   ensureTgCode(u);
@@ -2612,7 +2664,7 @@ app.get('/api/admin/users', requireAdmin, (req, res) => {
 app.post('/api/admin/users', requireAdmin, (req, res) => {
   const { username, password, plan } = req.body || {};
   if (!username || username.length < 3) return res.status(400).json({ error: 'bad_username', message: 'Username kam se kam 3 harf ka ho.' });
-  if (!password || password.length < 6) return res.status(400).json({ error: 'bad_password', message: 'Password kam se kam 6 harf ka ho.' });
+  if (!password || password.length < 8) return res.status(400).json({ error: 'bad_password', message: 'Password kam se kam 8 harf ka ho.' }); // v9.9-sec: 6 se 8
   if (!PLAN_DAYS.hasOwnProperty(plan)) return res.status(400).json({ error: 'bad_plan', message: 'Plan Monthly / Quarterly / Yearly / Lifetime me se ho.' });
   if (findUser(username)) return res.status(400).json({ error: 'exists', message: 'Ye username pehle se hai.' });
   const salt = crypto.randomBytes(16).toString('hex');
@@ -2645,7 +2697,7 @@ app.post('/api/admin/users/:username/password', requireAdmin, (req, res) => {
   const u = findUser(req.params.username);
   if (!u) return res.status(404).json({ error: 'not_found' });
   const { password } = req.body || {};
-  if (!password || password.length < 6) return res.status(400).json({ error: 'bad_password', message: 'Password kam se kam 6 harf ka ho.' });
+  if (!password || password.length < 8) return res.status(400).json({ error: 'bad_password', message: 'Password kam se kam 8 harf ka ho.' }); // v9.9-sec: 6 se 8
   u.salt = crypto.randomBytes(16).toString('hex');
   u.passHash = hashPassword(password, u.salt);
   saveDb();
