@@ -1060,16 +1060,19 @@ function gateScore(candles, ind, livePrice, side, opts) {
   const total = gates.reduce((s, g) => s + g.points, 0);
   return { gates, total };
 }
+// v10.1: sirf LABEL — levels/SL/TP wahi hain. Pehle sirf "1:2" likha tha, jo TP3 ka R:R hai;
+// Win TP1 par gina jata hai jahan R:R 1:0.67 hai (risk 1.5, munafa 1). Ab teeno saaf likhe hain.
+const PLAN_RR_LABEL = 'TP1 1:0.67 · TP2 1:1.33 · TP3 1:2';
 function buildPlan(livePrice, atr, side) {
   const R = Math.max(atr || livePrice * 0.002, livePrice * 0.0005);
   if (side === 'buy') {
     const entry = livePrice;
     const sl = entry - 1.5 * R; // BUY ka SL HAMESHA entry se neeche
-    return { direction: 'BUY', entry, entryZone: [entry - 0.5 * R, entry + 0.5 * R], trigger: entry, sl, tp1: entry + 1 * R, tp2: entry + 2 * R, tp3: entry + 3 * R, rr: '1:2' };
+    return { direction: 'BUY', entry, entryZone: [entry - 0.5 * R, entry + 0.5 * R], trigger: entry, sl, tp1: entry + 1 * R, tp2: entry + 2 * R, tp3: entry + 3 * R, rr: PLAN_RR_LABEL };
   }
   const entry = livePrice;
   const sl = entry + 1.5 * R; // SELL ka SL HAMESHA entry se upar
-  return { direction: 'SELL', entry, entryZone: [entry - 0.5 * R, entry + 0.5 * R], trigger: entry, sl, tp1: entry - 1 * R, tp2: entry - 2 * R, tp3: entry - 3 * R, rr: '1:2' };
+  return { direction: 'SELL', entry, entryZone: [entry - 0.5 * R, entry + 0.5 * R], trigger: entry, sl, tp1: entry - 1 * R, tp2: entry - 2 * R, tp3: entry - 3 * R, rr: PLAN_RR_LABEL };
 }
 function planStatus(score, gate) {
   // Gate score se status: gate+ = gate paar, trade active (IN_ZONE);
@@ -2544,6 +2547,23 @@ app.get('/api/terminal/backtest', requireAuth, async (req, res) => {
     note: 'Baseline = Terminal engine (6 gates, 85% gate) 1H candles par. Filters sirf un trades par lagte hain jo baseline me bane — gate kam nahi kiya gaya.',
   });
 });
+
+// ---------------- v10.1: Strategy Lab (Terminal Backtest ka gehra version) ----------------
+// SIRF research — live signal engine ko nahi chhoota. Lambi history, spread kaat kar, aur
+// out-of-sample (imtihan wala) hissa alag. Kaam lamba hai, is liye background me chalta hai:
+// POST se shuru, GET se progress/nateeja. Sirf admin (CPU bhaari hai).
+const strategyLab = require('./lab').createLab({ gateScore, computeSmc, findSwings, zoneSupportFor, emaArr, rsiArr, atrArr, PAIRS, getCandles, fetchJson });
+const LAB_GROUPS = { all: PAIRS.map(p => p.id), forex: ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'USDCHF'], gold: ['XAUUSD'], crypto: ['BTCUSD', 'ETHUSD', 'SOLUSD', 'BNBUSD', 'XRPUSD', 'DOGEUSD', 'ADAUSD'], forexgold: ['XAUUSD', 'EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'USDCHF'] };
+app.post('/api/terminal/backtest/lab', requireAdmin, (req, res) => {
+  const b = req.body || {};
+  const tf = b.tf === '1H' ? '1H' : '15m';
+  const pairs = LAB_GROUPS[b.group] || LAB_GROUPS.forexgold;
+  const r = strategyLab.start(tf, pairs);
+  if (!r.ok) return res.status(409).json({ error: 'lab_busy', message: r.message });
+  logEvent('Strategy Lab shuru: ' + tf + ' / ' + (b.group || 'forexgold'));
+  res.json({ ok: true });
+});
+app.get('/api/terminal/backtest/lab', requireAdmin, (req, res) => res.json(strategyLab.status()));
 
 // Settings + logs + export + AI (in-app only)
 app.get('/api/settings', requireAuth, (req, res) => res.json({ settings: { ...db.settings, priceMode: (db.settings && db.settings.priceMode) || 'last', engine: engineSettings() } }));
