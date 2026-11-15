@@ -2713,8 +2713,148 @@ app.delete('/api/admin/users/:username', requireAdmin, (req, res) => {
   res.json({ ok: true });
 });
 
+// ---------------- v10: Auto Trade (MT4/MT5 Expert Advisor) ----------------
+// Har buyer ki apni license key hoti hai. EA (user ke apne MetaTrader me) is key se
+// /api/ea/signals poll karta hai aur naya Terminal signal milte hi user ke account par
+// trade lagata hai. User ka broker password kabhi website par nahi aata.
+// Hifazat: key sirf chalte plan par kaam karti hai, pehle MT account se bind ho jati hai,
+// admin global ya per-user band kar sakta hai, aur sirf taaza (in-flight) signals jate hain.
+function autoTradeSettings() {
+  const a = (db.settings && db.settings.autoTrade) || {};
+  const maxAge = parseInt(a.maxAgeMin, 10);
+  return { enabled: a.enabled !== false, maxAgeMin: Number.isFinite(maxAge) ? Math.min(60, Math.max(2, maxAge)) : 15 };
+}
+function makeEaKey() { return 'FTP-' + crypto.randomBytes(20).toString('hex').toUpperCase(); }
+function ensureEaKey(u) {
+  if (!u.eaKey) { u.eaKey = makeEaKey(); u.eaAccount = null; saveDb(); }
+  return u.eaKey;
+}
+function eaAllowedUser(u) {
+  if (!u || u.suspended || u.eaDisabled) return false;
+  if (u.role === 'admin') return true; // admin apne demo par test kar sake
+  return buyerActive(u);
+}
+function findUserByEaKey(key) {
+  if (!key || key.length < 20) return null;
+  return db.users.find(u => u.eaKey && safeEqual(u.eaKey, key)) || null;
+}
+// Ghalat key ki koshish rokna (IP par): 10 ghalat koshish par 15 minute lock.
+const eaFails = new Map(); // ip -> {count, firstAt, lockedUntil}
+const eaLastPoll = new Map(); // username -> last poll ms (2 second se tez poll nahi)
+function eaIpLocked(ip) {
+  const e = eaFails.get(ip); if (!e) return false;
+  if (e.lockedUntil && Date.now() < e.lockedUntil) return true;
+  if (Date.now() - e.firstAt > LOGIN_WINDOW_MS) eaFails.delete(ip);
+  return false;
+}
+function eaIpFail(ip) {
+  const now = Date.now();
+  const e = eaFails.get(ip) || { count: 0, firstAt: now, lockedUntil: 0 };
+  if (now - e.firstAt > LOGIN_WINDOW_MS) { e.count = 0; e.firstAt = now; e.lockedUntil = 0; }
+  e.count++;
+  if (e.count >= 10) e.lockedUntil = now + LOGIN_WINDOW_MS;
+  if (eaFails.size > 5000) eaFails.clear();
+  eaFails.set(ip, e);
+}
+// EA ke liye taaza signals: sirf Terminal engine, abhi chal rahe (outcome nahi), aur maxAgeMin se naye.
+function freshEaSignals() {
+  const cfg = autoTradeSettings();
+  const now = Date.now();
+  return db.signals
+    .filter(s => s.engine === 'terminal' && !s.outcome && (s.direction === 'BUY' || s.direction === 'SELL'))
+    .filter(s => now - s.createdAt <= cfg.maxAgeMin * 60000)
+    .filter(s => [s.entry, s.sl, s.tp1].every(v => typeof v === 'number' && isFinite(v) && v > 0))
+    .filter(s => (s.direction === 'BUY' ? (s.sl < s.entry && s.tp1 > s.entry) : (s.sl > s.entry && s.tp1 < s.entry)))
+    .slice(0, 10);
+}
+function eaText(res, status, line) { res.status(status).type('text/plain').set('Cache-Control', 'no-store').send(line + '\n'); }
+function eaNum(v, pairId) {
+  const p = PAIRS.find(x => x.id === pairId);
+  return (typeof v === 'number' && isFinite(v)) ? v.toFixed(p ? p.dec : 5) : '0';
+}
+// Jawab sada text hai (MQL me JSON parser nahi hota):
+//   OK|<server unix sec>|<count>
+//   <id>|<pair>|<BUY/SELL>|<entry>|<sl>|<tp1>|<tp2>|<tp3>|<score>|<age sec>
+// Ghalti: ERR|<code>|<message>
+app.get('/api/ea/signals', (req, res) => {
+  const ip = req.ip || 'unknown';
+  if (eaIpLocked(ip)) return eaText(res, 429, 'ERR|locked|Bohat ziada ghalat koshishein. 15 minute baad try karein.');
+  const key = String(req.headers['x-ea-key'] || req.query.key || '').trim();
+  const u = findUserByEaKey(key);
+  if (!u) { eaIpFail(ip); return eaText(res, 401, 'ERR|bad_key|License key ghalat hai.'); }
+  if (!autoTradeSettings().enabled) return eaText(res, 403, 'ERR|disabled|Auto Trade admin ne band kiya hua hai.');
+  if (!eaAllowedUser(u)) return eaText(res, 403, 'ERR|inactive|Plan khatam ya Auto Trade band hai. Admin se rabta karein.');
+  const mtLogin = String(req.query.account || '').replace(/[^0-9]/g, '').slice(0, 20);
+  if (!mtLogin) return eaText(res, 400, 'ERR|no_account|MT account number nahi mila.');
+  if (u.eaAccount && u.eaAccount !== mtLogin) return eaText(res, 403, 'ERR|account_mismatch|Ye key doosre MT account se judi hai. Website se key reset karein.');
+  const last = eaLastPoll.get(u.username) || 0;
+  if (Date.now() - last < 2000) return eaText(res, 429, 'ERR|too_fast|Poll kam se kam 2 second ke faasle se karein.');
+  eaLastPoll.set(u.username, Date.now());
+  const platform = String(req.query.platform || '').toLowerCase() === 'mt4' ? 'mt4' : 'mt5';
+  const demo = req.query.demo === '1';
+  let dirty = false;
+  if (!u.eaAccount) { u.eaAccount = mtLogin; dirty = true; logEvent('Auto Trade: ' + u.username + ' ki key MT account se jud gayi'); }
+  // lastSeen har poll par file me nahi likhte (har 10 second file likhna bekaar) — 5 minute me ek dafa.
+  if (!u.eaLastSeen || Date.now() - u.eaLastSeen > 5 * 60000 || u.eaPlatform !== platform || u.eaDemo !== demo) {
+    u.eaLastSeen = Date.now(); u.eaPlatform = platform; u.eaDemo = demo; dirty = true;
+  }
+  if (dirty) saveDb();
+  const now = Date.now();
+  const list = freshEaSignals();
+  const lines = ['OK|' + Math.floor(now / 1000) + '|' + list.length];
+  for (const s of list) {
+    lines.push([s.id, s.pair, s.direction, eaNum(s.entry, s.pair), eaNum(s.sl, s.pair), eaNum(s.tp1, s.pair), eaNum(s.tp2, s.pair), eaNum(s.tp3, s.pair), Math.round(s.score || 0), Math.floor((now - s.createdAt) / 1000)].join('|'));
+  }
+  res.status(200).type('text/plain').set('Cache-Control', 'no-store').send(lines.join('\n') + '\n');
+});
+// Buyer ka apna Auto Trade status (website ka Auto Trade page)
+function eaStatusOf(u) {
+  return { key: ensureEaKey(u), allowed: eaAllowedUser(u), disabledByAdmin: !!u.eaDisabled, boundAccount: u.eaAccount || null, lastSeen: u.eaLastSeen || null, platform: u.eaPlatform || null, demo: u.eaDemo == null ? null : !!u.eaDemo };
+}
+app.get('/api/autotrade/me', requireAuth, (req, res) => {
+  const cfg = autoTradeSettings();
+  res.json({ ...eaStatusOf(req.user), globalEnabled: cfg.enabled, maxAgeMin: cfg.maxAgeMin, freshSignals: freshEaSignals().length, pairs: PAIRS.map(p => p.id) });
+});
+// Nayi key: purani key foran bekaar, aur MT account ka bind bhi khatam.
+app.post('/api/autotrade/reset-key', requireAuth, (req, res) => {
+  req.user.eaKey = makeEaKey(); req.user.eaAccount = null; req.user.eaLastSeen = null;
+  logEvent('Auto Trade: ' + req.user.username + ' ne key reset ki');
+  saveDb();
+  res.json({ ok: true, ...eaStatusOf(req.user) });
+});
+// Admin: sab users ka Auto Trade status + global on/off. Key yahan kabhi nahi bheji jati.
+app.get('/api/admin/autotrade', requireAdmin, (req, res) => {
+  const cfg = autoTradeSettings();
+  res.json({
+    globalEnabled: cfg.enabled, maxAgeMin: cfg.maxAgeMin,
+    users: db.users.map(u => ({ username: u.username, role: u.role, hasKey: !!u.eaKey, allowed: eaAllowedUser(u), disabledByAdmin: !!u.eaDisabled, boundAccount: u.eaAccount || null, lastSeen: u.eaLastSeen || null, platform: u.eaPlatform || null, demo: u.eaDemo == null ? null : !!u.eaDemo })),
+  });
+});
+app.post('/api/admin/autotrade', requireAdmin, (req, res) => {
+  const b = req.body || {};
+  if (!db.settings.autoTrade) db.settings.autoTrade = {};
+  if (b.maxAgeMin != null) {
+    const n = parseInt(b.maxAgeMin, 10);
+    if (!Number.isFinite(n) || n < 2 || n > 60) return res.status(400).json({ error: 'bad_max_age', message: 'Signal ki umar 2 se 60 minute ke darmiyan ho.' });
+    db.settings.autoTrade.maxAgeMin = n;
+  }
+  if (typeof b.enabled === 'boolean') { db.settings.autoTrade.enabled = b.enabled; logEvent('Auto Trade global: ' + (b.enabled ? 'ON' : 'OFF')); }
+  saveDb();
+  res.json({ ok: true, ...autoTradeSettings() });
+});
+app.post('/api/admin/users/:username/autotrade', requireAdmin, (req, res) => {
+  const u = findUser(req.params.username);
+  if (!u) return res.status(404).json({ error: 'not_found', message: 'Ye user nahi mila.' });
+  const b = req.body || {};
+  if (typeof b.disabled === 'boolean') { u.eaDisabled = b.disabled; logEvent('Auto Trade ' + (b.disabled ? 'band' : 'chalu') + ': ' + u.username); }
+  if (b.resetKey === true) { u.eaKey = makeEaKey(); u.eaAccount = null; u.eaLastSeen = null; logEvent('Auto Trade key reset (admin): ' + u.username); }
+  if (b.unbind === true) { u.eaAccount = null; }
+  saveDb();
+  res.json({ ok: true });
+});
+
 // ---------------- Start ----------------
-app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
+app.get('/',(req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
 
 // Background kaam: Telegram poll har 5 minute, recorder har 15 minute (server jaag raha ho tab).
 // Pehla tick 60 second baad — deploy ke baad lambi der tak intezaar nahi.
@@ -2726,5 +2866,5 @@ app.listen(PORT, () => console.log('Forex Trading Pro chal raha hai: http://loca
 
 // Test ke liye (NODE_ENV=test) — production me kuch nahi badalta.
 if (process.env.NODE_ENV === 'test') {
-  module.exports = { recordTerminalSignal, sendSignalAlert, sendPushAlert, buildPushPayload, notifyPairOn, buildTelegramMessage, parseTelegramUpdates, applyTelegramUpdates, telegramPollUpdates, recorderTick, backgroundTick, ensureTgCode, buyerActive, gateScore, isMarketClosed, computeZones, computeTrendPanel, getDb: () => db, telegramDryRunSent, pushDryRunSent, webpush, engineSettings, priceByMode, walkExit, rForRule, runBacktest, computeSmc, computeScanner, GROUP_PAIRS, computePips, pipSize, PIP_SIZE, runningPips, parseFFCalendar, pairsForCurrency, isNewsBlocked, getFFCalendar, newsBlackoutInfo, logNewsBlock };
+  module.exports = { recordTerminalSignal, sendSignalAlert, sendPushAlert, buildPushPayload, notifyPairOn, buildTelegramMessage, parseTelegramUpdates, applyTelegramUpdates, telegramPollUpdates, recorderTick, backgroundTick, ensureTgCode, buyerActive, gateScore, isMarketClosed, computeZones, computeTrendPanel, getDb: () => db, telegramDryRunSent, pushDryRunSent, webpush, engineSettings, priceByMode, walkExit, rForRule, runBacktest, computeSmc, computeScanner, GROUP_PAIRS, computePips, pipSize, PIP_SIZE, runningPips, freshEaSignals, autoTradeSettings, eaAllowedUser, makeEaKey, parseFFCalendar, pairsForCurrency, isNewsBlocked, getFFCalendar, newsBlackoutInfo, logNewsBlock };
 }

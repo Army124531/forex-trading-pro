@@ -77,3 +77,21 @@ Phir **Create Web Service** dabayein. 2-5 minute me website tayyar ho jaye gi au
 - Website khul nahi rahi: Render dashboard me **Logs** dekhein — wahan error likha hota hai.
 - Price nahi aa rahi: Terminal ke upar API health dekhein — kaunsi API CONNECTED hai, kaunsi RETRY.
 - Login nahi ho raha: Admin panel se buyer ka password dobara set karein, ya check karein ke plan khatam to nahi hua.
+
+## Auto Trade (MT4 / MT5) — v10
+
+Website ab signal aate hi buyer ke apne MetaTrader account par trade laga sakti hai.
+
+- **Kaise chalta hai:** har buyer ko website ke **Auto Trade** tab me apni license key milti hai. Buyer EA (`public/ea/` me MT4 aur MT5 dono) apne MetaTrader me lagata hai aur key dalta hai. EA har 10 second baad website se taaza Terminal signal poochta hai aur trade laga deta hai.
+- **Broker password website par nahi aata.** Trade buyer ke apne computer / VPS se lagti hai.
+- **Hifazat:** key sirf chalte plan par kaam karti hai, pehle MT account se jud jati hai (share nahi ho sakti), aur admin Auto Trade tab se sab ke liye ya kisi ek buyer ke liye band kar sakta hai.
+- **EA ki hifazat:** risk % se lot size, din ki nuqsan limit, ziada se ziada trades, aur real account par tab tak trade nahi jab tak buyer khud `InpAllowRealAccount = true` na kare.
+- **EA ko sirf taaza signals milte hain** (default 15 minute se purane nahi, admin badal sakta hai), sirf Terminal engine ke, aur sirf wo jo abhi chal rahe hain.
+
+### Zaroori baatein (saaf saaf)
+
+- EA `.mq4` / `.mq5` source file hai — buyer ko MetaEditor me **Compile** dabana hota hai. EA mobile app par nahi chalta; 24 ghante ke liye VPS chahiye.
+- EA ka code MetaTrader ke andar test **nahi** hua (yahan MetaTrader nahi tha). Buyers ko dene se pehle khud demo account par compile aur test karein.
+- Website ki price broker ki price se thori alag hoti hai (Gold PAX Gold se aata hai). EA SL/TP broker ki apni price se utne hi faasle par lagata hai, aur agar farq bohat ziada ho to trade nahi leta (`InpMaxEntryDeviationPct`).
+- License keys `data/db.json` me save hoti hain. Agar ye file reset ho jaye (free hosting par redeploy) to sab keys badal jati hain aur buyers ko nayi key dalni parti hai. Persistent disk lagana behtar hai.
+- Doosron ke accounts par auto trade karwana kai mulkon me license ke baghair mana hai. Apne mulk ka qanoon check karein aur buyers ko risk saaf batayein.

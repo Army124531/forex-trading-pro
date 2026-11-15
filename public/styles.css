@@ -312,3 +312,10 @@ body.light .tg-card .btn{color:#111}
 /* v9.3 language dropdown: 44px tap target, fits 360px screens */
 .lang-select{width:auto;max-width:160px;min-height:44px;font-size:16px;margin:0;padding:8px 10px;cursor:pointer}
 @media (max-width:640px){.lang-select{max-width:132px;padding:8px 6px}}
+/* v10: Auto Trade page */
+.at-key{display:inline-block;background:#0b1224;border:1px dashed rgba(245,197,66,.6);border-radius:8px;padding:8px 10px;font-size:13px;word-break:break-all;color:#f5c542}
+.at-steps{padding-left:20px;line-height:1.7}
+.at-steps li{margin:6px 0}
+.at-steps code,#atSiteUrl{background:#0b1224;border-radius:4px;padding:1px 5px;word-break:break-all}
+a.btn{display:inline-block;text-decoration:none;margin:4px 4px 4px 0}
+body.light .at-key,body.light .at-steps code,body.light #atSiteUrl{background:#eef2f9;color:#1a2333}
