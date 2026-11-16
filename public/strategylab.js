@@ -1,5 +1,6 @@
-// Forex Trading Pro — Strategy Lab ka UI (v10.1). Terminal Backtest card ke andar dikhta hai, sirf admin ko.
+// Forex Trading Pro — Strategy Lab ka UI (v10.4). Terminal Backtest card ke andar dikhta hai, sirf admin ko.
 // app.js ke api(), esc(), me, showTab() use karta hai. Sirf research — koi setting ya signal nahi badalta.
+// v10.4: tables me IMTIHAN wale columns pehle (screenshot/PDF me kat na jayein), aur tasdeeqi imtihan ka mode.
 (function () {
   'use strict';
   let timer = null;
@@ -11,6 +12,7 @@
   function day(ms) { return ms ? new Date(ms).toISOString().slice(0, 10) : '—'; }
 
   function statCells(s) {
+    if (!s) return '<td>—</td><td>—</td><td>—</td><td>—</td>';
     return '<td>' + s.n + '</td><td>' + num(s.winRate, '%') + '</td><td class="' + rCls(s.avgR) + '"><b>' + rTxt(s.avgR) + '</b></td><td>' + num(s.pf) + '</td>';
   }
   function verdictHtml(v) {
@@ -18,30 +20,56 @@
     if (v === 'KAMZOR') return '<span class="wait">kamzor</span>';
     return '<span class="sell">nahi</span>';
   }
-  const HEAD = '<tr><th>Version</th><th>Trades</th><th>Win %</th><th>Ausat</th><th>PF</th><th>Trades</th><th>Win %</th><th>Ausat</th><th>PF</th><th>Pairs +</th><th>Nateeja</th></tr>';
-  const GROUP_HEAD = '<tr><th></th><th colspan="4">Seekhne wala hissa (60%)</th><th colspan="4">Imtihan wala hissa (40%)</th><th></th><th></th></tr>';
+  const TBL = '<div class="table-wrap"><table class="lab-table">';
+  // Imtihan pehle: faisla isi par hota hai, aur tang screen par dayen wale columns kat jate hain.
+  const HEAD = '<tr><th>Version</th><th>Nateeja</th><th>Trades</th><th>Win %</th><th>Ausat</th><th>PF</th><th>Pairs +</th><th>Trades</th><th>Win %</th><th>Ausat</th><th>PF</th></tr>';
+  const GROUP_HEAD = '<tr><th></th><th></th><th colspan="5">IMTIHAN wala hissa (40%) — faisla is par</th><th colspan="4">Seekhne wala hissa (60%)</th></tr>';
   function row(r, withVerdict) {
-    return '<tr><td>' + (r.isBaseline ? '<b>AAJ KA ENGINE</b><br>' : '') + esc(r.name) + '</td>' + statCells(r.train) + statCells(r.test) +
-      '<td>' + r.pairsPositive + '/' + r.pairsTested + '</td><td>' + (withVerdict ? verdictHtml(r.verdict) : '') + '</td></tr>';
+    return '<tr><td class="lab-name">' + (r.isBaseline ? '<b>AAJ KA ENGINE</b><br>' : '') + esc(r.name) + '</td><td>' + (withVerdict ? verdictHtml(r.verdict) : '') + '</td>' +
+      statCells(r.test) + '<td>' + r.pairsPositive + '/' + r.pairsTested + '</td>' + statCells(r.train) + '</tr>';
+  }
+  // Tasdeeqi imtihan: sirf imtihan (poora data an-dekha hai) + saal ba saal.
+  const C_HEAD = '<tr><th>Version</th><th>Nateeja</th><th>Trades</th><th>Win %</th><th>Ausat</th><th>PF</th><th>t</th><th>Pairs +</th><th>Saal +</th></tr>';
+  function cRow(r, withVerdict) {
+    const t = r.test;
+    return '<tr><td class="lab-name">' + esc(r.name) + (r.why ? '<br><span class="fine">' + esc(r.why) + '</span>' : '') + '</td><td>' + (withVerdict ? verdictHtml(r.verdict) : '') + '</td>' +
+      statCells(t) + '<td>' + num(t.tStat) + '</td><td>' + r.pairsPositive + '/' + r.pairsTested + '</td><td>' + r.yearsPositive + '/' + r.yearsCounted + '</td></tr>';
+  }
+  function yearTable(r) {
+    return '<p class="fine"><b>' + esc(r.name) + '</b> — saal ba saal</p>' + TBL + '<tr><th>Saal</th><th>Trades</th><th>Win %</th><th>Ausat</th><th>PF</th></tr>' +
+      (r.byYear || []).map(y => '<tr><td>' + y.year + '</td>' + statCells(y) + '</tr>').join('') + '</table></div>';
+  }
+
+  function renderConfirm(d) {
+    let h = '<h4>Do umeedwar (pehle se pakke kiye gaye)</h4>';
+    h += d.candidates.length ? TBL + C_HEAD + d.candidates.map(r => cRow(r, true)).join('') + '</table></div>' : '<p>Umeedwar nahi mile.</p>';
+    h += '<p class="fine">"JEETA" tabhi: 80+ trades, ausat munafa musbat, PF 1.15+, t 2.5+, 60%+ pairs munafe me, aur taqreeban har saal musbat (munafa sirf aik saal par na tika ho). Ausat = har trade ka ausat munafa R me. PF 1.00 = barabar.</p>';
+    h += d.candidates.map(yearTable).join('');
+    if (d.all && d.all.length) {
+      h += '<h4>Baaqi tareeqe isi purane data par (sirf dekhne ke liye)</h4>' + TBL + C_HEAD + d.all.map(r => cRow(r, false)).join('') + '</table></div>';
+      h += '<p class="fine">Is table se ab kuch chunna phir wohi ghalti hogi (imtihan dekh kar jawab chunna). Faisla sirf upar wale do umeedwaron par hai.</p>';
+    }
+    return h;
   }
 
   function renderResult(d) {
     const used = d.pairs.filter(p => p.used), skipped = d.pairs.filter(p => !p.used);
     let h = '<p class="notice-banner"><b>Faisla:</b> ' + esc(d.verdict) + '</p>';
-    h += '<p class="fine">' + esc(d.tfLabel) + ' · ' + used.length + ' pairs · ' + d.variantsTested + ' versions aazmaye · ' + esc(d.splitNote) + '</p>';
-    if (d.baseline) {
-      h += '<h4>Aaj ka live engine (kharcha kaat kar)</h4><div class="table-wrap"><table>' + GROUP_HEAD + HEAD + row(d.baseline, false) + '</table></div>';
-    }
-    h += '<h4>Sab se behtar 5 versions (seekhne wale hisse par chune gaye)</h4>';
-    h += d.top.length ? '<div class="table-wrap"><table>' + GROUP_HEAD + HEAD + d.top.map(r => row(r, true)).join('') + '</table></div>' : '<p>Kisi version ke kaafi trades nahi bane.</p>';
-    h += '<p class="fine">"JEETA" tabhi likha jata hai jab imtihan wale hisse me: 80+ trades, ausat munafa musbat, PF 1.15+, nateeja ittefaq se door (t 2.5+), aur 60%+ pairs munafe me hon. Ausat = har trade ka ausat munafa R me (1R = SL tak ka risk). PF 1.00 = barabar.</p>';
-    if (d.geometryOnly && d.geometryOnly.length) {
-      h += '<h4>Sirf SL/TP badalne ka asar (baaki sab aaj jaisa)</h4><div class="table-wrap"><table>' + GROUP_HEAD + HEAD + d.geometryOnly.map(r => row(r, false)).join('') + '</table></div>';
-      h += '<p class="fine">Agar yahan sab versions ka ausat taqreeban barabar (ya manfi) ho, to matlab SL/TP badalne se win rate badalta hai, munafa nahi.</p>';
-    }
-    if (d.all && d.all.length) {
-      h += '<h4>Sab naye tareeqe (imtihan wale hisse ke ausat ke hisaab se)</h4><div class="table-wrap"><table>' + GROUP_HEAD + HEAD + d.all.map(r => row(r, false)).join('') + '</table></div>';
-      h += '<p class="fine">Ye table sirf dekhne ke liye hai. Faisla sirf upar wali 5 lines se hota hai, kyunke wo imtihan dekhe baghair chuni gayi thin.</p>';
+    h += '<p class="fine">' + esc(d.tfLabel) + ' · ' + used.length + ' pairs · ' + d.variantsTested + (d.mode === 'confirm' ? ' umeedwar' : ' versions aazmaye') + ' · ' + esc(d.splitNote) + '</p>';
+    if (d.mode === 'confirm') h += renderConfirm(d);
+    else {
+      if (d.baseline) h += '<h4>Aaj ka live engine (kharcha kaat kar)</h4>' + TBL + GROUP_HEAD + HEAD + row(d.baseline, false) + '</table></div>';
+      h += '<h4>Sab se behtar 5 versions (seekhne wale hisse par chune gaye)</h4>';
+      h += d.top.length ? TBL + GROUP_HEAD + HEAD + d.top.map(r => row(r, true)).join('') + '</table></div>' : '<p>Kisi version ke kaafi trades nahi bane.</p>';
+      h += '<p class="fine">"JEETA" tabhi likha jata hai jab imtihan wale hisse me: 80+ trades, ausat munafa musbat, PF 1.15+, nateeja ittefaq se door (t 2.5+), aur 60%+ pairs munafe me hon. Ausat = har trade ka ausat munafa R me (1R = SL tak ka risk). PF 1.00 = barabar.</p>';
+      if (d.geometryOnly && d.geometryOnly.length) {
+        h += '<h4>Sirf SL/TP badalne ka asar (baaki sab aaj jaisa)</h4>' + TBL + GROUP_HEAD + HEAD + d.geometryOnly.map(r => row(r, false)).join('') + '</table></div>';
+        h += '<p class="fine">Agar yahan sab versions ka ausat taqreeban barabar (ya manfi) ho, to matlab SL/TP badalne se win rate badalta hai, munafa nahi.</p>';
+      }
+      if (d.all && d.all.length) {
+        h += '<h4>Sab naye tareeqe (imtihan wale hisse ke ausat ke hisaab se)</h4>' + TBL + GROUP_HEAD + HEAD + d.all.map(r => row(r, false)).join('') + '</table></div>';
+        h += '<p class="fine">Ye table sirf dekhne ke liye hai. Faisla sirf upar wali 5 lines se hota hai, kyunke wo imtihan dekhe baghair chuni gayi thin.</p>';
+      }
     }
     h += '<h4>Data</h4><p class="fine">' + used.map(p => esc(p.pair) + ': ' + p.bars + ' candles (' + day(p.from) + ' se ' + day(p.to) + ', ' + esc(p.source || '') + ')').join(' · ') + '</p>';
     if (skipped.length) h += '<p class="fine">Chhore gaye: ' + skipped.map(p => esc(p.pair) + ' (' + esc(p.note || '') + ')').join(', ') + '</p>';
@@ -54,7 +82,8 @@
     if (s.status === 'running') {
       if (btn) btn.disabled = true;
       const p = s.progress || {};
-      el('labBody').innerHTML = '<p>Lab chal raha hai… pair ' + ((p.done || 0) + 1) + '/' + (p.total || '?') + (p.pair ? ' (' + esc(p.pair) + ')' : '') + '. Is me 1-3 minute lag sakte hain — page khula rakhein.</p>';
+      const pct = p.frac != null && p.step === 'candles' ? ' · data ' + Math.round(Math.min(1, p.frac) * 100) + '%' : '';
+      el('labBody').innerHTML = '<p>Lab chal raha hai… pair ' + ((p.done || 0) + 1) + '/' + (p.total || '?') + (p.pair ? ' (' + esc(p.pair) + ')' : '') + pct + '. Is me 1-5 minute lag sakte hain — page khula rakhein.</p>';
       return true;
     }
     if (btn) btn.disabled = false;
@@ -81,12 +110,11 @@
     } catch (e) { el('labBody').innerHTML = '<p>' + esc(e.message) + '</p>'; }
     timer = setTimeout(poll, 1500);
   };
-  // Naye tareeqe hamesha 1H (~2 saal) par chalte hain — timeframe ka dabba us waqt band.
+  // Naye tareeqe hamesha 1H par; tasdeeqi imtihan ka timeframe aur pairs dono pakke hain.
   window.labModeChanged = function () {
-    const isNew = el('labMode') && el('labMode').value === 'new', tf = el('labTf');
-    if (!tf) return;
-    if (isNew) tf.value = '1H';
-    tf.disabled = !!isNew;
+    const mode = el('labMode') ? el('labMode').value : 'engine', tf = el('labTf'), grp = el('labGroup');
+    if (tf) { if (mode !== 'engine') tf.value = '1H'; tf.disabled = mode !== 'engine'; }
+    if (grp) { if (mode === 'confirm') grp.value = 'crypto'; grp.disabled = mode === 'confirm'; }
   };
 
   // History tab khulne par: admin ko Lab dikhayein aur pichla nateeja (agar ho) le aayein.
