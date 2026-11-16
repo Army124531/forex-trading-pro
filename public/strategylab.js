@@ -87,6 +87,44 @@
     el('labBody').innerHTML = h;
   }
 
+  // v11: Holdout (BTC filters) — aik dafa ka imtihan. Rules pehle se tay hain; PASS = 12/12 checks.
+  const HO_CHECK = {
+    trades: 'Trades 80 se zyada', avgRPositive: 'Ausat R musbat', avgRNotBelowBaseline: 'Ausat R baseline se kam nahi',
+    pf: 'PF 1.15 se zyada', t: 't 2.5 se zyada', maxDd: 'Max drawdown baseline ke 1.25 gune se kam',
+    tradeShare: 'Trades baseline ke 40% se zyada', year1: 'Holdout saal 1 musbat', year2: 'Holdout saal 2 musbat',
+    pairShare: '60% se zyada pairs munafe mein', pf25: 'PF 2.5x kharche par 1.0 se zyada', avgR25Positive: 'Ausat R 2.5x kharche par musbat',
+  };
+  function holdoutVerdict(v) {
+    if (v === 'PASS') return '<span class="buy"><b>PASS</b></span>';
+    if (v === 'PARTIAL') return '<span class="wait">PARTIAL (sirf report)</span>';
+    if (v === 'FAIL') return '<span class="sell">FAIL</span>';
+    return '<span class="wait">' + esc(v || '') + '</span>';
+  }
+  function renderHoldout(d) {
+    const V = d.variants || [];
+    let h = '<p class="notice-banner"><b>Holdout (2024-11-17 se 2026-11-16): aik dafa ka imtihan.</b> ' + esc(d.note || '') + '</p>';
+    h += '<p class="fine">Rules pehle se tay the; nateeja dekh kar koi threshold nahi badla gaya. Chalaya gaya: ' + dt(d.runAt) + '. Win % sirf report hai, faisla usse nahi hota.</p>';
+    h += TBL + '<tr><th>Variant</th><th>Faisla</th><th>Checks</th><th>Trades</th><th>Win %</th><th>Ausat</th><th>PF</th><th>t</th><th>Max DD (R)</th><th>Ausat 2.5x</th><th>PF 2.5x</th><th>Pairs +</th><th>Saal 1</th><th>Saal 2</th></tr>' +
+      V.map(v => {
+        const x = v.ho;
+        return '<tr><td class="lab-name">' + esc(v.id + ' ' + v.name) + '</td><td>' + holdoutVerdict(v.verdict) + '</td><td>' + (v.checks ? v.checks.passed + '/' + v.checks.of : '—') + '</td>' +
+          '<td>' + x.n + '</td><td>' + num(x.winRate, '%') + '</td><td class="' + rCls(x.avgR) + '"><b>' + rTxt(x.avgR) + '</b></td><td>' + num(x.pf) + '</td><td>' + num(x.tStat) + '</td><td>' + num(x.maxDdR) + '</td>' +
+          '<td class="' + rCls(x.avgR25) + '">' + rTxt(x.avgR25) + '</td><td>' + num(x.pf25) + '</td><td>' + Math.round((x.pairsPositiveShare || 0) * 100) + '%</td>' +
+          '<td>' + rTxt(x.year[0]) + '</td><td>' + rTxt(x.year[1]) + '</td></tr>';
+      }).join('') + '</table></div>';
+    h += '<h4>Dev period: sirf stability (3 saal, parameters nahi badle)</h4>' + TBL +
+      '<tr><th>Variant</th><th>Trades</th><th>2021-22</th><th>2022-23</th><th>2023-24</th><th>Musbat saal</th></tr>' +
+      V.map(v => '<tr><td class="lab-name">' + esc(v.id + ' ' + v.name) + '</td><td>' + v.dev.n + '</td>' +
+        v.dev.wf.map(x => '<td class="' + rCls(x) + '">' + rTxt(x) + '</td>').join('') + '<td>' + v.dev.positiveYears + '/3</td></tr>').join('') + '</table></div>';
+    h += '<h4>Kis check par koi variant atka</h4><ul>' + V.filter(v => v.checks).map(v => {
+      const miss = Object.keys(v.checks.detail).filter(k => !v.checks.detail[k]).map(k => HO_CHECK[k] || k);
+      return '<li><b>' + esc(v.id) + '</b>: ' + (miss.length ? esc(miss.join(' · ')) : 'sab checks pass') + '</li>';
+    }).join('') + '</ul>';
+    h += '<p class="fine">Data: ' + (d.data || []).map(p => esc(p.pair) + ' ' + (p.used ? day(p.from) + ' se ' + day(p.to) + ' (' + p.bars + ' candles)' : 'nahi mila')).join(' · ') + '</p>';
+    h += '<p class="fine">Kharcha: 1x = har pair ka asal kharcha; 2.5x = 2.5 guna. Holdout dobara chalane ke liye admin ko force bhejna parega, aur wo naya imtihan shumar hoga.</p>';
+    el('labBody').innerHTML = h;
+  }
+
   function renderStatus(s) {
     const btn = el('labRunBtn');
     if (s.status === 'running') {
@@ -97,7 +135,8 @@
       return true;
     }
     if (btn) btn.disabled = false;
-    if (s.status === 'done' && s.result) renderResult(s.result);
+    if (s.status === 'done' && s.result && s.mode === 'holdout') renderHoldout(s.result);
+    else if (s.status === 'done' && s.result) renderResult(s.result);
     else if (s.status === 'error') el('labBody').innerHTML = '<p class="sell">Lab nakaam: ' + esc(s.message || '') + '</p>';
     return false;
   }
@@ -124,8 +163,8 @@
   window.labModeChanged = function () {
     const mode = el('labMode') ? el('labMode').value : 'engine', tf = el('labTf'), grp = el('labGroup');
     if (tf) { if (mode !== 'engine') tf.value = '1H'; tf.disabled = mode !== 'engine'; }
-    const fixed = mode === 'confirm' || mode === 'confirm-gold';
-    if (grp) { if (mode === 'confirm') grp.value = 'crypto'; if (mode === 'confirm-gold') grp.value = 'gold'; grp.disabled = fixed; }
+    const fixed = mode === 'confirm' || mode === 'confirm-gold' || mode === 'holdout';
+    if (grp) { if (mode === 'confirm' || mode === 'holdout') grp.value = 'crypto'; if (mode === 'confirm-gold') grp.value = 'gold'; grp.disabled = fixed; }
   };
 
   // v10.6: Khamosh mode — crypto Breakout ke aage ke trades (sirf admin dekhta hai, buyers ko kuch nahi jata).
