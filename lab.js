@@ -439,10 +439,18 @@ function createLab(deps) {
     { id: 'brk-20-3-t', why: 'Seekhne wale hisse me sab se behtar tha (imaandar chunao).' },
     { id: 'pb-6-2.5', why: 'Imtihan wale hisse me sab se behtar dikha, lekin baad me chuna gaya — is liye is par zyada shak rakhein.' },
   ];
+  // v10.5: Gold ka tasdeeqi imtihan. Sirf-Gold wale test me breakout acha dikha, lekin sirf 38-42 trades par
+  // aur aise 2 saal me jab Gold zyada tar upar hi gaya. Umeedwar (aik hi) 2026-11-16 ko pakka kiya gaya.
+  // Data: Binance PAX Gold (PAXGUSDT) 1H, 2021-11-16 se 2024-06-26 — pichla Gold test 2024-06-26 se shuru hota tha.
+  const CONFIRM_SETS = {
+    crypto: { label: 'crypto', from: CONFIRM_FROM, to: CONFIRM_TO, pairs: CONFIRM_PAIRS, candidates: CONFIRM_CANDIDATES, minPairs: 4, symbol: (id) => id.replace(/USD$/, 'USDT'), costText: 'Har trade se price ka 0.06% (spread + slippage) kaata gaya.', extraLimit: '' },
+    gold: { label: 'Gold', from: CONFIRM_FROM, to: Date.UTC(2024, 5, 26), pairs: ['XAUUSD'], candidates: [{ id: 'brk-20-3-t', why: 'Sirf-Gold wale test ke baad pakka kiya gaya akela umeedwar.' }], minPairs: 1, symbol: () => 'PAXGUSDT', costText: 'Har trade se $0.30 (Gold ka spread + slippage) kaata gaya.', extraLimit: ' Data PAX Gold (tokenized gold) ka hai: ye hafte ke saaton din chalta hai aur kabhi kabhi asal Gold se thora hat jata hai, is liye broker ke Gold par nateeja thora alag ho sakta hai. Sirf aik pair hai, is liye "pairs" wali shart yahan kuch saabit nahi karti.' },
+  };
   const BINANCE_HOSTS = ['https://data-api.binance.vision', 'https://api.binance.com'];
   const sleep = (ms) => new Promise(r => setTimeout(r, ms));
-  async function loadBinance(pairId, onFrac) {
-    const symbol = pairId.replace(/USD$/, 'USDT');
+  async function loadBinance(pairId, onFrac, cfg) {
+    cfg = cfg || CONFIRM_SETS.crypto;
+    const symbol = cfg.symbol(pairId), CONFIRM_FROM = cfg.from, CONFIRM_TO = cfg.to; // is function ke andar set ki apni muddat
     for (const host of BINANCE_HOSTS) {
       const out = []; let start = CONFIRM_FROM, fails = 0, ok = true;
       while (start < CONFIRM_TO) {
@@ -468,13 +476,15 @@ function createLab(deps) {
     }
     return { candles: [], source: null };
   }
-  async function runConfirm() {
+  async function runConfirm(setName) {
+    const cfg = CONFIRM_SETS[setName] || CONFIRM_SETS.crypto;
+    const CONFIRM_PAIRS = cfg.pairs, CONFIRM_CANDIDATES = cfg.candidates;
     const variants = NEW_STRATEGIES.map(s => ({ s, trades: [], perPair: {} }));
     const dataInfo = [];
     for (let pi = 0; pi < CONFIRM_PAIRS.length; pi++) {
       const pairId = CONFIRM_PAIRS[pi];
       job.progress = { pair: pairId, done: pi, total: CONFIRM_PAIRS.length, step: 'candles' };
-      const { candles, source } = await loadBinance(pairId, (f) => { job.progress.frac = f; });
+      const { candles, source } = await loadBinance(pairId, (f) => { job.progress.frac = f; }, cfg);
       if (!candles.length) { dataInfo.push({ pair: pairId, bars: 0, used: false, note: 'Binance se purana data nahi mila — chhor diya.' }); continue; }
       await tick();
       const f = features(candles);
@@ -508,26 +518,30 @@ function createLab(deps) {
     const winners = candidates.filter(r => r.verdict === 'JEETA');
     const usedPairs = dataInfo.filter(d => d.used).length;
     let verdict;
-    if (usedPairs < 4) verdict = 'Purana data kaafi pairs ka nahi mila (' + usedPairs + '/7) — tasdeeqi imtihan nahi ho saka. Thori der baad dobara chalayein.';
+    if (usedPairs < cfg.minPairs) verdict = 'Purana data kaafi pairs ka nahi mila (' + usedPairs + '/' + CONFIRM_PAIRS.length + ') — tasdeeqi imtihan nahi ho saka. Thori der baad dobara chalayein.';
+    else if (winners.length === candidates.length && candidates.length === 1) verdict = 'Umeedwar an-dekhe purane data par bhi saaf jeeta. Agla qadam: khamosh mode (signal record ho, buyers ko na jaye) me chand hafte.';
+    else if (candidates.length === 1 && candidates[0].verdict === 'KAMZOR') verdict = 'Umeedwar an-dekhe data par saaf nahi jeeta. Halka sa musbat hai, lekin itna nahi ke is par paisa lagaya jaye.';
+    else if (candidates.length === 1) verdict = 'Umeedwar an-dekhe purane data par nakaam raha. Pichle test ka ishara us waqt ki market ki wajah se tha.';
     else if (winners.length === candidates.length) verdict = 'Dono umeedwar an-dekhe purane data par bhi saaf jeete. Agla qadam: khamosh mode (signal record ho, buyers ko na jaye) me chand hafte.';
     else if (winners.length) verdict = winners.length + ' umeedwar an-dekhe purane data par bhi saaf jeeta: ' + winners.map(w => w.name.split(' · ')[0]).join(', ') + '. Agla qadam: sirf isay khamosh mode me chand hafte chalana.';
     else if (candidates.some(r => r.verdict === 'KAMZOR')) verdict = 'Koi umeedwar an-dekhe data par saaf nahi jeeta. Halka sa musbat hai, lekin itna nahi ke is par paisa lagaya jaye.';
     else verdict = 'Dono umeedwar an-dekhe purane data par nakaam rahe. Pichle test ke ishare ittefaq the.';
     return {
-      mode: 'confirm', tf: '1H', tfLabel: 'Tasdeeqi imtihan · crypto · Binance 1H candles · 2021-11-16 se 2024-11-16 (an-dekha data)', pairs: dataInfo, variantsTested: candidates.length,
+      mode: 'confirm', set: cfg.label, tf: '1H', tfLabel: 'Tasdeeqi imtihan · ' + cfg.label + ' · Binance 1H candles · ' + new Date(cfg.from).toISOString().slice(0, 10) + ' se ' + new Date(cfg.to).toISOString().slice(0, 10) + ' (an-dekha data)', pairs: dataInfo, variantsTested: candidates.length,
       splitNote: 'Poora data imtihan hai — yahan seekhne wala hissa nahi.',
-      costNote: 'Har trade se price ka 0.06% (spread + slippage) kaata gaya. Aap ke broker ka kharcha alag ho sakta hai.',
-      limits: 'Sirf do umeedwar, jo 2026-11-16 ko ye data dekhe baghair pakke kiye gaye. "JEETA" ke liye yahan aik shart zyada hai: munafa sirf aik saal par na tika ho (taqreeban har saal musbat). Baaqi tareeqon ki table sirf dekhne ke liye hai — us me se ab kuch chunna phir wohi ghalti hogi. Purana data jeetna bhi aage ke munafe ki guarantee nahi.',
+      costNote: cfg.costText + ' Aap ke broker ka kharcha alag ho sakta hai.',
+      limits: (candidates.length === 1 ? 'Sirf aik umeedwar, jo 2026-11-16 ko ye data dekhe baghair pakka kiya gaya.' : 'Sirf do umeedwar, jo 2026-11-16 ko ye data dekhe baghair pakke kiye gaye.') + cfg.extraLimit + ' ' + 'Yaad rahe: "JEETA" ke liye yahan aik shart zyada hai: munafa sirf aik saal par na tika ho (taqreeban har saal musbat). Baaqi tareeqon ki table sirf dekhne ke liye hai — us me se ab kuch chunna phir wohi ghalti hogi. Purana data jeetna bhi aage ke munafe ki guarantee nahi.',
       baseline: null, top: [], candidates, all: rows.slice().sort((a, b) => (b.test.avgR == null ? -9 : b.test.avgR) - (a.test.avgR == null ? -9 : a.test.avgR)), geometryOnly: [], verdict, finishedAt: Date.now(),
     };
   }
 
   function start(tf, pairIds, mode) {
     if (job.status === 'running') return { ok: false, message: 'Lab pehle se chal raha hai.' };
-    if (mode === 'confirm') {
-      job = { status: 'running', startedAt: Date.now(), tf: '1H', pairs: CONFIRM_PAIRS, progress: { done: 0, total: CONFIRM_PAIRS.length } };
-      runConfirm().then(result => { job = { status: 'done', startedAt: job.startedAt, tf: '1H', pairs: CONFIRM_PAIRS, result }; })
-        .catch(e => { job = { status: 'error', startedAt: job.startedAt, tf: '1H', pairs: CONFIRM_PAIRS, message: String(e && e.message || e) }; });
+    if (mode === 'confirm' || mode === 'confirm-gold') {
+      const setName = mode === 'confirm-gold' ? 'gold' : 'crypto', cp = CONFIRM_SETS[setName].pairs;
+      job = { status: 'running', startedAt: Date.now(), tf: '1H', pairs: cp, progress: { done: 0, total: cp.length } };
+      runConfirm(setName).then(result => { job = { status: 'done', startedAt: job.startedAt, tf: '1H', pairs: cp, result }; })
+        .catch(e => { job = { status: 'error', startedAt: job.startedAt, tf: '1H', pairs: cp, message: String(e && e.message || e) }; });
       return { ok: true };
     }
     if (mode === 'new') tf = '1H';

@@ -41,7 +41,7 @@
   }
 
   function renderConfirm(d) {
-    let h = '<h4>Do umeedwar (pehle se pakke kiye gaye)</h4>';
+    let h = '<h4>' + (d.candidates.length === 1 ? 'Umeedwar (pehle se pakka kiya gaya)' : 'Do umeedwar (pehle se pakke kiye gaye)') + '</h4>';
     h += d.candidates.length ? TBL + C_HEAD + d.candidates.map(r => cRow(r, true)).join('') + '</table></div>' : '<p>Umeedwar nahi mile.</p>';
     h += '<p class="fine">"JEETA" tabhi: 80+ trades, ausat munafa musbat, PF 1.15+, t 2.5+, 60%+ pairs munafe me, aur taqreeban har saal musbat (munafa sirf aik saal par na tika ho). Ausat = har trade ka ausat munafa R me. PF 1.00 = barabar.</p>';
     h += d.candidates.map(yearTable).join('');
@@ -114,7 +114,8 @@
   window.labModeChanged = function () {
     const mode = el('labMode') ? el('labMode').value : 'engine', tf = el('labTf'), grp = el('labGroup');
     if (tf) { if (mode !== 'engine') tf.value = '1H'; tf.disabled = mode !== 'engine'; }
-    if (grp) { if (mode === 'confirm') grp.value = 'crypto'; grp.disabled = mode === 'confirm'; }
+    const fixed = mode === 'confirm' || mode === 'confirm-gold';
+    if (grp) { if (mode === 'confirm') grp.value = 'crypto'; if (mode === 'confirm-gold') grp.value = 'gold'; grp.disabled = fixed; }
   };
 
   // History tab khulne par: admin ko Lab dikhayein aur pichla nateeja (agar ho) le aayein.
