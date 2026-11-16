@@ -10184,7 +10184,7 @@ function perfRHtml(p) {
   const r = p && p.rStats;
   if (!r) return '';
   const cls = r.netR > 0 ? 'up' : r.netR < 0 ? 'down' : 'wait';
-  return `<p>Asal munafa (R): <b class="${cls}">${r.netR > 0 ? '+' : ''}${r.netR}R</b> · Har trade ausat: <b class="${cls}">${r.avgR > 0 ? '+' : ''}${r.avgR}R</b> · Profit factor: <b>${r.profitFactor == null ? '—' : r.profitFactor}</b>${r.breakevenWinRate == null ? '' : ' · Barabar rehne ke liye win rate chahiye: <b>' + r.breakevenWinRate + '%</b>'}</p><p class="fine">1R = entry se SL tak ka risk. Win TP1 par gina jata hai, jo SL se qareeb hai, is liye acha win rate bhi munafa ki guarantee nahi. Profit factor 1.00 = barabar. Spread aur commission is me shamil nahi.</p>`;
+  return `<p dir="ltr">Asal munafa (R): <b class="${cls}">${r.netR > 0 ? '+' : ''}${r.netR}R</b> · Har trade ausat: <b class="${cls}">${r.avgR > 0 ? '+' : ''}${r.avgR}R</b> · Profit factor: <b>${r.profitFactor == null ? '—' : r.profitFactor}</b>${r.breakevenWinRate == null ? '' : ' · Barabar rehne ke liye win rate chahiye: <b>' + r.breakevenWinRate + '%</b>'}</p><p class="fine" dir="ltr">1R = entry se SL tak ka risk. Win TP1 par gina jata hai, jo SL se qareeb hai, is liye acha win rate bhi munafa ki guarantee nahi. Profit factor 1.00 = barabar. Spread aur commission is me shamil nahi.</p>`;
 }
 async function loadPerf() {
   const el = document.getElementById('perfBody'); if (!el) return;
