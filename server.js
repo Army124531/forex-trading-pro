@@ -2560,8 +2560,9 @@ app.post('/api/terminal/backtest/lab', requireAdmin, (req, res) => {
   const pairs = LAB_GROUPS[b.group] || LAB_GROUPS.forexgold;
   // 'new' = naye tareeqe (hamesha 1H); 'confirm' = tasdeeqi imtihan (crypto, Binance ka purana an-dekha data, pairs fixed)
   // 'confirm-gold' = wohi tasdeeqi imtihan Gold ke liye (PAX Gold ka purana data, aik umeedwar)
-  const mode = ['new', 'confirm', 'confirm-gold'].includes(b.mode) ? b.mode : 'engine';
-  const r = strategyLab.start(tf, pairs, mode);
+  // 'holdout' = BTC filter imtihan (v11). Aik dafa; dobara sirf force:true se.
+  const mode = ['new', 'confirm', 'confirm-gold', 'holdout'].includes(b.mode) ? b.mode : 'engine';
+  const r = strategyLab.start(tf, pairs, mode, b.force === true);
   if (!r.ok) return res.status(409).json({ error: 'lab_busy', message: r.message });
   logEvent('Strategy Lab shuru: ' + (mode === 'confirm' ? 'tasdeeqi imtihan (crypto 2021-24)' : mode === 'confirm-gold' ? 'tasdeeqi imtihan (Gold 2021-24)' : (mode === 'new' ? 'naye tareeqe' : tf) + ' / ' + (b.group || 'forexgold')));
   res.json({ ok: true });

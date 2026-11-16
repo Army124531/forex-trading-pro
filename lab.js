@@ -669,8 +669,193 @@ function createLab(deps) {
     return shadowCache.inflight;
   }
 
-  function start(tf, pairIds, mode) {
+  // ================= v11: HOLDOUT — BTC filter tests (rules fixed on 2026-11-16) =================
+  // Sheet "BTC filters test plan" ke rules yahan code mein hain. Inhein nateeja dekh kar na badlein.
+  // Dev period (2021-11-16 .. 2024-11-16): sirf walk-forward. Holdout (2024-11-17 .. 2026-11-16): aik dafa ka imtihan.
+  const HO = {
+    id: 'brk-20-3-t', N: 20, rr: 3, trend: true, maxHold: 240, pairs: CONFIRM_PAIRS,
+    devFrom: Date.UTC(2021, 10, 16), devTo: Date.UTC(2024, 10, 17),
+    hoFrom: Date.UTC(2024, 10, 17), hoTo: Date.UTC(2026, 10, 17),
+    warmupDays: 400, volWindow: 2190, volMinSamples: 1000, volMin: 20, volMax: 90, adxMin: 25,
+    thr: { minTrades: 80, minPf: 1.15, minT: 2.5, maxDdMult: 1.25, minTradeShare: 0.4, minPairShare: 0.6, minPf25: 1.0 },
+  };
+  const DAY = 86400000;
+  const HO_YEARS = {
+    dev: [[Date.UTC(2021, 10, 16), Date.UTC(2022, 10, 16)], [Date.UTC(2022, 10, 16), Date.UTC(2023, 10, 16)], [Date.UTC(2023, 10, 16), Date.UTC(2024, 10, 17)]],
+    ho: [[HO.hoFrom, Date.UTC(2025, 10, 17)], [Date.UTC(2025, 10, 17), HO.hoTo]],
+  };
+  let holdoutState = { ran: false, running: false };
+
+  // Har variant ek hi filter lagata hai. V0 = baseline (koi filter nahi).
+  const HO_VARIANTS = [
+    { id: 'V0', name: 'Baseline', keep: () => true },
+    { id: 'V1', name: 'Volatility (ATR percentile 20-90)', keep: (ctx) => { const p = ctx.volPct(ctx.k); return p != null && p >= HO.volMin && p <= HO.volMax; } },
+    { id: 'V2', name: 'ADX(14) 4H >= 25', keep: (ctx) => ctx.adx4[ctx.k] != null && ctx.adx4[ctx.k] >= HO.adxMin },
+    { id: 'V3', name: 'Daily EMA200 alignment', keep: (ctx) => ctx.dailyOk() },
+  ];
+
+  // Pichle mukammal din ka percentile: sirf k se pehle ki values (aage ka data nahi).
+  function volPctFn(vr) {
+    return (k) => {
+      if (k - HO.volWindow < 0 || vr[k] == null) return null;
+      const past = [];
+      for (let j = k - HO.volWindow; j < k; j++) if (vr[j] != null) past.push(vr[j]);
+      if (past.length < HO.volMinSamples) return null;
+      let below = 0;
+      for (const v of past) if (v < vr[k]) below++;
+      return below / past.length * 100;
+    };
+  }
+  // 1H candles se daily candles (UTC din). ema200 ki value sirf mukammal din par use hoti hai.
+  function dailyOf(candles) {
+    const D = [], idx = new Map();
+    let cur = null;
+    for (const c of candles) {
+      const b = Math.floor(c.t / DAY) * DAY;
+      if (b !== cur) { D.push({ t: b, c: c.c }); idx.set(b, D.length - 1); cur = b; }
+      else D[D.length - 1].c = c.c;
+    }
+    return { D, idx, ema200: emaArr(D.map(x => x.c), 200) };
+  }
+  // Signal ke waqt aakhri MUKAMMAL din ka close, EMA200 ke mukable mein.
+  function dailyOkFn(dly, dir, sigT) {
+    return () => {
+      const di = dly.idx.get(Math.floor(sigT / DAY) * DAY - DAY);
+      if (di == null || dly.ema200[di] == null) return false;
+      const c = dly.D[di].c, e = dly.ema200[di];
+      return dir === 'BUY' ? c > e : c < e;
+    };
+  }
+  // Simulate: har trade ka R do dafa — 1x kharcha aur 2.5x kharcha. Sirf wo trades jin ka poora window data mein hai.
+  function walkR(pairId, candles, sigs) {
+    const n = candles.length, out = [];
+    let free = 0;
+    for (const s of sigs) {
+      const i = s.i;
+      if (i < free || i + 1 >= n) continue;
+      if (i + HO.maxHold > n - 1) continue;
+      const isBuy = s.dir === 'BUY', risk = s.slDist, reward = s.tpDist, entry = candles[i + 1].o;
+      if (!(risk > 0) || !(reward > 0) || !(entry > 0)) continue;
+      const sl = isBuy ? entry - risk : entry + risk, tp = isBuy ? entry + reward : entry - reward;
+      const last = i + HO.maxHold;
+      let g = null, exitIdx = last;
+      for (let j = i + 1; j <= last; j++) {
+        const c = candles[j];
+        if (j > i + 1 && (isBuy ? c.o <= sl : c.o >= sl)) { g = (isBuy ? c.o - entry : entry - c.o) / risk; exitIdx = j; break; }
+        if (isBuy ? c.l <= sl : c.h >= sl) { g = -1; exitIdx = j; break; }
+        if (isBuy ? c.h >= tp : c.l <= tp) { g = reward / risk; exitIdx = j; break; }
+      }
+      if (g == null) g = (isBuy ? candles[last].c - entry : entry - candles[last].c) / risk;
+      const cost1 = labCost(pairId, entry) / risk;
+      out.push({ pair: pairId, dir: s.dir, t: candles[i + 1].t, r1: g - cost1, r25: g - 2.5 * cost1 });
+      free = exitIdx + 1;
+    }
+    return out;
+  }
+  const inRange = (t, [a, b]) => t >= a && t < b;
+
+  // Pure hisaab: byPair = { BTCUSD: [1H candles], ... }. Network yahan nahi.
+  function holdoutCompute(byPair) {
+    const trades = {};
+    for (const v of HO_VARIANTS) trades[v.id] = [];
+    const pairsWithData = Object.keys(byPair);
+    for (const pairId of pairsWithData) {
+      const candles = byPair[pairId];
+      const f = features(candles);
+      const H = f.H;
+      const vr = H.map((h, k) => (f.hAtr[k] != null && h.c > 0 ? f.hAtr[k] / h.c : null));
+      const volPct = volPctFn(vr);
+      const adx4 = adxSeries(H, 14);
+      const dly = dailyOf(candles);
+      const sigsAll = sigBreakout(candles, f, HO.N, HO.rr, HO.trend)
+        .filter(s => candles[s.i + 1] && inRange(candles[s.i + 1].t, [HO.devFrom, HO.hoTo]));
+      for (const v of HO_VARIANTS) {
+        const sigs = sigsAll.filter(s => {
+          const k = f.hkOf[s.i];
+          const sigT = candles[s.i].t + 3600000;
+          const ctx = { k, volPct, adx4, dailyOk: dailyOkFn(dly, s.dir, sigT) };
+          return v.keep(ctx);
+        });
+        for (const t of walkR(pairId, candles, sigs)) trades[v.id].push(t);
+      }
+    }
+    const summarize = (list) => list.slice().sort((a, b) => a.t - b.t);
+    const periodOf = (t) => inRange(t, [HO.hoFrom, HO.hoTo]) ? 'ho' : inRange(t, [HO.devFrom, HO.devTo]) ? 'dev' : null;
+    const perVariant = {};
+    for (const v of HO_VARIANTS) {
+      const all = summarize(trades[v.id]);
+      const dev = all.filter(x => periodOf(x.t) === 'dev');
+      const ho = all.filter(x => periodOf(x.t) === 'ho');
+      const yearAvg = (list, ranges) => ranges.map(r => { const xs = list.filter(x => inRange(x.t, r)).map(x => x.r1); return xs.length ? +(xs.reduce((a, b) => a + b, 0) / xs.length).toFixed(3) : null; });
+      const hoStats = stats(ho.map(x => x.r1));
+      const st25 = stats(ho.map(x => x.r25));
+      const pairsPositive = pairsWithData.filter(p => ho.some(x => x.pair === p) && ho.filter(x => x.pair === p).reduce((s, x) => s + x.r1, 0) > 0).length;
+      perVariant[v.id] = {
+        id: v.id, name: v.name,
+        dev: { n: dev.length, wf: yearAvg(dev, HO_YEARS.dev), positiveYears: yearAvg(dev, HO_YEARS.dev).filter(x => x != null && x > 0).length },
+        ho: {
+          n: hoStats.n, winRate: hoStats.winRate, avgR: hoStats.avgR, pf: hoStats.pf, tStat: hoStats.tStat, maxDdR: hoStats.maxDdR,
+          avgR25: st25.avgR, pf25: st25.pf, pairsPositiveShare: pairsWithData.length ? +(pairsPositive / pairsWithData.length).toFixed(3) : 0,
+          year: yearAvg(ho, HO_YEARS.ho),
+        },
+      };
+    }
+    // Faisla: 12 checks, sheet ke formulas jaisa. Baseline (V0) ke mukable.
+    const base = perVariant.V0.ho;
+    for (const v of HO_VARIANTS) {
+      const p = perVariant[v.id];
+      if (v.id === 'V0') { p.verdict = 'Baseline (reference)'; p.checks = null; continue; }
+      const h = p.ho, T = HO.thr;
+      const checks = {
+        trades: h.n >= T.minTrades,
+        avgRPositive: h.avgR != null && h.avgR > 0,
+        avgRNotBelowBaseline: h.avgR != null && base.avgR != null && h.avgR >= base.avgR,
+        pf: h.pf != null && h.pf >= T.minPf,
+        t: h.tStat != null && h.tStat >= T.minT,
+        maxDd: h.maxDdR <= T.maxDdMult * base.maxDdR,
+        tradeShare: base.n > 0 && h.n / base.n >= T.minTradeShare,
+        year1: h.year[0] != null && h.year[0] > 0,
+        year2: h.year[1] != null && h.year[1] > 0,
+        pairShare: h.pairsPositiveShare >= T.minPairShare,
+        pf25: h.pf25 != null && h.pf25 >= T.minPf25,
+        avgR25Positive: h.avgR25 != null && h.avgR25 > 0,
+      };
+      const passed = Object.values(checks).filter(Boolean).length;
+      p.checks = { passed, of: 12, detail: checks };
+      p.verdict = passed === 12 ? 'PASS' : passed === 11 ? 'PARTIAL' : 'FAIL';
+    }
+    return {
+      rules: { ...HO.thr, baselineId: HO.id, devPeriod: 'a 2021-11-16 .. 2024-11-16', holdoutPeriod: 'b 2024-11-17 .. 2026-11-16', volWindowBars4H: HO.volWindow, adxMin: HO.adxMin, costs: '1x = labCost; 2.5x = 2.5 * labCost' },
+      variants: HO_VARIANTS.map(v => perVariant[v.id]),
+      note: 'Ye ek dafa ka imtihan hai. Holdout dobara chalane se pehle faisla lein; dobara chalana naya imtihan shumar hoga.',
+    };
+  }
+
+  // Binance se data laana aur holdoutCompute chalana. Ek dafa, phir guard lagta hai.
+  async function runHoldout() {
+    const from = HO.devFrom - HO.warmupDays * DAY;
+    const byPair = {}, dataInfo = [];
+    for (const pairId of HO.pairs) {
+      const raw = await klines1h(pairId.replace(/USD$/, 'USDT'), from, HO.hoTo);
+      if (raw.length < 20000) { dataInfo.push({ pair: pairId, bars: raw.length, used: false }); continue; }
+      byPair[pairId] = raw;
+      dataInfo.push({ pair: pairId, bars: raw.length, used: true, from: raw[0].t, to: raw[raw.length - 1].t });
+      await tick();
+    }
+    const result = holdoutCompute(byPair);
+    return { ...result, data: dataInfo, runAt: Date.now() };
+  }
+
+  function start(tf, pairIds, mode, force) {
     if (job.status === 'running') return { ok: false, message: 'Lab pehle se chal raha hai.' };
+    if (mode === 'holdout') {
+      if (holdoutState.ran && !force) return { ok: false, message: 'Holdout pehle chal chuka hai. Dobara chalana naya imtihan shumar hoga; force bhejein to hi chalega.' };
+      holdoutState = { ran: true, running: true };
+      job = { status: 'running', startedAt: Date.now(), tf: '1H', pairs: HO.pairs, progress: { done: 0, total: HO.pairs.length } };
+      runHoldout().then(result => { holdoutState.running = false; job = { status: 'done', startedAt: job.startedAt, tf: '1H', pairs: HO.pairs, result, mode: 'holdout' }; })
+        .catch(e => { holdoutState.running = false; job = { status: 'error', startedAt: job.startedAt, tf: '1H', pairs: HO.pairs, message: String(e && e.message || e) }; });
+      return { ok: true };
+    }
     if (mode === 'confirm' || mode === 'confirm-gold') {
       const setName = mode === 'confirm-gold' ? 'gold' : 'crypto', cp = CONFIRM_SETS[setName].pairs;
       job = { status: 'running', startedAt: Date.now(), tf: '1H', pairs: cp, progress: { done: 0, total: cp.length } };
@@ -688,7 +873,7 @@ function createLab(deps) {
     return { ok: true };
   }
   function status() { return job; }
-  return { start, status, shadow, _computeShadow: computeShadow, _walkDetailed: walkDetailed, _sigBreakout: sigBreakout, _run: run, _runNew: runNew, _runConfirm: runConfirm, _prepare: prepare, _simulate: simulate, _features: features, _strategies: NEW_STRATEGIES, _walk: walk };
+  return { start, status, shadow, _holdoutCompute: holdoutCompute, _HO: HO, _computeShadow: computeShadow, _walkDetailed: walkDetailed, _sigBreakout: sigBreakout, _run: run, _runNew: runNew, _runConfirm: runConfirm, _prepare: prepare, _simulate: simulate, _features: features, _strategies: NEW_STRATEGIES, _walk: walk };
 }
 
 module.exports = { createLab, stats, adxSeries, labCost, GEOMETRIES, GATES, FILTER_SETS };
