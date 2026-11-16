@@ -187,6 +187,13 @@
     h += d.notes.map(n => '<p class="fine">' + esc(n) + '</p>').join('');
     el('shadowBody').innerHTML = h;
   }
+  // v11.1: Gold khamosh mode (London breakout). Wohi panel, alag endpoint.
+  window.labGoldShadow = async function () {
+    if (!isAdmin() || !el('shadowBody')) return;
+    el('shadowBody').innerHTML = '<p>Gold ka data aa raha hai… thori der lag sakti hai.</p>';
+    try { renderShadow(await api('/api/terminal/backtest/gold-shadow')); }
+    catch (e) { el('shadowBody').innerHTML = '<p class="sell">' + esc(e.message) + '</p>'; }
+  };
   window.labShadow = async function (fresh) {
     if (!isAdmin() || !el('shadowBody')) return;
     const btn = el('shadowBtn'); if (btn) btn.disabled = true;

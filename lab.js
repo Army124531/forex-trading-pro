@@ -660,6 +660,72 @@ function createLab(deps) {
       ],
     };
   }
+  // ================= v11.1: GOLD khamosh mode — London breakout (rules 2026-11-16) =================
+  // Asian range: 00:00..06:59 UTC ka high/low. Entry: 07:00..09:59 UTC ke beech 1H close range ke bahar,
+  // sirf daily trend ki direction mein (pichla mukammal daily close vs daily EMA200). Din mein aik trade.
+  // SL = range ka doosra kinara (signal close se measure, entry agli candle ke open par). TP = 2R. Max hold 12 ghante.
+  const GOLD = { id: 'london-brk', pair: 'XAUUSD', binance: 'PAXGUSDT', startAt: Date.UTC(2026, 10, 17), warmupDays: 400, maxHold: 12, rr: 2 };
+  function goldSignals(candles, dly) {
+    const ranges = new Map();
+    for (const c of candles) {
+      if (new Date(c.t).getUTCHours() >= 7) continue;
+      const d = Math.floor(c.t / DAY) * DAY;
+      const r = ranges.get(d);
+      if (!r) ranges.set(d, { hi: c.h, lo: c.l }); else { if (c.h > r.hi) r.hi = c.h; if (c.l < r.lo) r.lo = c.l; }
+    }
+    const done = new Set(), sigs = [];
+    for (let i = 0; i < candles.length - 1; i++) {
+      const c = candles[i], hour = new Date(c.t).getUTCHours();
+      if (hour < 7 || hour >= 10) continue;
+      const d = Math.floor(c.t / DAY) * DAY;
+      if (done.has(d)) continue;
+      const r = ranges.get(d);
+      if (!r || !(r.hi > r.lo)) continue;
+      const di = dly.idx.get(d - DAY);
+      if (di == null || dly.ema200[di] == null) continue;
+      const up = dly.D[di].c > dly.ema200[di];
+      let dir = null;
+      if (c.c > r.hi && up) dir = 'BUY';
+      else if (c.c < r.lo && !up) dir = 'SELL';
+      if (!dir) continue;
+      const slDist = dir === 'BUY' ? c.c - r.lo : r.hi - c.c;
+      if (!(slDist > 0)) continue;
+      done.add(d);
+      sigs.push({ i, dir, slDist, tpDist: GOLD.rr * slDist });
+    }
+    return sigs;
+  }
+  // Pure hisaab: candles (1H, closed) par. startAt test ke liye badal sakte hain; asal run mein GOLD.startAt.
+  function goldShadowCompute(candles, nowMs, startAt) {
+    const from = startAt || GOLD.startAt, now = nowMs || Date.now();
+    const dly = dailyOf(candles);
+    const sigs = goldSignals(candles, dly).filter(s => candles[s.i + 1] && candles[s.i + 1].t >= from);
+    const trades = walkR(GOLD.binance, candles, sigs, GOLD.maxHold);
+    const st = stats(trades.map(t => t.r1)), st25 = stats(trades.map(t => t.r25));
+    const days = Math.max(0, (now - from) / DAY);
+    let stage, advice;
+    if (st.n >= 30 && st.netR <= -12) { stage = 'stop'; advice = 'RUK JAYEIN: ' + st.n + ' band trades me ' + st.netR + 'R. Gold ka ye tareeqa live na lagayein.'; }
+    else if (st.n < 40 || days < 42) { stage = 'wait'; advice = 'Intezaar: faisle ke liye kam se kam 40 band trades aur 42 din chahiye (abhi ' + st.n + ' trades, ' + Math.floor(days) + ' din).'; }
+    else if (st.netR > 0 && st.pf != null && st.pf >= 1) { stage = 'ok'; advice = 'Gold khamosh mode musbat hai (' + st.n + ' trades, +' + st.netR + 'R, PF ' + st.pf + '). Malik faisla karein ke live lagana hai ya nahi.'; }
+    else { stage = 'weak'; advice = st.n + ' trades ke baad nateeja musbat nahi (' + st.netR + 'R). Gold ko live na lagayein.'; }
+    return {
+      strategy: 'Gold · London breakout 1H · Asian range · daily trend ke saath · 2R · max 12 ghante', market: 'Gold (XAU/USD) via PAXGUSDT 1H', startAt: from, asOf: now, days: +days.toFixed(1),
+      stats: st, stats25: st25, open: 0, stage, advice, trades: trades.slice(0, 200), pairs: [{ pair: 'XAUUSD', bars: candles.length, used: true }],
+      reference: 'Gold par koi purana holdout nahi. Ye sirf aage ke data par hai.',
+      notes: [
+        'Ye signals kisi buyer ko nahi jate: na Telegram, na push, na EA, na History.',
+        'Kharcha $0.30 per round trip (1x). 2.5x alag se dikhaya gaya hai.',
+        'Abhi khule trades shamil nahi hain; sirf band trades ka hisaab hai.',
+      ],
+    };
+  }
+  async function computeGoldShadow(nowMs) {
+    const now = nowMs || Date.now();
+    const raw = await klines1h(GOLD.binance, GOLD.startAt - GOLD.warmupDays * DAY, now);
+    const candles = raw.filter(c => c.t + 3600000 <= now);
+    if (candles.length < 3000) return { stage: 'nodata', advice: 'Binance se gold ka data nahi mila — thori der baad dobara dekhein.', stats: stats([]), stats25: stats([]), open: 0, trades: [], pairs: [], strategy: '', market: '', startAt: GOLD.startAt, asOf: now, days: 0, reference: '', notes: [] };
+    return goldShadowCompute(candles, now);
+  }
   async function shadow(force) {
     const now = Date.now();
     if (shadowCache.inflight) return shadowCache.inflight;
@@ -727,17 +793,18 @@ function createLab(deps) {
     };
   }
   // Simulate: har trade ka R do dafa — 1x kharcha aur 2.5x kharcha. Sirf wo trades jin ka poora window data mein hai.
-  function walkR(pairId, candles, sigs) {
+  function walkR(pairId, candles, sigs, maxHold) {
+    const hold = maxHold || HO.maxHold;
     const n = candles.length, out = [];
     let free = 0;
     for (const s of sigs) {
       const i = s.i;
       if (i < free || i + 1 >= n) continue;
-      if (i + HO.maxHold > n - 1) continue;
+      if (i + hold > n - 1) continue;
       const isBuy = s.dir === 'BUY', risk = s.slDist, reward = s.tpDist, entry = candles[i + 1].o;
       if (!(risk > 0) || !(reward > 0) || !(entry > 0)) continue;
       const sl = isBuy ? entry - risk : entry + risk, tp = isBuy ? entry + reward : entry - reward;
-      const last = i + HO.maxHold;
+      const last = i + hold;
       let g = null, exitIdx = last;
       for (let j = i + 1; j <= last; j++) {
         const c = candles[j];
@@ -747,7 +814,8 @@ function createLab(deps) {
       }
       if (g == null) g = (isBuy ? candles[last].c - entry : entry - candles[last].c) / risk;
       const cost1 = labCost(pairId, entry) / risk;
-      out.push({ pair: pairId, dir: s.dir, t: candles[i + 1].t, r1: g - cost1, r25: g - 2.5 * cost1 });
+      const r1 = g - cost1;
+      out.push({ pair: pairId, dir: s.dir, t: candles[i + 1].t, entry, entryAt: candles[i + 1].t, exitAt: candles[exitIdx].t + 3600000, status: r1 > 0 ? 'Win' : 'Loss', r: +r1.toFixed(3), r1, r25: g - 2.5 * cost1 });
       free = exitIdx + 1;
     }
     return out;
@@ -876,7 +944,7 @@ function createLab(deps) {
     return { ok: true };
   }
   function status() { return job; }
-  return { start, status, shadow, _holdoutCompute: holdoutCompute, _HO: HO, _computeShadow: computeShadow, _walkDetailed: walkDetailed, _sigBreakout: sigBreakout, _run: run, _runNew: runNew, _runConfirm: runConfirm, _prepare: prepare, _simulate: simulate, _features: features, _strategies: NEW_STRATEGIES, _walk: walk };
+  return { start, status, shadow, goldShadow: computeGoldShadow, _goldShadowCompute: goldShadowCompute, _goldSignals: goldSignals, _holdoutCompute: holdoutCompute, _HO: HO, _computeShadow: computeShadow, _walkDetailed: walkDetailed, _sigBreakout: sigBreakout, _run: run, _runNew: runNew, _runConfirm: runConfirm, _prepare: prepare, _simulate: simulate, _features: features, _strategies: NEW_STRATEGIES, _walk: walk };
 }
 
 module.exports = { createLab, stats, adxSeries, labCost, GEOMETRIES, GATES, FILTER_SETS };
