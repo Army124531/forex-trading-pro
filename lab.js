@@ -834,14 +834,16 @@ function createLab(deps) {
   // Binance se data laana aur holdoutCompute chalana. Ek dafa, phir guard lagta hai.
   async function runHoldout() {
     const from = HO.devFrom - HO.warmupDays * DAY;
-    const byPair = {}, dataInfo = [];
+    const byPair = {}, dataInfo = [], missing = [];
     for (const pairId of HO.pairs) {
       const raw = await klines1h(pairId.replace(/USD$/, 'USDT'), from, HO.hoTo);
-      if (raw.length < 20000) { dataInfo.push({ pair: pairId, bars: raw.length, used: false }); continue; }
+      if (raw.length < 20000) { missing.push(pairId); dataInfo.push({ pair: pairId, bars: raw.length, used: false }); continue; }
       byPair[pairId] = raw;
       dataInfo.push({ pair: pairId, bars: raw.length, used: true, from: raw[0].t, to: raw[raw.length - 1].t });
       await tick();
     }
+    // Adhoora data par imtihan nahi hota: pairs kam hon to faisla badal jata. Ruk jayein, aur ye run shumar nahi hoga.
+    if (missing.length) throw new Error('Data nahi mila: ' + missing.join(', ') + '. Holdout nahi chala; ye imtihan shumar nahi hua.');
     const result = holdoutCompute(byPair);
     return { ...result, data: dataInfo, runAt: Date.now() };
   }
@@ -850,10 +852,11 @@ function createLab(deps) {
     if (job.status === 'running') return { ok: false, message: 'Lab pehle se chal raha hai.' };
     if (mode === 'holdout') {
       if (holdoutState.ran && !force) return { ok: false, message: 'Holdout pehle chal chuka hai. Dobara chalana naya imtihan shumar hoga; force bhejein to hi chalega.' };
-      holdoutState = { ran: true, running: true };
+      // "ran" sirf kamyab run par true hota hai: fail hone wali koshish imtihan shumar nahi hoti.
+      holdoutState = { ran: holdoutState.ran, running: true };
       job = { status: 'running', startedAt: Date.now(), tf: '1H', pairs: HO.pairs, progress: { done: 0, total: HO.pairs.length } };
-      runHoldout().then(result => { holdoutState.running = false; job = { status: 'done', startedAt: job.startedAt, tf: '1H', pairs: HO.pairs, result, mode: 'holdout' }; })
-        .catch(e => { holdoutState.running = false; job = { status: 'error', startedAt: job.startedAt, tf: '1H', pairs: HO.pairs, message: String(e && e.message || e) }; });
+      runHoldout().then(result => { holdoutState = { ran: true, running: false }; job = { status: 'done', startedAt: job.startedAt, tf: '1H', pairs: HO.pairs, result, mode: 'holdout' }; })
+        .catch(e => { holdoutState = { ran: false, running: false }; job = { status: 'error', startedAt: job.startedAt, tf: '1H', pairs: HO.pairs, message: String(e && e.message || e) }; });
       return { ok: true };
     }
     if (mode === 'confirm' || mode === 'confirm-gold') {
