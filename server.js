@@ -2570,6 +2570,11 @@ app.post('/api/terminal/backtest/lab', requireAdmin, (req, res) => {
 app.get('/api/terminal/backtest/lab', requireAdmin, (req, res) => res.json(strategyLab.status()));
 // v10.6: Khamosh mode — crypto Breakout ko 2026-11-17 se aage ke asal data par chup-chaap dekhna.
 // Sirf admin. Kuch save nahi hota, koi alert nahi jata, live signal engine se koi talluq nahi.
+// v11.1: Gold khamosh mode (London breakout). Admin only, buyers ko kuch nahi jata.
+app.get('/api/terminal/backtest/gold-shadow', requireAdmin, async (req, res) => {
+  try { res.json(await strategyLab.goldShadow()); }
+  catch (e) { res.status(502).json({ error: 'gold_shadow_failed', message: 'Gold khamosh mode ka data nahi aa saka. Thori der baad dobara dekhein.' }); }
+});
 app.get('/api/terminal/backtest/shadow', requireAdmin, async (req, res) => {
   try { res.json(await strategyLab.shadow(req.query.fresh === '1')); }
   catch (e) { res.status(502).json({ error: 'shadow_failed', message: 'Khamosh mode ka data nahi aa saka. Thori der baad dobara dekhein.' }); }
