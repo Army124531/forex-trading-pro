@@ -39,6 +39,10 @@
       h += '<h4>Sirf SL/TP badalne ka asar (baaki sab aaj jaisa)</h4><div class="table-wrap"><table>' + GROUP_HEAD + HEAD + d.geometryOnly.map(r => row(r, false)).join('') + '</table></div>';
       h += '<p class="fine">Agar yahan sab versions ka ausat taqreeban barabar (ya manfi) ho, to matlab SL/TP badalne se win rate badalta hai, munafa nahi.</p>';
     }
+    if (d.all && d.all.length) {
+      h += '<h4>Sab naye tareeqe (imtihan wale hisse ke ausat ke hisaab se)</h4><div class="table-wrap"><table>' + GROUP_HEAD + HEAD + d.all.map(r => row(r, false)).join('') + '</table></div>';
+      h += '<p class="fine">Ye table sirf dekhne ke liye hai. Faisla sirf upar wali 5 lines se hota hai, kyunke wo imtihan dekhe baghair chuni gayi thin.</p>';
+    }
     h += '<h4>Data</h4><p class="fine">' + used.map(p => esc(p.pair) + ': ' + p.bars + ' candles (' + day(p.from) + ' se ' + day(p.to) + ', ' + esc(p.source || '') + ')').join(' · ') + '</p>';
     if (skipped.length) h += '<p class="fine">Chhore gaye: ' + skipped.map(p => esc(p.pair) + ' (' + esc(p.note || '') + ')').join(', ') + '</p>';
     h += '<p class="fine">' + esc(d.costNote) + '</p><p class="fine">' + esc(d.limits) + '</p>';
@@ -71,10 +75,18 @@
   window.labRun = async function () {
     if (!isAdmin()) return;
     try {
-      await api('/api/terminal/backtest/lab', { method: 'POST', body: JSON.stringify({ tf: el('labTf').value, group: el('labGroup').value }) });
+      const mode = el('labMode') ? el('labMode').value : 'engine';
+      await api('/api/terminal/backtest/lab', { method: 'POST', body: JSON.stringify({ mode: mode, tf: el('labTf').value, group: el('labGroup').value }) });
       el('labBody').innerHTML = '<p>Lab shuru ho gaya…</p>';
     } catch (e) { el('labBody').innerHTML = '<p>' + esc(e.message) + '</p>'; }
     timer = setTimeout(poll, 1500);
+  };
+  // Naye tareeqe hamesha 1H (~2 saal) par chalte hain — timeframe ka dabba us waqt band.
+  window.labModeChanged = function () {
+    const isNew = el('labMode') && el('labMode').value === 'new', tf = el('labTf');
+    if (!tf) return;
+    if (isNew) tf.value = '1H';
+    tf.disabled = !!isNew;
   };
 
   // History tab khulne par: admin ko Lab dikhayein aur pichla nateeja (agar ho) le aayein.

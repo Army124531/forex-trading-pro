@@ -239,18 +239,206 @@ function createLab(deps) {
     };
   }
 
-  function start(tf, pairIds) {
+  // ================= v10.2: NAYE TAREEQE (maujooda engine se bilkul alag) =================
+  // Maujooda 6-gate score Gold/Forex par nahi jeeta, is liye yahan 4 mashhoor, saada tareeqe
+  // usi sakht imtihan se guzarte hain. Jaan boojh kar sirf 20 versions — jitne kam versions,
+  // utna kam ittefaq. Sab 1H candles par (~2 saal); bare timeframe ke liye 4H candles 1H se bante hain.
+  // Har signal: { i (signal wali 1H candle), dir, slDist, tpDist } — entry agli candle ke open par.
+  function walk(pairId, candles, sigs, maxHold) {
+    const n = candles.length, splitIdx = Math.floor(n * SPLIT), train = [], test = [];
+    let free = 0;
+    for (const s of sigs) {
+      const i = s.i;
+      if (i < free || i + 1 >= n) continue; // aik pair par aik waqt me aik trade
+      const isBuy = s.dir === 'BUY', risk = s.slDist, reward = s.tpDist, entry = candles[i + 1].o;
+      if (!(risk > 0) || !(reward > 0) || !(entry > 0)) continue;
+      const sl = isBuy ? entry - risk : entry + risk, tp = isBuy ? entry + reward : entry - reward;
+      const last = Math.min(n - 1, i + maxHold);
+      let r = null, exitIdx = last;
+      for (let j = i + 1; j <= last; j++) {
+        const c = candles[j];
+        if (j > i + 1 && (isBuy ? c.o <= sl : c.o >= sl)) { r = (isBuy ? c.o - entry : entry - c.o) / risk; exitIdx = j; break; }
+        if (isBuy ? c.l <= sl : c.h >= sl) { r = -1; exitIdx = j; break; }
+        if (isBuy ? c.h >= tp : c.l <= tp) { r = reward / risk; exitIdx = j; break; }
+      }
+      if (r == null) { const c = candles[exitIdx]; r = (isBuy ? c.c - entry : entry - c.c) / risk; }
+      r -= labCost(pairId, entry) / risk;
+      (i + 1 < splitIdx ? train : test).push({ t: candles[i + 1].t, r });
+      free = exitIdx + 1;
+    }
+    return { train, test };
+  }
+  function smaArr(v, p) { const o = new Array(v.length).fill(null); let s = 0; for (let i = 0; i < v.length; i++) { s += v[i]; if (i >= p) s -= v[i - p]; if (i >= p - 1) o[i] = s / p; } return o; }
+  function sdArr(v, p, m) { const o = new Array(v.length).fill(null); for (let i = p - 1; i < v.length; i++) { let s = 0; for (let j = i - p + 1; j <= i; j++) s += (v[j] - m[i]) * (v[j] - m[i]); o[i] = Math.sqrt(s / p); } return o; }
+  // 1H se 4H candles. endIdx[k] = us 4H candle ki aakhri 1H candle — signal sirf tab jab 4H candle MUKAMMAL ho.
+  function build4H(candles) {
+    const H = [], endIdx = [], hkOf = new Array(candles.length);
+    let cur = null;
+    for (let i = 0; i < candles.length; i++) {
+      const c = candles[i], b = Math.floor(c.t / (4 * 3600000));
+      if (b !== cur) { H.push({ t: c.t, o: c.o, h: c.h, l: c.l, c: c.c }); endIdx.push(i); cur = b; }
+      else { const x = H[H.length - 1]; if (c.h > x.h) x.h = c.h; if (c.l < x.l) x.l = c.l; x.c = c.c; endIdx[endIdx.length - 1] = i; }
+      hkOf[i] = H.length - 1;
+    }
+    return { H, endIdx, hkOf };
+  }
+  function features(candles) {
+    const closes = candles.map(c => c.c);
+    const f = { closes, e20: emaArr(closes, 20), rsi: rsiArr(closes, 14), atr: atrArr(candles, 14), adx: adxSeries(candles, 14) };
+    f.sma20 = smaArr(closes, 20); f.sd20 = sdArr(closes, 20, f.sma20);
+    const h = build4H(candles); f.H = h.H; f.endIdx = h.endIdx; f.hkOf = h.hkOf;
+    const hc = h.H.map(x => x.c);
+    f.hE50 = emaArr(hc, 50); f.hE200 = emaArr(hc, 200); f.hAtr = atrArr(h.H, 14);
+    // 1H candle i ke close par aakhri MUKAMMAL 4H candle ka index
+    f.doneHk = new Array(candles.length);
+    for (let i = 0; i < candles.length; i++) f.doneHk[i] = (i + 1 < candles.length && h.hkOf[i + 1] !== h.hkOf[i]) ? h.hkOf[i] : h.hkOf[i] - 1;
+    return f;
+  }
+  // 1) Breakout: 4H candle pichle N 4H candles ke high/low ke paar band ho.
+  function sigBreakout(candles, f, N, rr, trend) {
+    const out = [], H = f.H;
+    for (let k = Math.max(N + 2, 16); k < H.length - 1; k++) {
+      if (f.hAtr[k] == null) continue;
+      let hh = -Infinity, ll = Infinity;
+      for (let j = k - N; j < k; j++) { if (H[j].h > hh) hh = H[j].h; if (H[j].l < ll) ll = H[j].l; }
+      const prevIn = H[k - 1].c <= hh && H[k - 1].c >= ll; // taaza breakout — pichla candle range ke andar tha
+      if (!prevIn) continue;
+      let dir = H[k].c > hh ? 'BUY' : H[k].c < ll ? 'SELL' : null;
+      if (!dir) continue;
+      if (trend) { if (f.hE200[k] == null) continue; if (dir === 'BUY' ? H[k].c < f.hE200[k] : H[k].c > f.hE200[k]) continue; }
+      const slDist = 2 * f.hAtr[k];
+      out.push({ i: f.endIdx[k], dir, slDist, tpDist: rr * slDist });
+    }
+    return out;
+  }
+  // 2) Trend me pullback: 4H trend ek taraf, 1H price EMA20 ke us paar kuch candles reh kar wapas aaye.
+  function sigPullback(candles, f, rr, minBars) {
+    const out = [], c = f.closes, n = candles.length;
+    for (let i = 60; i < n - 1; i++) {
+      const k = f.doneHk[i];
+      if (k < 0 || f.hE50[k] == null || f.hE200[k] == null || f.e20[i] == null || f.atr[i] == null) continue;
+      const up = f.hE50[k] > f.hE200[k] && f.H[k].c > f.hE200[k], down = f.hE50[k] < f.hE200[k] && f.H[k].c < f.hE200[k];
+      if (!up && !down) continue;
+      if (up ? !(c[i] > f.e20[i]) : !(c[i] < f.e20[i])) continue;
+      let cnt = 0, ext = up ? candles[i].l : candles[i].h;
+      for (let j = i - 1; j >= 0 && cnt < 40; j--) {
+        if (f.e20[j] == null) break;
+        if (up ? c[j] < f.e20[j] : c[j] > f.e20[j]) { cnt++; ext = up ? Math.min(ext, candles[j].l) : Math.max(ext, candles[j].h); } else break;
+      }
+      if (cnt < minBars) continue;
+      let slDist = Math.max(Math.abs(c[i] - ext), f.atr[i]);
+      if (slDist > 3 * f.atr[i]) continue; // pullback bohat gehra — trend toot gaya ho sakta hai
+      out.push({ i, dir: up ? 'BUY' : 'SELL', slDist, tpDist: rr * slDist });
+    }
+    return out;
+  }
+  // 3) Wapsi (mean reversion): price Bollinger band ke bahar aur RSI inteha par; nishana beech wali line (SMA20).
+  function sigMeanRev(candles, f, lo, hi, adxOn) {
+    const out = [], c = f.closes, n = candles.length;
+    for (let i = 40; i < n - 1; i++) {
+      if (f.rsi[i] == null || f.sma20[i] == null || f.sd20[i] == null || f.atr[i] == null) continue;
+      if (adxOn && !(f.adx[i] != null && f.adx[i] < 20)) continue;
+      let dir = null;
+      if (f.rsi[i] < lo && c[i] < f.sma20[i] - 2 * f.sd20[i]) dir = 'BUY';
+      else if (f.rsi[i] > hi && c[i] > f.sma20[i] + 2 * f.sd20[i]) dir = 'SELL';
+      if (!dir) continue;
+      const tpDist = Math.abs(f.sma20[i] - c[i]);
+      if (tpDist < 0.75 * f.atr[i]) continue;
+      out.push({ i, dir, slDist: 1.5 * f.atr[i], tpDist });
+    }
+    return out;
+  }
+  // 4) London breakout: Asia (00-07 UTC) ki range, 07-10 UTC me us ke paar pehla close. Din me aik signal.
+  function sigLondon(candles, f, slMode, tpMult) {
+    const out = [], n = candles.length;
+    let day = null, rh = -Infinity, rl = Infinity, cnt = 0, done = false;
+    for (let i = 0; i < n - 1; i++) {
+      const d = new Date(candles[i].t), dk = Math.floor(candles[i].t / 86400000), h = d.getUTCHours();
+      if (dk !== day) { day = dk; rh = -Infinity; rl = Infinity; cnt = 0; done = false; }
+      if (h < 7) { if (candles[i].h > rh) rh = candles[i].h; if (candles[i].l < rl) rl = candles[i].l; cnt++; continue; }
+      if (h > 10 || done || cnt < 5 || f.atr[i] == null) continue;
+      const range = rh - rl, c = candles[i].c;
+      if (!(range > 0.5 * f.atr[i])) continue;
+      const dir = c > rh ? 'BUY' : c < rl ? 'SELL' : null;
+      if (!dir) continue;
+      done = true;
+      const stop = slMode === 'mid' ? (rh + rl) / 2 : (dir === 'BUY' ? rl : rh);
+      const slDist = Math.abs(c - stop);
+      if (slDist < 0.3 * f.atr[i]) continue;
+      out.push({ i, dir, slDist, tpDist: tpMult * range });
+    }
+    return out;
+  }
+  const NEW_STRATEGIES = [];
+  for (const N of [20, 55]) for (const rr of [1.5, 3]) for (const tr of [true, false])
+    NEW_STRATEGIES.push({ name: 'Breakout 4H · pichle ' + N + ' candles · munafa ' + rr + 'x risk · ' + (tr ? 'trend ke saath' : 'trend filter nahi'), maxHold: 240, gen: (c, f) => sigBreakout(c, f, N, rr, tr) });
+  for (const rr of [1.5, 2.5]) for (const mb of [3, 6])
+    NEW_STRATEGIES.push({ name: 'Trend me pullback 1H · ' + mb + '+ candles ka pullback · munafa ' + rr + 'x risk', maxHold: 96, gen: (c, f) => sigPullback(c, f, rr, mb) });
+  for (const th of [[25, 75], [30, 70]]) for (const ax of [true, false])
+    NEW_STRATEGIES.push({ name: 'Wapsi (mean reversion) 1H · RSI ' + th[0] + '/' + th[1] + ' · ' + (ax ? 'sirf bina-trend market' : 'har market'), maxHold: 48, gen: (c, f) => sigMeanRev(c, f, th[0], th[1], ax) });
+  for (const sm of ['mid', 'far']) for (const tm of [1, 2])
+    NEW_STRATEGIES.push({ name: 'London breakout · SL ' + (sm === 'mid' ? 'range ke beech' : 'range ke us paar') + ' · munafa ' + tm + 'x range', maxHold: 24, gen: (c, f) => sigLondon(c, f, sm, tm) });
+
+  async function runNew(pairIds) {
+    const variants = NEW_STRATEGIES.map(s => ({ s, train: [], test: [], perPairTest: {} }));
+    const dataInfo = [];
+    for (let pi = 0; pi < pairIds.length; pi++) {
+      const pairId = pairIds[pi];
+      job.progress = { pair: pairId, done: pi, total: pairIds.length, step: 'candles' };
+      const { candles, source } = await loadCandles(pairId, '1H');
+      if (candles.length < 2000) { dataInfo.push({ pair: pairId, bars: candles.length, used: false, note: 'Data kam hai — chhor diya.' }); continue; }
+      await tick();
+      const f = features(candles);
+      dataInfo.push({ pair: pairId, bars: candles.length, used: true, source, from: candles[0].t, to: candles[candles.length - 1].t });
+      for (const v of variants) {
+        await tick();
+        const res = walk(pairId, candles, v.s.gen(candles, f), v.s.maxHold);
+        for (const x of res.train) v.train.push(x);
+        for (const x of res.test) v.test.push(x);
+        v.perPairTest[pairId] = res.test.map(x => x.r);
+      }
+    }
+    const byTime = (a, b) => a.t - b.t;
+    const rows = variants.map(v => {
+      const pp = Object.keys(v.perPairTest).map(k => v.perPairTest[k]).filter(a => a.length >= 10);
+      return { name: v.s.name, isBaseline: false, train: stats(v.train.sort(byTime).map(x => x.r)), test: stats(v.test.sort(byTime).map(x => x.r)), pairsTested: pp.length, pairsPositive: pp.filter(a => a.reduce((s, r) => s + r, 0) > 0).length };
+    });
+    const judge = (r) => {
+      const t = r.test;
+      if (t.n >= 80 && t.avgR > 0 && t.pf != null && t.pf >= 1.15 && t.tStat != null && t.tStat >= 2.5 && r.pairsTested > 0 && r.pairsPositive / r.pairsTested >= 0.6) return 'JEETA';
+      if (t.n >= 40 && t.avgR > 0 && t.pf != null && t.pf > 1) return 'KAMZOR';
+      return 'NAHI';
+    };
+    const top = rows.filter(r => r.train.n >= 50 && r.train.avgR != null).sort((a, b) => b.train.avgR - a.train.avgR).slice(0, 5);
+    top.forEach(r => { r.verdict = judge(r); });
+    const winners = top.filter(r => r.verdict === 'JEETA');
+    let verdict;
+    if (!dataInfo.some(d => d.used)) verdict = 'Kisi pair ka kaafi data nahi mila — test nahi ho saka. Thori der baad dobara chalayein.';
+    else if (winners.length) verdict = winners.length + ' naya tareeqa imtihan wale data par saaf jeeta. Live me lagane se pehle isay doosre pairs par bhi chala kar dekhein, aur phir chhote demo test se guzarein.';
+    else if (top.some(r => r.verdict === 'KAMZOR')) verdict = 'Koi naya tareeqa saaf nahi jeeta. Kuch thore musbat hain, lekin itne nahi ke un par paisa lagaya jaye.';
+    else verdict = 'Koi naya tareeqa nahi jeeta. In saada tareeqon se, kharcha kaat kar, munafa nahi dikha.';
+    return {
+      mode: 'new', tf: '1H', tfLabel: 'Naye tareeqe · 1H candles (4H trend ke saath), taqreeban 2 saal', pairs: dataInfo, variantsTested: rows.length,
+      splitNote: 'Pehla 60% data seekhne ke liye, aakhri 40% imtihan ke liye.',
+      costNote: 'Har trade se spread/slippage kaata gaya (forex ~1.2-1.6 pip, gold $0.30, crypto price ka 0.06%). Aap ke broker ka kharcha alag ho sakta hai.',
+      limits: 'Ye maujooda signal engine nahi — bilkul alag, saada tareeqe hain. News ka asar shamil nahi. Yahoo ki price broker ki price se thori alag hoti hai. ' + rows.length + ' versions aazmaye gaye; faisla sirf imtihan wale hisse par aur sakht shart se hota hai. Yahan jeetna bhi live munafe ki guarantee nahi.',
+      baseline: null, top, all: rows.slice().sort((a, b) => (b.test.avgR == null ? -9 : b.test.avgR) - (a.test.avgR == null ? -9 : a.test.avgR)), geometryOnly: [], verdict, finishedAt: Date.now(),
+    };
+  }
+
+  function start(tf, pairIds, mode) {
     if (job.status === 'running') return { ok: false, message: 'Lab pehle se chal raha hai.' };
+    if (mode === 'new') tf = '1H';
     if (!TF[tf]) return { ok: false, message: 'Timeframe 15m ya 1H ho.' };
     const ids = (pairIds || []).filter(id => PAIRS.some(p => p.id === id));
     if (!ids.length) return { ok: false, message: 'Kam se kam aik pair chunein.' };
     job = { status: 'running', startedAt: Date.now(), tf, pairs: ids, progress: { done: 0, total: ids.length } };
-    run(tf, ids).then(result => { job = { status: 'done', startedAt: job.startedAt, tf, pairs: ids, result }; })
+    (mode === 'new' ? runNew(ids) : run(tf, ids)).then(result => { job = { status: 'done', startedAt: job.startedAt, tf, pairs: ids, result }; })
       .catch(e => { job = { status: 'error', startedAt: job.startedAt, tf, pairs: ids, message: String(e && e.message || e) }; });
     return { ok: true };
   }
   function status() { return job; }
-  return { start, status, _run: run, _prepare: prepare, _simulate: simulate };
+  return { start, status, _run: run, _runNew: runNew, _prepare: prepare, _simulate: simulate, _features: features, _strategies: NEW_STRATEGIES, _walk: walk };
 }
 
 module.exports = { createLab, stats, adxSeries, labCost, GEOMETRIES, GATES, FILTER_SETS };
