@@ -10160,14 +10160,37 @@ async function loadTerminalPerf() {
     const winPips = +list.filter(s => s.outcome === 'Win').reduce((a, s) => a + pipsOf(s), 0).toFixed(1);
     const lossPips = +list.filter(s => s.outcome === 'Loss').reduce((a, s) => a + pipsOf(s), 0).toFixed(1);
     const netPips = +(winPips + lossPips).toFixed(1);
-    return { total: list.length, wins, losses, breakEven: be, inFlight: inflight, winRate: closed ? +(wins / closed * 100).toFixed(1) : null, winPips, lossPips, netPips, totalPips: netPips };
+    // v10.1: asal munafa R me (1R = entry se SL tak ka risk). Win = +|TP1-entry|/risk, Loss = -1R, Break-Even = 0.
+    // Sirf asal band hue signals se — win rate akela dhoka de sakta hai jab TP qareeb aur SL door ho.
+    const rOf = s => {
+      const risk = Math.abs(s.entry - s.sl);
+      if (!risk || !isFinite(risk)) return null;
+      if (s.outcome === 'Win') return Math.abs(s.tp1 - s.entry) / risk;
+      if (s.outcome === 'Loss') return -1;
+      if (s.outcome === 'Break-Even') return 0;
+      return null;
+    };
+    const rs = list.map(rOf).filter(r => r != null);
+    const grossWinR = rs.filter(r => r > 0).reduce((a, r) => a + r, 0);
+    const grossLossR = rs.filter(r => r < 0).reduce((a, r) => a - r, 0);
+    const winRs = rs.filter(r => r > 0);
+    const avgWinR = winRs.length ? grossWinR / winRs.length : null;
+    const rStats = rs.length ? { n: rs.length, netR: +(grossWinR - grossLossR).toFixed(2), avgR: +((grossWinR - grossLossR) / rs.length).toFixed(3), profitFactor: grossLossR ? +(grossWinR / grossLossR).toFixed(2) : null, breakevenWinRate: avgWinR ? +(100 / (1 + avgWinR)).toFixed(1) : null } : null;
+    return { total: list.length, wins, losses, breakEven: be, inFlight: inflight, winRate: closed ? +(wins / closed * 100).toFixed(1) : null, winPips, lossPips, netPips, totalPips: netPips, rStats };
   } catch (e) { return null; }
+}
+// v10.1: History me win rate ke saath asal munafa (R me) — spread/commission shamil nahi.
+function perfRHtml(p) {
+  const r = p && p.rStats;
+  if (!r) return '';
+  const cls = r.netR > 0 ? 'up' : r.netR < 0 ? 'down' : 'wait';
+  return `<p>Asal munafa (R): <b class="${cls}">${r.netR > 0 ? '+' : ''}${r.netR}R</b> · Har trade ausat: <b class="${cls}">${r.avgR > 0 ? '+' : ''}${r.avgR}R</b> · Profit factor: <b>${r.profitFactor == null ? '—' : r.profitFactor}</b>${r.breakevenWinRate == null ? '' : ' · Barabar rehne ke liye win rate chahiye: <b>' + r.breakevenWinRate + '%</b>'}</p><p class="fine">1R = entry se SL tak ka risk. Win TP1 par gina jata hai, jo SL se qareeb hai, is liye acha win rate bhi munafa ki guarantee nahi. Profit factor 1.00 = barabar. Spread aur commission is me shamil nahi.</p>`;
 }
 async function loadPerf() {
   const el = document.getElementById('perfBody'); if (!el) return;
   const p = await loadTerminalPerf();
   if (!p) { el.innerHTML = ''; return; }
-  el.innerHTML = `<p>${t('totalExecuted')}: ${p.total} · ${t('wins')}: ${p.wins} · ${t('losses')}: ${p.losses} · ${t('breakEven')}: ${p.breakEven} · ${t('inFlight')}: ${p.inFlight} · ${t('winRate')}: ${p.winRate == null ? t('noClosed') : p.winRate + '%'}</p><p>${t('totalPips')}: <b class="${p.netPips > 0 ? 'up' : p.netPips < 0 ? 'down' : 'wait'}">${p.netPips > 0 ? '+' : ''}${p.netPips.toFixed(1)}</b> · ${t('winPips')}: <b class="up">+${p.winPips.toFixed(1)}</b> · ${t('lossPips')}: <b class="down">${p.lossPips.toFixed(1)}</b></p><p class="fine">${esc(t('pipsNote'))}</p><p>${esc(t('perfNoteTerminal'))}</p>`;
+  el.innerHTML = `<p>${t('totalExecuted')}: ${p.total} · ${t('wins')}: ${p.wins} · ${t('losses')}: ${p.losses} · ${t('breakEven')}: ${p.breakEven} · ${t('inFlight')}: ${p.inFlight} · ${t('winRate')}: ${p.winRate == null ? t('noClosed') : p.winRate + '%'}</p><p>${t('totalPips')}: <b class="${p.netPips > 0 ? 'up' : p.netPips < 0 ? 'down' : 'wait'}">${p.netPips > 0 ? '+' : ''}${p.netPips.toFixed(1)}</b> · ${t('winPips')}: <b class="up">+${p.winPips.toFixed(1)}</b> · ${t('lossPips')}: <b class="down">${p.lossPips.toFixed(1)}</b></p><p class="fine">${esc(t('pipsNote'))}</p>${perfRHtml(p)}<p>${esc(t('perfNoteTerminal'))}</p>`;
 }
 // v9.8.1: History row ke pips — band signal: record kiye gaye pips; chal raha signal: live running pips (●).
 // Bada signed figure: +45.0 Pips green, −30.0 Pips red, 0.0 Pips amber.
