@@ -535,6 +535,124 @@ function createLab(deps) {
     };
   }
 
+  // ================= v10.6: KHAMOSH MODE (crypto Breakout — aage ka asal data, buyers ko kuch nahi jata) =================
+  // Tasdeeqi imtihan me crypto ka Breakout 4H (20 candles, munafa 3x, trend ke saath) jeeta. Live lagane se
+  // pehle ye mode usi tareeqe ko 2026-11-17 se aage ke data par chup-chaap chalata hai:
+  //   - na Telegram, na push, na EA, na History — sirf admin ko ye table dikhti hai.
+  //   - Signal aur exit BILKUL Lab wale functions se bante hain (features + sigBreakout + wohi exit ke usool),
+  //     is liye ye backtest ka seedha aage ka hissa hai.
+  //   - Kuch save nahi hota: har dafa Binance ke candles se dobara hisaab hota hai. Server so jaye ya
+  //     redeploy ho, nateeja wahi rehta hai, aur koi trade "bhool" nahi sakta.
+  // SHADOW_START aur tareeqe ki settings na badlein — wo imtihan se pehle pakki ki gayi thin.
+  const SHADOW = { id: 'brk-20-3-t', N: 20, rr: 3, trend: true, maxHold: 240, startAt: Date.UTC(2026, 10, 17), warmupDays: 170, pairs: CONFIRM_PAIRS };
+  async function klines1h(symbol, startMs, endMs) {
+    for (const host of BINANCE_HOSTS) {
+      const out = []; let start = startMs, fails = 0, ok = true, guard = 0;
+      while (start < endMs && guard++ < 60) {
+        let rows = null;
+        try { rows = await fetchJson(host + '/api/v3/klines?symbol=' + symbol + '&interval=1h&startTime=' + start + '&endTime=' + (endMs - 1) + '&limit=1000', 15000); } catch (e) { rows = null; }
+        if (!Array.isArray(rows)) { if (++fails > 2) { ok = false; break; } await sleep(600); continue; }
+        fails = 0;
+        if (!rows.length) break;
+        for (const k of rows) {
+          const t = +k[0], o = +k[1], h = +k[2], l = +k[3], c = +k[4];
+          if (!(t >= startMs && t < endMs) || !(h >= l) || !(c > 0) || !(o > 0)) continue;
+          if (out.length && t <= out[out.length - 1].t) continue;
+          out.push({ t, o, h, l, c });
+        }
+        const lastT = +rows[rows.length - 1][0];
+        if (!(lastT + 3600000 > start)) break;
+        start = lastT + 3600000;
+        if (rows.length < 1000) break;
+        await sleep(100);
+      }
+      if (ok && out.length) return out;
+    }
+    return [];
+  }
+  // walk() jaisa hi — aik aik line wohi usool — lekin har trade ki tafseel aur "abhi khula hai" ki halat ke saath.
+  // Farq sirf ye: jis trade ka waqt (maxHold) abhi poora nahi hua aur SL/TP nahi laga, wo Open rehta hai
+  // (backtest me data khatam hone par close par band kar diya jata hai; live me aisa karna ghalat hoga).
+  function walkDetailed(pairId, candles, sigs, maxHold) {
+    const n = candles.length, out = [];
+    let free = 0;
+    for (const s of sigs) {
+      const i = s.i;
+      if (i < free || i + 1 >= n) continue;
+      const isBuy = s.dir === 'BUY', risk = s.slDist, reward = s.tpDist, entry = candles[i + 1].o;
+      if (!(risk > 0) || !(reward > 0) || !(entry > 0)) continue;
+      const sl = isBuy ? entry - risk : entry + risk, tp = isBuy ? entry + reward : entry - reward;
+      const last = Math.min(n - 1, i + maxHold), complete = i + maxHold <= n - 1;
+      let r = null, exitIdx = last, exit = null;
+      for (let j = i + 1; j <= last; j++) {
+        const c = candles[j];
+        if (j > i + 1 && (isBuy ? c.o <= sl : c.o >= sl)) { r = (isBuy ? c.o - entry : entry - c.o) / risk; exitIdx = j; exit = 'SL (gap)'; break; }
+        if (isBuy ? c.l <= sl : c.h >= sl) { r = -1; exitIdx = j; exit = 'SL'; break; }
+        if (isBuy ? c.h >= tp : c.l <= tp) { r = reward / risk; exitIdx = j; exit = 'TP'; break; }
+      }
+      const cost = labCost(pairId, entry) / risk;
+      const base = { pair: pairId, dir: s.dir, signalAt: candles[i].t + 3600000, entryAt: candles[i + 1].t, entry, sl, tp, riskPct: +(risk / entry * 100).toFixed(2) };
+      if (r == null && !complete) { // abhi chal raha hai
+        const c = candles[n - 1];
+        out.push({ ...base, status: 'Open', r: null, runningR: +((isBuy ? c.c - entry : entry - c.c) / risk - cost).toFixed(2), exitAt: null, exit: null });
+        free = n; // jab tak ye khula hai, is pair par naya trade nahi
+        continue;
+      }
+      if (r == null) { const c = candles[exitIdx]; r = (isBuy ? c.c - entry : entry - c.c) / risk; exit = 'Waqt khatam'; }
+      r -= cost;
+      out.push({ ...base, status: r > 0 ? 'Win' : 'Loss', r: +r.toFixed(3), runningR: null, exitAt: candles[exitIdx].t + 3600000, exit });
+      free = exitIdx + 1;
+    }
+    return out;
+  }
+  let shadowCache = { at: 0, data: null, inflight: null };
+  async function computeShadow(nowMs) {
+    const now = nowMs || Date.now();
+    const histFrom = SHADOW.startAt - SHADOW.warmupDays * 86400000;
+    const trades = [], dataInfo = [];
+    for (const pairId of SHADOW.pairs) {
+      const raw = await klines1h(pairId.replace(/USD$/, 'USDT'), histFrom, now);
+      const candles = raw.filter(c => c.t + 3600000 <= now); // jo candle abhi ban rahi hai, wo shamil nahi
+      if (candles.length < 3000) { dataInfo.push({ pair: pairId, bars: candles.length, used: false, note: 'Binance se data nahi mila.' }); continue; }
+      await tick();
+      const f = features(candles);
+      // Sirf wo signals jin ki entry SHADOW_START ke baad hai — is se pehle ka sab data imtihanon me use ho chuka hai.
+      const sigs = sigBreakout(candles, f, SHADOW.N, SHADOW.rr, SHADOW.trend).filter(s => s.i + 1 < candles.length && candles[s.i + 1].t >= SHADOW.startAt);
+      for (const t of walkDetailed(pairId, candles, sigs, SHADOW.maxHold)) trades.push(t);
+      dataInfo.push({ pair: pairId, bars: candles.length, used: true, to: candles[candles.length - 1].t + 3600000 });
+    }
+    trades.sort((a, b) => b.entryAt - a.entryAt);
+    const closed = trades.filter(t => t.status !== 'Open').sort((a, b) => a.exitAt - b.exitAt);
+    const st = stats(closed.map(t => t.r));
+    const days = Math.max(0, (now - SHADOW.startAt) / 86400000);
+    // Faisle ke usool — pehle se likhe hue, taake baad me nateeja dekh kar na badlein.
+    let stage, advice;
+    if (!dataInfo.some(d => d.used)) { stage = 'nodata'; advice = 'Binance se data nahi mila — thori der baad dobara dekhein.'; }
+    else if (st.n >= 30 && st.netR <= -12) { stage = 'stop'; advice = 'RUK JAYEIN: ' + st.n + ' band trades me ' + st.netR + 'R. Ye backtest ki umeed se bohat neeche hai — is tareeqe ko live na lagayein, pehle wajah dekhein.'; }
+    else if (st.n < 40 || days < 42) { stage = 'wait'; advice = 'Intezaar: faisle ke liye kam se kam 40 band trades aur 6 hafte chahiye (abhi ' + st.n + ' trades, ' + Math.floor(days) + ' din).'; }
+    else if (st.netR > 0 && st.pf != null && st.pf >= 1) { stage = 'ok'; advice = 'Khamosh mode backtest ke mutabiq chal raha hai (' + st.n + ' trades, ' + (st.netR > 0 ? '+' : '') + st.netR + 'R, PF ' + st.pf + '). Ab malik faisla kar sakti hain ke crypto ke liye isay live signal banaya jaye ya nahi.'; }
+    else { stage = 'weak'; advice = st.n + ' trades ke baad nateeja musbat nahi (' + st.netR + 'R). Live na lagayein; mazeed intezaar karein ya tareeqe par dobara ghaur karein.'; }
+    return {
+      strategy: 'Breakout 4H · pichle 20 candles · munafa 3x risk · trend ke saath', market: 'Crypto (7 pairs)', startAt: SHADOW.startAt, asOf: now, days: +days.toFixed(1),
+      stats: st, open: trades.filter(t => t.status === 'Open').length, stage, advice, trades: trades.slice(0, 200), pairs: dataInfo,
+      reference: 'Tasdeeqi imtihan (2021-24, an-dekha data): 1,111 trades, PF 1.26, t 3.35.',
+      notes: [
+        'Ye signals kisi buyer ko nahi jate: na Telegram, na push, na EA, na History.',
+        'Har trade se price ka 0.06% kharcha kaata gaya hai. Khule trades ka "chalta R" abhi ki price se hai.',
+        'Chand hafton ke trades se munafa SAABIT nahi hota — itne kam trades me achha ya bura dono ittefaq se ho sakta hai. Asal saboot 3 saal ka tasdeeqi imtihan hai; ye mode sirf ye dekhta hai ke aage ka data us se bohat alag to nahi, aur code sahi chal raha hai.',
+        'Signal 4H candle band hone ke taqreeban 1 ghante baad yahan dikhta hai; entry ki price phir bhi wahi hai jo backtest me hoti (agli candle ka open).',
+      ],
+    };
+  }
+  async function shadow(force) {
+    const now = Date.now();
+    if (shadowCache.inflight) return shadowCache.inflight;
+    if (shadowCache.data && now - shadowCache.at < (force ? 60000 : 15 * 60000)) return shadowCache.data;
+    shadowCache.inflight = computeShadow(now).then(d => { shadowCache = { at: Date.now(), data: d, inflight: null }; return d; })
+      .catch(e => { shadowCache.inflight = null; throw e; });
+    return shadowCache.inflight;
+  }
+
   function start(tf, pairIds, mode) {
     if (job.status === 'running') return { ok: false, message: 'Lab pehle se chal raha hai.' };
     if (mode === 'confirm' || mode === 'confirm-gold') {
@@ -554,7 +672,7 @@ function createLab(deps) {
     return { ok: true };
   }
   function status() { return job; }
-  return { start, status, _run: run, _runNew: runNew, _runConfirm: runConfirm, _prepare: prepare, _simulate: simulate, _features: features, _strategies: NEW_STRATEGIES, _walk: walk };
+  return { start, status, shadow, _computeShadow: computeShadow, _walkDetailed: walkDetailed, _sigBreakout: sigBreakout, _run: run, _runNew: runNew, _runConfirm: runConfirm, _prepare: prepare, _simulate: simulate, _features: features, _strategies: NEW_STRATEGIES, _walk: walk };
 }
 
 module.exports = { createLab, stats, adxSeries, labCost, GEOMETRIES, GATES, FILTER_SETS };

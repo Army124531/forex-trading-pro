@@ -2567,6 +2567,12 @@ app.post('/api/terminal/backtest/lab', requireAdmin, (req, res) => {
   res.json({ ok: true });
 });
 app.get('/api/terminal/backtest/lab', requireAdmin, (req, res) => res.json(strategyLab.status()));
+// v10.6: Khamosh mode — crypto Breakout ko 2026-11-17 se aage ke asal data par chup-chaap dekhna.
+// Sirf admin. Kuch save nahi hota, koi alert nahi jata, live signal engine se koi talluq nahi.
+app.get('/api/terminal/backtest/shadow', requireAdmin, async (req, res) => {
+  try { res.json(await strategyLab.shadow(req.query.fresh === '1')); }
+  catch (e) { res.status(502).json({ error: 'shadow_failed', message: 'Khamosh mode ka data nahi aa saka. Thori der baad dobara dekhein.' }); }
+});
 
 // Settings + logs + export + AI (in-app only)
 app.get('/api/settings', requireAuth, (req, res) => res.json({ settings: { ...db.settings, priceMode: (db.settings && db.settings.priceMode) || 'last', engine: engineSettings() } }));
