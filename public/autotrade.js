@@ -31,6 +31,7 @@
     else state = '<span>Key tayyar hai — EA abhi juda nahi</span>';
     el('atStatus').innerHTML =
       '<p><b>Halat:</b> ' + state + '</p>' +
+      (d.demoOnly ? '<p class="notice-banner">Abhi Auto Trade <b>sirf DEMO account</b> par chalta hai. Real account wale EA ko signal nahi milta, kyunke signals ka munafa abhi saabit nahi hua.</p>' : '') +
       '<p class="fine">MT account: <b>' + esc(d.boundAccount || 'abhi koi nahi') + '</b>' +
       (d.platform ? ' · ' + esc(d.platform.toUpperCase()) : '') +
       (d.demo == null ? '' : (d.demo ? ' · DEMO' : ' · <span class="sell">REAL</span>')) +
@@ -57,6 +58,9 @@
       '<p><b>Sab ke liye Auto Trade:</b> ' + (d.globalEnabled ? '<span class="buy">ON</span>' : '<span class="sell">OFF</span>') +
       ' <button class="btn small" onclick="atAdminGlobal(' + (d.globalEnabled ? 'false' : 'true') + ')">' + (d.globalEnabled ? 'Sab ke liye band karein' : 'Chalu karein') + '</button></p>' +
       '<p class="fine">Band karne par kisi bhi EA ko naya signal nahi milta. Pehle se khuli trades apne SL/TP par chalti rehti hain.</p>' +
+      '<p><b>Sirf DEMO accounts:</b> ' + (d.demoOnly ? '<span class="buy">ON (real accounts band)</span>' : '<span class="sell">OFF (real accounts ki ijazat hai)</span>') +
+      ' <button class="btn small" onclick="atAdminDemoOnly(' + (d.demoOnly ? 'false' : 'true') + ')">' + (d.demoOnly ? 'Real accounts ki ijazat dein' : 'Sirf demo tak mehdood karein') + '</button></p>' +
+      '<p class="fine">Jab tak Strategy Lab me koi version saaf na jeete, isay ON rakhein. Ye lock ghalti se real paisa lagne se rokta hai.</p>' +
       '<p>Signal kitne minute tak EA ko jaye: <input id="atMaxAge" type="number" min="2" max="60" value="' + esc(d.maxAgeMin) + '" style="width:80px"> ' +
       '<button class="btn small" onclick="atAdminMaxAge()">Save</button></p>';
     el('atAdminUsers').innerHTML = atAdminUsers.map(function (u, i) {
@@ -97,6 +101,11 @@
   window.atAdminGlobal = async function (on) {
     if (!on && !confirm('Sab users ka Auto Trade band karein?')) return;
     try { await api('/api/admin/autotrade', { method: 'POST', body: JSON.stringify({ enabled: !!on }) }); window.loadAutoTrade(); }
+    catch (e) { alert(e.message); }
+  };
+  window.atAdminDemoOnly = async function (on) {
+    if (!on && !confirm('Real accounts ko Auto Trade ki ijazat dein? Strategy Lab me abhi tak koi version nahi jeeta — buyers ka asal paisa lag sakta hai.')) return;
+    try { await api('/api/admin/autotrade', { method: 'POST', body: JSON.stringify({ demoOnly: !!on }) }); window.loadAutoTrade(); }
     catch (e) { alert(e.message); }
   };
   window.atAdminMaxAge = async function () {
