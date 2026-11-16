@@ -2742,7 +2742,9 @@ app.delete('/api/admin/users/:username', requireAdmin, (req, res) => {
 function autoTradeSettings() {
   const a = (db.settings && db.settings.autoTrade) || {};
   const maxAge = parseInt(a.maxAgeMin, 10);
-  return { enabled: a.enabled !== false, maxAgeMin: Number.isFinite(maxAge) ? Math.min(60, Math.max(2, maxAge)) : 15 };
+  // v10.3: demoOnly DEFAULT ON — Strategy Lab me abhi tak koi version nahi jeeta, is liye
+  // real account wale EA ko signal nahi diya jata. Admin Auto Trade tab se khol sakta hai.
+  return { enabled: a.enabled !== false, demoOnly: a.demoOnly !== false, maxAgeMin: Number.isFinite(maxAge) ? Math.min(60, Math.max(2, maxAge)) : 15 };
 }
 function makeEaKey() { return 'FTP-' + crypto.randomBytes(20).toString('hex').toUpperCase(); }
 function ensureEaKey(u) {
@@ -2812,6 +2814,9 @@ app.get('/api/ea/signals', (req, res) => {
   eaLastPoll.set(u.username, Date.now());
   const platform = String(req.query.platform || '').toLowerCase() === 'mt4' ? 'mt4' : 'mt5';
   const demo = req.query.demo === '1';
+  // v10.3: sirf-demo lock. EA khud batata hai ke account demo hai ya real — ye ghalti se real paisa
+  // lagne se rokta hai (jo koi EA ka code badal kar jhoot bole, us ke khilaf ye lock nahi).
+  if (autoTradeSettings().demoOnly && !demo) return eaText(res, 403, 'ERR|demo_only|Auto Trade abhi sirf DEMO account par chalta hai. Signals ka munafa abhi saabit nahi hua.');
   let dirty = false;
   if (!u.eaAccount) { u.eaAccount = mtLogin; dirty = true; logEvent('Auto Trade: ' + u.username + ' ki key MT account se jud gayi'); }
   // lastSeen har poll par file me nahi likhte (har 10 second file likhna bekaar) — 5 minute me ek dafa.
@@ -2833,7 +2838,7 @@ function eaStatusOf(u) {
 }
 app.get('/api/autotrade/me', requireAuth, (req, res) => {
   const cfg = autoTradeSettings();
-  res.json({ ...eaStatusOf(req.user), globalEnabled: cfg.enabled, maxAgeMin: cfg.maxAgeMin, freshSignals: freshEaSignals().length, pairs: PAIRS.map(p => p.id) });
+  res.json({ ...eaStatusOf(req.user), globalEnabled: cfg.enabled, demoOnly: cfg.demoOnly, maxAgeMin: cfg.maxAgeMin, freshSignals: freshEaSignals().length, pairs: PAIRS.map(p => p.id) });
 });
 // Nayi key: purani key foran bekaar, aur MT account ka bind bhi khatam.
 app.post('/api/autotrade/reset-key', requireAuth, (req, res) => {
@@ -2846,7 +2851,7 @@ app.post('/api/autotrade/reset-key', requireAuth, (req, res) => {
 app.get('/api/admin/autotrade', requireAdmin, (req, res) => {
   const cfg = autoTradeSettings();
   res.json({
-    globalEnabled: cfg.enabled, maxAgeMin: cfg.maxAgeMin,
+    globalEnabled: cfg.enabled, demoOnly: cfg.demoOnly, maxAgeMin: cfg.maxAgeMin,
     users: db.users.map(u => ({ username: u.username, role: u.role, hasKey: !!u.eaKey, allowed: eaAllowedUser(u), disabledByAdmin: !!u.eaDisabled, boundAccount: u.eaAccount || null, lastSeen: u.eaLastSeen || null, platform: u.eaPlatform || null, demo: u.eaDemo == null ? null : !!u.eaDemo })),
   });
 });
@@ -2859,6 +2864,7 @@ app.post('/api/admin/autotrade', requireAdmin, (req, res) => {
     db.settings.autoTrade.maxAgeMin = n;
   }
   if (typeof b.enabled === 'boolean') { db.settings.autoTrade.enabled = b.enabled; logEvent('Auto Trade global: ' + (b.enabled ? 'ON' : 'OFF')); }
+  if (typeof b.demoOnly === 'boolean') { db.settings.autoTrade.demoOnly = b.demoOnly; logEvent('Auto Trade sirf-demo lock: ' + (b.demoOnly ? 'ON' : 'OFF (real accounts ki ijazat)')); }
   saveDb();
   res.json({ ok: true, ...autoTradeSettings() });
 });
