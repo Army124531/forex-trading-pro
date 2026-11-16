@@ -118,6 +118,35 @@
     if (grp) { if (mode === 'confirm') grp.value = 'crypto'; if (mode === 'confirm-gold') grp.value = 'gold'; grp.disabled = fixed; }
   };
 
+  // v10.6: Khamosh mode — crypto Breakout ke aage ke trades (sirf admin dekhta hai, buyers ko kuch nahi jata).
+  function dt(ms) { return ms ? new Date(ms).toISOString().slice(0, 16).replace('T', ' ') + ' UTC' : '—'; }
+  function px(v) { return v == null ? '—' : (v >= 100 ? v.toFixed(2) : v >= 1 ? v.toFixed(4) : v.toFixed(5)); }
+  function renderShadow(d) {
+    const s = d.stats, cls = d.stage === 'ok' ? 'buy' : d.stage === 'stop' || d.stage === 'weak' ? 'sell' : 'wait';
+    let h = '<p class="notice-banner"><b class="' + cls + '">' + esc(d.advice) + '</b></p>';
+    h += '<p class="fine">' + esc(d.strategy) + ' · ' + esc(d.market) + ' · shuru: ' + day(d.startAt) + ' · ' + d.days + ' din · dekha gaya: ' + dt(d.asOf) + '</p>';
+    h += TBL + '<tr><th>Band trades</th><th>Win %</th><th>Ausat</th><th>PF</th><th>Kul</th><th>Khule</th></tr><tr>' +
+      '<td>' + s.n + '</td><td>' + num(s.winRate, '%') + '</td><td class="' + rCls(s.avgR) + '"><b>' + rTxt(s.avgR) + '</b></td><td>' + num(s.pf) + '</td><td class="' + rCls(s.netR) + '"><b>' + rTxt(s.netR) + '</b></td><td>' + d.open + '</td></tr></table></div>';
+    h += '<p class="fine">' + esc(d.reference) + '</p>';
+    h += d.trades.length ? TBL + '<tr><th>Pair</th><th>Taraf</th><th>Entry ka waqt</th><th>Entry</th><th>SL</th><th>TP</th><th>Halat</th><th>R</th><th>Band hua</th></tr>' +
+      d.trades.map(t => '<tr><td>' + esc(t.pair) + '</td><td class="' + (t.dir === 'BUY' ? 'buy' : 'sell') + '">' + esc(t.dir) + '</td><td>' + dt(t.entryAt) + '</td><td>' + px(t.entry) + '</td><td>' + px(t.sl) + '</td><td>' + px(t.tp) + '</td><td>' +
+        (t.status === 'Open' ? '<span class="wait">khula</span>' : t.status === 'Win' ? '<span class="buy">Win</span>' : '<span class="sell">Loss</span>') + (t.exit ? ' <span class="fine">' + esc(t.exit) + '</span>' : '') + '</td><td class="' + rCls(t.status === 'Open' ? t.runningR : t.r) + '">' +
+        (t.status === 'Open' ? rTxt(t.runningR) + ' <span class="fine">chalta</span>' : rTxt(t.r)) + '</td><td>' + (t.exitAt ? dt(t.exitAt) : '—') + '</td></tr>').join('') + '</table></div>'
+      : '<p>Abhi tak koi signal nahi bana. Ye tareeqa har pair par taqreeban hafte me aik signal deta hai.</p>';
+    const bad = d.pairs.filter(p => !p.used);
+    if (bad.length) h += '<p class="fine">Data nahi mila: ' + bad.map(p => esc(p.pair)).join(', ') + '</p>';
+    h += d.notes.map(n => '<p class="fine">' + esc(n) + '</p>').join('');
+    el('shadowBody').innerHTML = h;
+  }
+  window.labShadow = async function (fresh) {
+    if (!isAdmin() || !el('shadowBody')) return;
+    const btn = el('shadowBtn'); if (btn) btn.disabled = true;
+    el('shadowBody').innerHTML = '<p>Binance se data aa raha hai… 10-40 second lag sakte hain.</p>';
+    try { renderShadow(await api('/api/terminal/backtest/shadow' + (fresh ? '?fresh=1' : ''))); }
+    catch (e) { el('shadowBody').innerHTML = '<p class="sell">' + esc(e.message) + '</p>'; }
+    if (btn) btn.disabled = false;
+  };
+
   // History tab khulne par: admin ko Lab dikhayein aur pichla nateeja (agar ho) le aayein.
   const prevShowTab = window.showTab;
   if (typeof prevShowTab === 'function') {
