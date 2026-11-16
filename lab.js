@@ -700,7 +700,7 @@ function createLab(deps) {
     const from = startAt || GOLD.startAt, now = nowMs || Date.now();
     const dly = dailyOf(candles);
     const sigs = goldSignals(candles, dly).filter(s => candles[s.i + 1] && candles[s.i + 1].t >= from);
-    const trades = walkR(GOLD.binance, candles, sigs, GOLD.maxHold);
+    const trades = walkR(GOLD.pair, candles, sigs, GOLD.maxHold);
     const st = stats(trades.map(t => t.r1)), st25 = stats(trades.map(t => t.r25));
     const days = Math.max(0, (now - from) / DAY);
     let stage, advice;
