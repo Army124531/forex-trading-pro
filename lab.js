@@ -262,8 +262,10 @@ function createLab(deps) {
         if (isBuy ? c.h >= tp : c.l <= tp) { r = reward / risk; exitIdx = j; break; }
       }
       if (r == null) { const c = candles[exitIdx]; r = (isBuy ? c.c - entry : entry - c.c) / risk; }
-      r -= labCost(pairId, entry) / risk;
-      (i + 1 < splitIdx ? train : test).push({ t: candles[i + 1].t, r });
+      const costR = labCost(pairId, entry) / risk;
+      r -= costR;
+      // c = kharcha R me, d = trade kitne din khuli rahi, rp = risk price ka kitna hissa — kharche ke test (v10.7) ke liye
+      (i + 1 < splitIdx ? train : test).push({ t: candles[i + 1].t, r, c: costR, d: (exitIdx - i) / 24, rp: risk / entry });
       free = exitIdx + 1;
     }
     return { train, test };
@@ -514,7 +516,21 @@ function createLab(deps) {
       if (t.n >= 40 && t.avgR > 0 && t.pf != null && t.pf > 1) return 'KAMZOR';
       return 'NAHI';
     };
-    const candidates = CONFIRM_CANDIDATES.map(c => { const r = rows.find(x => x.id === c.id); return r ? { ...r, why: c.why, verdict: judge(r) } : null; }).filter(Boolean);
+    // v10.7: kharche ka test. Imtihan me kharcha kam maana gaya tha (crypto 0.06%); broker par chhote coins ka
+    // spread aur kai din trade khuli rakhne ki fees (swap) zyada ho sakti hai. Wohi trades, sirf kharcha barha kar.
+    // Ye umeedwar ya faisla nahi badalta — sirf batata hai ke munafa kitne kharche tak bachta hai.
+    const SWAP_PER_DAY = 0.0005; // price ka 0.05% rozana (~18% saalana) — crypto CFD par aam andaza
+    const costScenarios = (v) => {
+      const tr = v.trades.slice().sort(byTime);
+      if (!tr.length || tr[0].c == null) return null;
+      const sc = (name, mult, swap) => ({ name, ...stats(tr.map(x => x.r - x.c * (mult - 1) - (swap ? SWAP_PER_DAY * x.d / x.rp : 0))) });
+      const avgDays = tr.reduce((s, x) => s + x.d, 0) / tr.length, avgCostR = tr.reduce((s, x) => s + x.c, 0) / tr.length;
+      return {
+        avgDays: +avgDays.toFixed(1), avgCostR: +avgCostR.toFixed(3),
+        rows: [sc('Imtihan wala kharcha (1x)', 1, false), sc('Kharcha 2.5x', 2.5, false), sc('Kharcha 5x', 5, false), sc('Kharcha 2.5x + swap 0.05%/din', 2.5, true), sc('Kharcha 5x + swap 0.05%/din', 5, true)],
+      };
+    };
+    const candidates = CONFIRM_CANDIDATES.map(c => { const r = rows.find(x => x.id === c.id); const v = variants.find(x => x.s.id === c.id); return r ? { ...r, why: c.why, verdict: judge(r), costs: v ? costScenarios(v) : null } : null; }).filter(Boolean);
     const winners = candidates.filter(r => r.verdict === 'JEETA');
     const usedPairs = dataInfo.filter(d => d.used).length;
     let verdict;

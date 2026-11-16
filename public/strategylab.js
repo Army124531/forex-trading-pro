@@ -40,11 +40,21 @@
       (r.byYear || []).map(y => '<tr><td>' + y.year + '</td>' + statCells(y) + '</tr>').join('') + '</table></div>';
   }
 
+  // v10.7: kharcha barha kar wohi trades — munafa kitne kharche tak bachta hai.
+  function costTable(r) {
+    const c = r.costs;
+    return '<p class="fine"><b>' + esc(r.name) + '</b> — kharche ka test (wohi trades, sirf kharcha zyada). Aik trade ausat ' + c.avgDays + ' din khuli rehti hai; imtihan wala kharcha ausat ' + c.avgCostR + 'R fi trade tha.</p>' +
+      TBL + '<tr><th>Kharcha</th><th>Trades</th><th>Win %</th><th>Ausat</th><th>PF</th><th>t</th></tr>' +
+      c.rows.map(x => '<tr><td class="lab-name">' + esc(x.name) + '</td>' + statCells(x) + '<td>' + num(x.tStat) + '</td></tr>').join('') + '</table></div>' +
+      '<p class="fine">Agar "Kharcha 2.5x + swap" wali line par bhi ausat musbat aur PF 1.10 se upar rahe, to tareeqa aam broker ke kharche bardasht kar sakta hai. Agar wahan manfi ho jaye, to sirf kam kharche wale broker ya bare coins par chalana parega. Apne broker ka asal spread aur swap dekh kar muqabla karein.</p>';
+  }
+
   function renderConfirm(d) {
     let h = '<h4>' + (d.candidates.length === 1 ? 'Umeedwar (pehle se pakka kiya gaya)' : 'Do umeedwar (pehle se pakke kiye gaye)') + '</h4>';
     h += d.candidates.length ? TBL + C_HEAD + d.candidates.map(r => cRow(r, true)).join('') + '</table></div>' : '<p>Umeedwar nahi mile.</p>';
     h += '<p class="fine">"JEETA" tabhi: 80+ trades, ausat munafa musbat, PF 1.15+, t 2.5+, 60%+ pairs munafe me, aur taqreeban har saal musbat (munafa sirf aik saal par na tika ho). Ausat = har trade ka ausat munafa R me. PF 1.00 = barabar.</p>';
     h += d.candidates.map(yearTable).join('');
+    h += d.candidates.filter(r => r.costs).map(costTable).join('');
     if (d.all && d.all.length) {
       h += '<h4>Baaqi tareeqe isi purane data par (sirf dekhne ke liye)</h4>' + TBL + C_HEAD + d.all.map(r => cRow(r, false)).join('') + '</table></div>';
       h += '<p class="fine">Is table se ab kuch chunna phir wohi ghalti hogi (imtihan dekh kar jawab chunna). Faisla sirf upar wale do umeedwaron par hai.</p>';
