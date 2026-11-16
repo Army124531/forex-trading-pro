@@ -2558,10 +2558,11 @@ app.post('/api/terminal/backtest/lab', requireAdmin, (req, res) => {
   const b = req.body || {};
   const tf = b.tf === '1H' ? '1H' : '15m';
   const pairs = LAB_GROUPS[b.group] || LAB_GROUPS.forexgold;
-  const mode = b.mode === 'new' ? 'new' : 'engine'; // 'new' = naye tareeqe (maujooda engine se alag), hamesha 1H
+  // 'new' = naye tareeqe (hamesha 1H); 'confirm' = tasdeeqi imtihan (crypto, Binance ka purana an-dekha data, pairs fixed)
+  const mode = b.mode === 'new' ? 'new' : b.mode === 'confirm' ? 'confirm' : 'engine';
   const r = strategyLab.start(tf, pairs, mode);
   if (!r.ok) return res.status(409).json({ error: 'lab_busy', message: r.message });
-  logEvent('Strategy Lab shuru: ' + (mode === 'new' ? 'naye tareeqe' : tf) + ' / ' + (b.group || 'forexgold'));
+  logEvent('Strategy Lab shuru: ' + (mode === 'confirm' ? 'tasdeeqi imtihan (crypto 2021-24)' : (mode === 'new' ? 'naye tareeqe' : tf) + ' / ' + (b.group || 'forexgold')));
   res.json({ ok: true });
 });
 app.get('/api/terminal/backtest/lab', requireAdmin, (req, res) => res.json(strategyLab.status()));

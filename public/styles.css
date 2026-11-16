@@ -319,3 +319,7 @@ body.light .tg-card .btn{color:#111}
 .at-steps code,#atSiteUrl{background:#0b1224;border-radius:4px;padding:1px 5px;word-break:break-all}
 a.btn{display:inline-block;text-decoration:none;margin:4px 4px 4px 0}
 body.light .at-key,body.light .at-steps code,body.light #atSiteUrl{background:#eef2f9;color:#1a2333}
+/* v10.4: Strategy Lab tables — chhote, taake phone aur PDF me imtihan wale columns kat na jayein */
+.lab-table{font-size:11px}
+.lab-table th,.lab-table td{padding:4px 5px;white-space:nowrap}
+.lab-table td.lab-name{white-space:normal;min-width:120px;max-width:190px}

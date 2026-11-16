@@ -371,9 +371,9 @@ function createLab(deps) {
   }
   const NEW_STRATEGIES = [];
   for (const N of [20, 55]) for (const rr of [1.5, 3]) for (const tr of [true, false])
-    NEW_STRATEGIES.push({ name: 'Breakout 4H · pichle ' + N + ' candles · munafa ' + rr + 'x risk · ' + (tr ? 'trend ke saath' : 'trend filter nahi'), maxHold: 240, gen: (c, f) => sigBreakout(c, f, N, rr, tr) });
+    NEW_STRATEGIES.push({ id: 'brk-' + N + '-' + rr + '-' + (tr ? 't' : 'n'), name: 'Breakout 4H · pichle ' + N + ' candles · munafa ' + rr + 'x risk · ' + (tr ? 'trend ke saath' : 'trend filter nahi'), maxHold: 240, gen: (c, f) => sigBreakout(c, f, N, rr, tr) });
   for (const rr of [1.5, 2.5]) for (const mb of [3, 6])
-    NEW_STRATEGIES.push({ name: 'Trend me pullback 1H · ' + mb + '+ candles ka pullback · munafa ' + rr + 'x risk', maxHold: 96, gen: (c, f) => sigPullback(c, f, rr, mb) });
+    NEW_STRATEGIES.push({ id: 'pb-' + mb + '-' + rr, name: 'Trend me pullback 1H · ' + mb + '+ candles ka pullback · munafa ' + rr + 'x risk', maxHold: 96, gen: (c, f) => sigPullback(c, f, rr, mb) });
   for (const th of [[25, 75], [30, 70]]) for (const ax of [true, false])
     NEW_STRATEGIES.push({ name: 'Wapsi (mean reversion) 1H · RSI ' + th[0] + '/' + th[1] + ' · ' + (ax ? 'sirf bina-trend market' : 'har market'), maxHold: 48, gen: (c, f) => sigMeanRev(c, f, th[0], th[1], ax) });
   for (const sm of ['mid', 'far']) for (const tm of [1, 2])
@@ -426,8 +426,110 @@ function createLab(deps) {
     };
   }
 
+  // ================= v10.4: TASDEEQI IMTIHAN (crypto, purana an-dekha data) =================
+  // "Naye tareeqe" wale test me crypto par do ishare mile, lekin koi JEETA nahi. Usi data par dobara
+  // dekhna kuch saabit nahi karta, is liye yahan sirf DO umeedwar, jo 2026-11-16 ko likh kar pakke
+  // kiye gaye, aise data par chalte hain jo ab tak kisi test me use nahi hua:
+  // Binance 1H candles, 2021-11-16 se 2024-11-16 (pichle test ka data 2024-11-17 se shuru hota tha).
+  // Yahan seekhne/imtihan ki taqseem nahi — poora data imtihan hai. Umeedwar ya tarteeb na badlein,
+  // warna ye imtihan apni qeemat kho deta hai.
+  const CONFIRM_FROM = Date.UTC(2021, 10, 16), CONFIRM_TO = Date.UTC(2024, 10, 16);
+  const CONFIRM_PAIRS = ['BTCUSD', 'ETHUSD', 'SOLUSD', 'BNBUSD', 'XRPUSD', 'DOGEUSD', 'ADAUSD'];
+  const CONFIRM_CANDIDATES = [
+    { id: 'brk-20-3-t', why: 'Seekhne wale hisse me sab se behtar tha (imaandar chunao).' },
+    { id: 'pb-6-2.5', why: 'Imtihan wale hisse me sab se behtar dikha, lekin baad me chuna gaya — is liye is par zyada shak rakhein.' },
+  ];
+  const BINANCE_HOSTS = ['https://data-api.binance.vision', 'https://api.binance.com'];
+  const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+  async function loadBinance(pairId, onFrac) {
+    const symbol = pairId.replace(/USD$/, 'USDT');
+    for (const host of BINANCE_HOSTS) {
+      const out = []; let start = CONFIRM_FROM, fails = 0, ok = true;
+      while (start < CONFIRM_TO) {
+        let rows = null;
+        try { rows = await fetchJson(host + '/api/v3/klines?symbol=' + symbol + '&interval=1h&startTime=' + start + '&endTime=' + (CONFIRM_TO - 1) + '&limit=1000', 15000); } catch (e) { rows = null; }
+        if (!Array.isArray(rows)) { if (++fails > 2) { ok = false; break; } await sleep(800); continue; }
+        fails = 0;
+        if (!rows.length) break;
+        for (const k of rows) {
+          const t = +k[0], o = +k[1], h = +k[2], l = +k[3], c = +k[4];
+          if (!(t >= CONFIRM_FROM && t < CONFIRM_TO) || !(h >= l) || !(c > 0) || !(o > 0)) continue;
+          if (out.length && t <= out[out.length - 1].t) continue;
+          out.push({ t, o, h, l, c });
+        }
+        const lastT = +rows[rows.length - 1][0];
+        if (!(lastT + 3600000 > start)) break; // aage na barhe to ruk jao (hamesha ke loop se bachao)
+        start = lastT + 3600000;
+        if (onFrac) onFrac((start - CONFIRM_FROM) / (CONFIRM_TO - CONFIRM_FROM));
+        if (rows.length < 1000) break;
+        await sleep(120);
+      }
+      if (ok && out.length >= 15000) return { candles: out, source: 'Binance (' + host.replace('https://', '') + ')' };
+    }
+    return { candles: [], source: null };
+  }
+  async function runConfirm() {
+    const variants = NEW_STRATEGIES.map(s => ({ s, trades: [], perPair: {} }));
+    const dataInfo = [];
+    for (let pi = 0; pi < CONFIRM_PAIRS.length; pi++) {
+      const pairId = CONFIRM_PAIRS[pi];
+      job.progress = { pair: pairId, done: pi, total: CONFIRM_PAIRS.length, step: 'candles' };
+      const { candles, source } = await loadBinance(pairId, (f) => { job.progress.frac = f; });
+      if (!candles.length) { dataInfo.push({ pair: pairId, bars: 0, used: false, note: 'Binance se purana data nahi mila — chhor diya.' }); continue; }
+      await tick();
+      const f = features(candles);
+      dataInfo.push({ pair: pairId, bars: candles.length, used: true, source, from: candles[0].t, to: candles[candles.length - 1].t });
+      for (const v of variants) {
+        await tick();
+        const res = walk(pairId, candles, v.s.gen(candles, f), v.s.maxHold);
+        const all = res.train.concat(res.test);
+        for (const x of all) v.trades.push(x);
+        v.perPair[pairId] = all.map(x => x.r);
+      }
+    }
+    const byTime = (a, b) => a.t - b.t;
+    const rowOf = (v) => {
+      const tr = v.trades.sort(byTime);
+      const pp = Object.keys(v.perPair).map(k => v.perPair[k]).filter(a => a.length >= 10);
+      const years = {};
+      for (const x of tr) { const y = new Date(x.t).getUTCFullYear(); (years[y] = years[y] || []).push(x.r); }
+      const byYear = Object.keys(years).sort().map(y => ({ year: +y, ...stats(years[y]) }));
+      return { id: v.s.id || null, name: v.s.name, isBaseline: false, test: stats(tr.map(x => x.r)), pairsTested: pp.length, pairsPositive: pp.filter(a => a.reduce((s, r) => s + r, 0) > 0).length, byYear, yearsPositive: byYear.filter(y => y.n >= 20 && y.avgR > 0).length, yearsCounted: byYear.filter(y => y.n >= 20).length };
+    };
+    const rows = variants.map(rowOf);
+    const judge = (r) => {
+      const t = r.test;
+      const strong = t.n >= 80 && t.avgR > 0 && t.pf != null && t.pf >= 1.15 && t.tStat != null && t.tStat >= 2.5 && r.pairsTested > 0 && r.pairsPositive / r.pairsTested >= 0.6 && r.yearsCounted >= 2 && r.yearsPositive >= r.yearsCounted - 1;
+      if (strong) return 'JEETA';
+      if (t.n >= 40 && t.avgR > 0 && t.pf != null && t.pf > 1) return 'KAMZOR';
+      return 'NAHI';
+    };
+    const candidates = CONFIRM_CANDIDATES.map(c => { const r = rows.find(x => x.id === c.id); return r ? { ...r, why: c.why, verdict: judge(r) } : null; }).filter(Boolean);
+    const winners = candidates.filter(r => r.verdict === 'JEETA');
+    const usedPairs = dataInfo.filter(d => d.used).length;
+    let verdict;
+    if (usedPairs < 4) verdict = 'Purana data kaafi pairs ka nahi mila (' + usedPairs + '/7) — tasdeeqi imtihan nahi ho saka. Thori der baad dobara chalayein.';
+    else if (winners.length === candidates.length) verdict = 'Dono umeedwar an-dekhe purane data par bhi saaf jeete. Agla qadam: khamosh mode (signal record ho, buyers ko na jaye) me chand hafte.';
+    else if (winners.length) verdict = winners.length + ' umeedwar an-dekhe purane data par bhi saaf jeeta: ' + winners.map(w => w.name.split(' · ')[0]).join(', ') + '. Agla qadam: sirf isay khamosh mode me chand hafte chalana.';
+    else if (candidates.some(r => r.verdict === 'KAMZOR')) verdict = 'Koi umeedwar an-dekhe data par saaf nahi jeeta. Halka sa musbat hai, lekin itna nahi ke is par paisa lagaya jaye.';
+    else verdict = 'Dono umeedwar an-dekhe purane data par nakaam rahe. Pichle test ke ishare ittefaq the.';
+    return {
+      mode: 'confirm', tf: '1H', tfLabel: 'Tasdeeqi imtihan · crypto · Binance 1H candles · 2021-11-16 se 2024-11-16 (an-dekha data)', pairs: dataInfo, variantsTested: candidates.length,
+      splitNote: 'Poora data imtihan hai — yahan seekhne wala hissa nahi.',
+      costNote: 'Har trade se price ka 0.06% (spread + slippage) kaata gaya. Aap ke broker ka kharcha alag ho sakta hai.',
+      limits: 'Sirf do umeedwar, jo 2026-11-16 ko ye data dekhe baghair pakke kiye gaye. "JEETA" ke liye yahan aik shart zyada hai: munafa sirf aik saal par na tika ho (taqreeban har saal musbat). Baaqi tareeqon ki table sirf dekhne ke liye hai — us me se ab kuch chunna phir wohi ghalti hogi. Purana data jeetna bhi aage ke munafe ki guarantee nahi.',
+      baseline: null, top: [], candidates, all: rows.slice().sort((a, b) => (b.test.avgR == null ? -9 : b.test.avgR) - (a.test.avgR == null ? -9 : a.test.avgR)), geometryOnly: [], verdict, finishedAt: Date.now(),
+    };
+  }
+
   function start(tf, pairIds, mode) {
     if (job.status === 'running') return { ok: false, message: 'Lab pehle se chal raha hai.' };
+    if (mode === 'confirm') {
+      job = { status: 'running', startedAt: Date.now(), tf: '1H', pairs: CONFIRM_PAIRS, progress: { done: 0, total: CONFIRM_PAIRS.length } };
+      runConfirm().then(result => { job = { status: 'done', startedAt: job.startedAt, tf: '1H', pairs: CONFIRM_PAIRS, result }; })
+        .catch(e => { job = { status: 'error', startedAt: job.startedAt, tf: '1H', pairs: CONFIRM_PAIRS, message: String(e && e.message || e) }; });
+      return { ok: true };
+    }
     if (mode === 'new') tf = '1H';
     if (!TF[tf]) return { ok: false, message: 'Timeframe 15m ya 1H ho.' };
     const ids = (pairIds || []).filter(id => PAIRS.some(p => p.id === id));
@@ -438,7 +540,7 @@ function createLab(deps) {
     return { ok: true };
   }
   function status() { return job; }
-  return { start, status, _run: run, _runNew: runNew, _prepare: prepare, _simulate: simulate, _features: features, _strategies: NEW_STRATEGIES, _walk: walk };
+  return { start, status, _run: run, _runNew: runNew, _runConfirm: runConfirm, _prepare: prepare, _simulate: simulate, _features: features, _strategies: NEW_STRATEGIES, _walk: walk };
 }
 
 module.exports = { createLab, stats, adxSeries, labCost, GEOMETRIES, GATES, FILTER_SETS };
