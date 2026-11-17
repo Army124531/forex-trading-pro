@@ -36,6 +36,7 @@ function defaultDb() {
     signals: [],        // {id, pair, direction, entry, sl, tp1, tp2, tp3, score, gate, engine, createdAt, outcome, outcomeAt, pips, exitLevel}
     logs: [],           // {at, text}
     newsBlocks: [],     // {at, pair, wouldBe, wouldBeScore, events:[titles]} — news window me roke gaye signals (aakhri 50)
+    newsAlertsSent: [], // {key, title, country, timeMs, at} — High-impact news alerts jo bhej diye gaye (cap 100, dedupe)
     settings: {
       engines: { terminal: true, smc: true, session: true, news: true },
       aiEnabled: true,
@@ -1781,6 +1782,7 @@ async function backgroundTick() {
   tickStartedAt = Date.now();
   try {
     await telegramPollUpdates();
+    await checkNewsAlerts(); // High-impact news window khuli ho to ek dafa Telegram + Push alert
     if (Date.now() - lastRecorderAt >= 15 * 60 * 1000) { lastRecorderAt = Date.now(); await recorderTick(); }
   } catch (e) { console.error('Background tick fail: ' + e.message); }
   finally { if (myId === tickId) tickRunning = false; } // hamesha reset — ek tick ke fail/hang hone par agle ticks chalte rahein
@@ -2439,6 +2441,101 @@ function logNewsBlock(pair, wouldBe, wouldBeScore, events) {
   if (db.newsBlocks.length > 50) db.newsBlocks.length = 50;
   try { saveDb(); } catch (e) {}
 }
+
+// ---------------- News alerts (High-impact events → Telegram + Web Push) ----------------
+// Jab High-impact event ki ±30-min window khulti hai (event se 30 min pehle), ek dafa
+// alert bhejein — Telegram + Web Push, wahi audience jaisi signal alerts (linked Active
+// buyers + admin, per-pair pasand ke hisaab se). Har event par sirf ek alert
+// (db.newsAlertsSent me claim-first, cap 100 — restart par bhi dobara nahi).
+// Medium/Low kabhi nahi; RSS headlines par nahi (sirf FF calendar ke High events).
+// Kabhi throw nahi karta — alert fail ho to baaki server chalta rehta hai.
+function newsAlertKey(ev) { return (ev.title || '') + '|' + ev.timeMs; }
+function buildNewsTelegramMessage(ev) {
+  const pairs = pairsForCurrency(ev.country);
+  const untilMs = ev.timeMs + NEWS_WINDOW_MS;
+  return [
+    '📰 Forex Trading Pro — NEWS ALERT',
+    (ev.country || '') + ' — ' + (ev.title || ''),
+    'Time: ' + fmtTgTime(ev.timeMs),
+    'Impact: High',
+    'Pairs: ' + (pairs.length ? pairs.join(', ') : '—'),
+    'Naye signals ' + fmtTgTime(untilMs) + ' tak band hain.',
+  ].join('\n');
+}
+function buildNewsPushPayload(ev) {
+  const pairs = pairsForCurrency(ev.country);
+  return {
+    title: '📰 NEWS ALERT — ' + (ev.country ? ev.country + ' ' : '') + (ev.title || ''),
+    body: fmtTgTime(ev.timeMs) + ' · High impact · Naye signals ' + fmtTgTime(ev.timeMs + NEWS_WINDOW_MS) + ' tak band hain' + (pairs.length ? ' · ' + pairs.slice(0, 4).join(', ') + (pairs.length > 4 ? '…' : '') : ''),
+    url: '/', code: 'NEWS|' + newsAlertKey(ev),
+  };
+}
+// Kaun se users ko news alert jaye — signal alerts wali audience, par sirf wo jin ki
+// per-pair pasand me event se mutassir kam-az-kam ek pair ON ho (unset = sab ON).
+function newsAlertTargets(ev) {
+  const pairs = pairsForCurrency(ev.country);
+  const ok = (u) => (buyerActive(u) || (u.role === 'admin' && !u.suspended)) && (pairs.length === 0 || pairs.some(p => notifyPairOn(u, p)));
+  return {
+    telegram: db.users.filter(u => u.tgChatId != null && ok(u)),
+    push: db.users.filter(u => Array.isArray(u.pushSubscriptions) && u.pushSubscriptions.length && ok(u)),
+  };
+}
+async function sendNewsAlert(ev, nowMs) {
+  try {
+    if (!ev || ev.impact !== 'High' || !ev.timeMs) return { sent: false };
+    if (!Array.isArray(db.newsAlertsSent)) db.newsAlertsSent = [];
+    const key = newsAlertKey(ev);
+    if (db.newsAlertsSent.some(a => a.key === key)) return { sent: false, reason: 'already_sent' };
+    // Claim-first — dobara kabhi na jaye (restart par bhi nahi, db disk par hai).
+    db.newsAlertsSent.unshift({ key, title: ev.title, country: ev.country, timeMs: ev.timeMs, at: Date.now() });
+    if (db.newsAlertsSent.length > 100) db.newsAlertsSent.length = 100;
+    saveDb();
+    const targets = newsAlertTargets(ev);
+    const tgText = buildNewsTelegramMessage(ev);
+    for (const u of targets.telegram) {
+      try { await sendTelegramMessage(u.tgChatId, tgText); }
+      catch (e) { console.error('News Telegram alert fail (' + u.username + '): ' + e.message); }
+    }
+    if ((webpush || PUSH_DRY_RUN) && targets.push.length) {
+      const payload = JSON.stringify(buildNewsPushPayload(ev));
+      for (const u of targets.push) {
+        for (const sub of (u.pushSubscriptions || [])) {
+          try {
+            if (PUSH_DRY_RUN) { pushDryRunSent.push({ username: u.username, endpoint: sub.endpoint, payload }); continue; }
+            await webpush.sendNotification(sub, payload);
+          } catch (e) {
+            if (e && (e.statusCode === 404 || e.statusCode === 410)) {
+              u.pushSubscriptions = (u.pushSubscriptions || []).filter(s => s.endpoint !== sub.endpoint);
+              saveDb();
+              console.log('Push subscription khatam ho gaya, hata diya (' + u.username + ')');
+            } else {
+              console.error('News Push fail (' + u.username + '): ' + (e && e.message ? e.message : e));
+            }
+          }
+        }
+      }
+    }
+    return { sent: true, telegram: targets.telegram.length, push: targets.push.length };
+  } catch (e) { console.error('News alert fail: ' + e.message); return { sent: false, reason: 'error' }; }
+}
+// Har 5-min background tick se: jo High event abhi window me hai, us ka alert bhejein.
+// Window event se 30 min pehle khulti hai — alert usi waqt jata hai. Kabhi throw nahi karta.
+async function checkNewsAlerts(nowMs) {
+  try {
+    const now = nowMs || Date.now();
+    const cal = await getFFCalendar();
+    if (!cal.available || !cal.events.length) return { checked: 0, sent: 0 };
+    let sent = 0, checked = 0;
+    for (const ev of cal.events) {
+      if (ev.impact !== 'High') continue;
+      if (now < ev.timeMs - NEWS_WINDOW_MS || now > ev.timeMs + NEWS_WINDOW_MS) continue;
+      checked++;
+      const r = await sendNewsAlert(ev, now);
+      if (r.sent) sent++;
+    }
+    return { checked, sent };
+  } catch (e) { console.error('News alert check fail: ' + e.message); return { checked: 0, sent: 0, error: e.message }; }
+}
 let newsCache = { at: 0, data: null };
 app.get('/api/news', requireAuth, async (req, res) => {
   if (newsCache.data && Date.now() - newsCache.at < 300000) return res.json(newsCache.data);
@@ -2907,5 +3004,5 @@ app.listen(PORT, () => console.log('Forex Trading Pro chal raha hai: http://loca
 
 // Test ke liye (NODE_ENV=test) — production me kuch nahi badalta.
 if (process.env.NODE_ENV === 'test') {
-  module.exports = { recordTerminalSignal, sendSignalAlert, sendPushAlert, buildPushPayload, notifyPairOn, buildTelegramMessage, parseTelegramUpdates, applyTelegramUpdates, telegramPollUpdates, recorderTick, backgroundTick, ensureTgCode, buyerActive, gateScore, isMarketClosed, computeZones, computeTrendPanel, getDb: () => db, telegramDryRunSent, pushDryRunSent, webpush, engineSettings, priceByMode, walkExit, rForRule, runBacktest, computeSmc, computeScanner, GROUP_PAIRS, computePips, pipSize, PIP_SIZE, runningPips, freshEaSignals, autoTradeSettings, eaAllowedUser, makeEaKey, parseFFCalendar, pairsForCurrency, isNewsBlocked, getFFCalendar, newsBlackoutInfo, logNewsBlock };
+  module.exports = { recordTerminalSignal, sendSignalAlert, sendPushAlert, buildPushPayload, notifyPairOn, buildTelegramMessage, parseTelegramUpdates, applyTelegramUpdates, telegramPollUpdates, recorderTick, backgroundTick, ensureTgCode, buyerActive, gateScore, isMarketClosed, computeZones, computeTrendPanel, getDb: () => db, telegramDryRunSent, pushDryRunSent, webpush, engineSettings, priceByMode, walkExit, rForRule, runBacktest, computeSmc, computeScanner, GROUP_PAIRS, computePips, pipSize, PIP_SIZE, runningPips, freshEaSignals, autoTradeSettings, eaAllowedUser, makeEaKey, parseFFCalendar, pairsForCurrency, isNewsBlocked, getFFCalendar, newsBlackoutInfo, logNewsBlock, checkNewsAlerts, sendNewsAlert, buildNewsTelegramMessage, buildNewsPushPayload, newsAlertKey, newsAlertTargets };
 }
