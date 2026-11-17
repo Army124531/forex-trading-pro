@@ -8088,6 +8088,45 @@ async function checkNewSignals() {
     }
   } catch (e) {}
 }
+// ---------------- News alerts (site khuli ho to) — High-impact window khulte hi toast + sound + browser notification ----------------
+// /api/news-calendar ke activeWindows me naya event (title|timeMs) dikhe to ek dafa alert.
+// Seen keys localStorage me (ftp_news_seen, cap 50) — refresh/reload par dobara nahi bajta.
+// Server wali Telegram/Push alert se alag — ye sirf khuli hui site par dikhta/bajta hai.
+let newsSeenKeys = null;
+function loadNewsSeenKeys() {
+  if (newsSeenKeys) return newsSeenKeys;
+  try { newsSeenKeys = JSON.parse(localStorage.getItem('ftp_news_seen') || '[]'); }
+  catch (e) { newsSeenKeys = []; }
+  if (!Array.isArray(newsSeenKeys)) newsSeenKeys = [];
+  return newsSeenKeys;
+}
+function saveNewsSeenKeys() { try { localStorage.setItem('ftp_news_seen', JSON.stringify(loadNewsSeenKeys().slice(-50))); } catch (e) {} }
+function notifyNewsAlert(w) {
+  const title = '📰 NEWS ALERT — ' + (w.country ? w.country + ' ' : '') + w.title;
+  const body = fmtPktTimeShort(w.timeMs) + ' PKT · High impact · Naye signals ' + fmtPktTimeShort(w.untilMs) + ' tak band hain';
+  showToast(title, esc(body));
+  playAlertSound();
+  if (notifOn && 'Notification' in window && Notification.permission === 'granted') {
+    try { new Notification(title, { body }); } catch (e) {}
+  }
+}
+async function checkNewsAlerts() {
+  if (!me) return;
+  try {
+    const c = await api('/api/news-calendar');
+    const wins = (c && c.available && c.activeWindows) || [];
+    if (!wins.length) return;
+    const seen = loadNewsSeenKeys();
+    let changed = false;
+    for (const w of wins) {
+      const key = (w.title || '') + '|' + w.timeMs;
+      if (seen.includes(key)) continue;
+      seen.push(key); changed = true;
+      notifyNewsAlert(w);
+    }
+    if (changed) saveNewsSeenKeys();
+  } catch (e) {}
+}
 function updateAlertButtons() {
   const s = document.getElementById('soundBtn'); if (s) s.textContent = soundOn ? '🔊' : '🔇';
   const n = document.getElementById('notifBtn'); if (n) n.textContent = notifOn ? '🔔' : '🔕';
@@ -8608,8 +8647,9 @@ function enterApp() {
   if (countdownTimer) clearInterval(countdownTimer);
   countdownTimer = setInterval(tickLastUpdate, 1000);
   checkNewSignals();
+  checkNewsAlerts(); // High-impact news window khuli ho to ek dafa toast + sound
   if (alertTimer) clearInterval(alertTimer);
-  alertTimer = setInterval(checkNewSignals, 30000);
+  alertTimer = setInterval(() => { checkNewSignals(); checkNewsAlerts(); }, 30000);
   maybeShowPushBanner(); // v9.7 Feature F: buyer jiska push OFF ho — reminder banner
 }
 // Server ka defaultPair load karein (sirf tab jab user ne apna preferred pair save nahi kiya)
