@@ -70,13 +70,41 @@ async function copyTextToClipboard(text) {
 }
 
 // ---------------- Language (Roman Urdu default, English option) ----------------
-const LANGS = [['ur','اردو'],['en','English'],['ar','العربية'],['hi','हिन्दी'],['bn','বাংলা'],['es','Español'],['fr','Français'],['de','Deutsch'],['tr','Türkçe'],['pt','Português'],['ru','Русский'],['zh','中文'],['id','Bahasa Indonesia'],['fa','فارسی']];
-const RTL_LANGS = ['ar','fa','ur'];
+const LANGS = [['ur','Urdu'],['en','English'],['ar','العربية'],['hi','हिन्दी'],['bn','বাংলা'],['es','Español'],['fr','Français'],['de','Deutsch'],['tr','Türkçe'],['pt','Português'],['ru','Русский'],['zh','中文'],['id','Bahasa Indonesia'],['fa','فارسی']];
+const RTL_LANGS = ['ar','fa'];
 let lang = localStorage.getItem('ftp_lang') || 'ur';
 if (!LANGS.some(([c]) => c === lang)) lang = 'ur';
 const I18N = {
   ur: {
     tagline: "Gold, Bitcoin aur Forex ke live signals",
+    splashOnline: "LIVE • ONLINE",
+    splashTag: "LIVE SIGNALS • GOLD • FOREX • CRYPTO",
+    splashSkip: "Chhorein ›",
+    splashSub: "AI se chalne wala Trading Terminal",
+    splashStage1: "Live prices se connect ho raha hai...",
+    splashStage2: "App load ho raha hai...",
+    splashStage3: "Tayyar ho raha hai...",
+    csBtn: "Customer Service",
+    csTitle: "Customer Service",
+    csSub: "Sawal poochein ya hum se rabta karein",
+    csAiTitle: "AI Helper — foran jawab",
+    csAiHint: "Neeche sawal dabayein ya apna sawal likhein:",
+    csAiPh: "Apna sawal likhein…",
+    csAiFallback: "Is sawal ka jawab yahan nahi mila. Telegram ya email par rabta karein — link neeche hai.",
+    csQPlans: "Plans aur price kya hai?",
+    csAPlans: "Monthly plan $30/month hai. Baaki plans (Quarterly, Yearly, Lifetime) Account tab mein dekhein.",
+    csQSignals: "Signal kaise banta hai?",
+    csASignals: "Terminal mein 6 checks hote hain (100 points). Signal sirf tab banta hai jab 85 ya zyada points milen. WAIT ka matlab hai: abhi trade mat karein.",
+    csQTg: "Telegram alerts kaise link karein?",
+    csATg: "Account tab mein apna personal Telegram link kholein aur bot par Start dabayein.",
+    csQPay: "Payment kaise karein?",
+    csAPay: "Crypto (USDT) se payment hoti hai. Payment ke baad screenshot bhej dein, phir account ban jaye ga.",
+    csQDemo: "Kya signal 100% profitable hai?",
+    csADemo: "Nahi — koi signal 100% profitable nahi hota. Pehle demo par practice karein, asal paisa jaldi mat lagayein.",
+    csQExpiry: "Plan khatam hone par kya hota hai?",
+    csAExpiry: "Expiry par signals band ho jate hain. Renew karne ke liye admin se rabta karein (Telegram ya email).",
+    csTgLabel: "Telegram par rabta karein:",
+    csEmailLabel: "Email karein:",
     setupTitle: "Pehli Dafa Setup",
     setupText: "Apna Admin username aur password khud banayein. Password kahin likh kar mat bhejein — sirf aapko pata hona chahiye.",
     setupBtn: "Admin Account Banayein",
@@ -732,7 +760,6 @@ const I18N = {
     hubChannels: "Engine Channels",
     hubFeed: "Notification Feed",
     hubAllEngines: "Sab engines",
-    hubAllEngines: "All engines",
     hubAllPairs: "All Approved Pairs",
     hubPreset_all: "All Approved Pairs",
     hubPreset_metals: "Gold & Metals",
@@ -795,6 +822,34 @@ const I18N = {
   },
   en: {
     tagline: "Live signals for Gold, Bitcoin and Forex",
+    splashOnline: "LIVE • ONLINE",
+    splashTag: "LIVE SIGNALS • GOLD • FOREX • CRYPTO",
+    splashSkip: "SKIP ›",
+    splashSub: "AI POWERED TRADING TERMINAL",
+    splashStage1: "Connecting to live prices...",
+    splashStage2: "Loading the app...",
+    splashStage3: "Getting ready...",
+    csBtn: "Customer Service",
+    csTitle: "Customer Service",
+    csSub: "Ask a question or contact us",
+    csAiTitle: "AI Helper — instant answers",
+    csAiHint: "Tap a question below or type your own:",
+    csAiPh: "Type your question…",
+    csAiFallback: "No answer found here. Please contact us on Telegram or email — links below.",
+    csQPlans: "What are the plans and price?",
+    csAPlans: "The Monthly plan is $30/month. Other plans (Quarterly, Yearly, Lifetime) are shown in the Account tab.",
+    csQSignals: "How is a signal made?",
+    csASignals: "The Terminal runs 6 checks (100 points). A signal is made only at 85 points or more. WAIT means: do not trade yet.",
+    csQTg: "How do I link Telegram alerts?",
+    csATg: "Open your personal Telegram link in the Account tab and press Start on the bot.",
+    csQPay: "How do I pay?",
+    csAPay: "Payment is by crypto (USDT). After paying, send the screenshot and your account will be created.",
+    csQDemo: "Is any signal 100% profitable?",
+    csADemo: "No — no signal is 100% profitable. Practise on demo first; do not risk real money quickly.",
+    csQExpiry: "What happens when my plan expires?",
+    csAExpiry: "Signals stop at expiry. To renew, contact the admin (Telegram or email).",
+    csTgLabel: "Contact us on Telegram:",
+    csEmailLabel: "Email us:",
     setupTitle: "First-Time Setup",
     setupText: "Create your own Admin username and password. Never send your password to anyone — only you should know it.",
     setupBtn: "Create Admin Account",
@@ -1449,6 +1504,7 @@ const I18N = {
     hubControlsText: "A pair that is OFF gets no alert — this choice applies to both Telegram and Browser Push.",
     hubChannels: "Engine Channels",
     hubFeed: "Notification Feed",
+    hubAllEngines: "All engines",
     hubAllPairs: "All Approved Pairs",
     hubPreset_all: "All Approved Pairs",
     hubPreset_metals: "Gold & Metals",
@@ -8005,6 +8061,7 @@ function applyLang() {
   updateMonitorUI();
   if (me) showTab(currentTab);
   updateTgCard();
+  updateSupportPanel();
 }
 
 // ---------------- Telegram alerts card (v9) ----------------
@@ -8025,6 +8082,71 @@ function updateTgCard() {
 }
 function copyTgLink() {
   copyTextToClipboard(tgPersonalLink()).then(() => showToast(t('tgCopyLink'), esc(t('tgLinkCopied'))));
+}
+
+// ---------------- Customer Service side panel (v10.8: floating button + side panel) ----------------
+// AI helper = rule-based FAQ only (koi API key / network call nahi — pure local matching).
+// Saare answers t() se aate hain, is liye panel baaki site ke saath language badalta hai.
+const CS_FAQ = [
+  { q: 'csQPlans', a: 'csAPlans', keys: ['plan', 'price', '$30', '30', 'monthly', 'quarterly', 'yearly', 'lifetime', 'qemat', 'keemat', 'mahina', 'saal'] },
+  { q: 'csQSignals', a: 'csASignals', keys: ['signal', 'kaise', 'banta', 'gate', '85', 'wait', 'checks', 'points', 'terminal'] },
+  { q: 'csQTg', a: 'csATg', keys: ['telegram', 'alert', 'link', 'start', 'bot'] },
+  { q: 'csQPay', a: 'csAPay', keys: ['pay', 'payment', 'usdt', 'crypto', 'screenshot', 'paisa', 'bhejein', 'ada'] },
+  { q: 'csQDemo', a: 'csADemo', keys: ['100%', 'profit', 'profitable', 'demo', 'loss', 'nuqsan', 'faida'] },
+  { q: 'csQExpiry', a: 'csAExpiry', keys: ['expir', 'renew', 'khatam', 'meaad', 'extend'] }
+];
+let csCurrentA = null;
+function csFindAnswer(text) {
+  const s = (text || '').toLowerCase();
+  let best = null, bestScore = 0;
+  for (const f of CS_FAQ) {
+    let score = 0;
+    // Score by matched keyword LENGTH (lambe, zyada specific lafz jeette hain):
+    // 'plan khatam' me 'khatam' (6) > 'plan' (4), is liye Expiry jeetta hai, Plans nahi.
+    for (const k of f.keys) if (s.includes(k)) score += k.length;
+    if (score > bestScore) { bestScore = score; best = f; }
+  }
+  return bestScore > 0 ? best.a : null;
+}
+function csShowAnswer(aKey) {
+  csCurrentA = aKey;
+  const el = document.getElementById('csAnswer');
+  if (el) el.textContent = t(aKey);
+}
+function csAskInput() {
+  const inp = document.getElementById('csInput');
+  const q = inp ? inp.value.trim() : '';
+  if (!q) { csCurrentA = null; const el = document.getElementById('csAnswer'); if (el) el.textContent = t('csAiHint'); return; }
+  const a = csFindAnswer(q);
+  csShowAnswer(a || 'csAiFallback');
+}
+function renderCsFaq() {
+  const list = document.getElementById('csFaqList');
+  if (!list) return;
+  list.innerHTML = CS_FAQ.map(f => `<button class="btn-sig cs-q" onclick="csShowAnswer('${f.a}')">${esc(t(f.q))}</button>`).join('');
+}
+function updateSupportPanel() {
+  renderCsFaq();
+  const ans = document.getElementById('csAnswer');
+  if (ans) ans.textContent = csCurrentA ? t(csCurrentA) : t('csAiHint');
+}
+function openSupportPanel() {
+  const p = document.getElementById('supportPanel');
+  if (!p) return;
+  updateSupportPanel();
+  p.classList.add('open');
+  p.setAttribute('aria-hidden', 'false');
+}
+function closeSupportPanel() {
+  const p = document.getElementById('supportPanel');
+  if (!p) return;
+  p.classList.remove('open');
+  p.setAttribute('aria-hidden', 'true');
+}
+function toggleSupportPanel() {
+  const p = document.getElementById('supportPanel');
+  if (!p) return;
+  if (p.classList.contains('open')) closeSupportPanel(); else openSupportPanel();
 }
 
 // ---------------- Signal alerts (sound + on-screen + browser notification — site khuli ho to) ----------------
@@ -8544,13 +8666,13 @@ async function loadPublicPrices() {
 // "Scanning Liquidity & Order Blocks" jaisi line kabhi nahi — app asal me live prices
 // se connect ho raha hai aur load ho raha hai, status wahi batata hai).
 const SPLASH_STAGES = [
-  { max: 40, text: 'Live prices se connect ho raha hai...' },
-  { max: 75, text: 'App load ho raha hai...' },
-  { max: 100, text: 'Tayyar ho raha hai...' }
+  { max: 40, key: 'splashStage1' },
+  { max: 75, key: 'splashStage2' },
+  { max: 100, key: 'splashStage3' }
 ];
 function splashStageText(p) {
-  for (const s of SPLASH_STAGES) if (p <= s.max) return s.text;
-  return SPLASH_STAGES[SPLASH_STAGES.length - 1].text;
+  for (const s of SPLASH_STAGES) if (p <= s.max) return t(s.key);
+  return t(SPLASH_STAGES[SPLASH_STAGES.length - 1].key);
 }
 // v9.1 se: splash sirf ek dafa per browser session (SKIP bhi isi ko set karta hai).
 let splashTimers = [];
@@ -8563,7 +8685,7 @@ function showSplash() {
   const status = document.getElementById('splashStatus');
   const started = Date.now();
   const DUR = 2500;
-  if (status) status.textContent = SPLASH_STAGES[0].text + ' 0%';
+  if (status) status.textContent = splashStageText(0) + ' 0%';
   splashTimers.push(setInterval(() => {
     const p = Math.min(100, (Date.now() - started) / DUR * 100);
     if (fill) fill.style.width = p + '%';

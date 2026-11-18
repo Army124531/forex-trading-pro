@@ -13,12 +13,12 @@
 <!-- v9.7: branded splash screen (premium terminal style, OUR brand only — once per browser session, overlay only) -->
 <div id="splash">
   <div class="splash-inner">
-    <div class="splash-top"><span class="splash-online"><span class="splash-dot"></span>LIVE • ONLINE</span><button class="splash-skip" id="splashSkip" onclick="hideSplash(true)">SKIP ›</button></div>
-    <div class="splash-tag">LIVE SIGNALS • GOLD • FOREX • CRYPTO</div>
+    <div class="splash-top"><span class="splash-online"><span class="splash-dot"></span><span data-i18n="splashOnline">LIVE • ONLINE</span></span><button class="splash-skip" id="splashSkip" onclick="hideSplash(true)" data-i18n="splashSkip">SKIP ›</button></div>
+    <div class="splash-tag" data-i18n="splashTag">LIVE SIGNALS • GOLD • FOREX • CRYPTO</div>
     <div class="splash-hero"><img src="splash-hero.jpg" alt="Forex Trading Pro"></div>
     <div class="splash-brand">FOREX TRADING PRO</div>
-    <div class="splash-sub">AI POWERED TRADING TERMINAL</div>
-    <div class="splash-status" id="splashStatus">Live prices se connect ho raha hai... 0%</div>
+    <div class="splash-sub" data-i18n="splashSub">AI POWERED TRADING TERMINAL</div>
+    <div class="splash-status" id="splashStatus" data-i18n="splashStage1">Live prices se connect ho raha hai... 0%</div>
     <div class="splash-bar"><div class="splash-fill" id="splashFill"></div></div>
     <div class="splash-icons"><div><div class="si-ic">💱</div><div class="si-lb">Forex</div></div><div><div class="si-ic">🥇</div><div class="si-lb">Gold</div></div><div><div class="si-ic">₿</div><div class="si-lb">Crypto</div></div><div><div class="si-ic">🤖</div><div class="si-lb">AI Signals</div></div></div>
   </div>
@@ -27,7 +27,7 @@
   <!-- LOGIN / SETUP -->
   <div id="authScreen" class="auth-wrap">
     <div class="auth-card">
-      <select class="lang-select" id="langSelectAuth" onchange="setLang(this.value)" style="float:right"><option value="ur" selected>اردو</option><option value="en">English</option><option value="ar">العربية</option><option value="hi">हिन्दी</option><option value="bn">বাংলা</option><option value="es">Español</option><option value="fr">Français</option><option value="de">Deutsch</option><option value="tr">Türkçe</option><option value="pt">Português</option><option value="ru">Русский</option><option value="zh">中文</option><option value="id">Bahasa Indonesia</option><option value="fa">فارسی</option></select>
+      <select class="lang-select" id="langSelectAuth" onchange="setLang(this.value)" style="float:right"><option value="ur" selected>Urdu</option><option value="en">English</option><option value="ar">العربية</option><option value="hi">हिन्दी</option><option value="bn">বাংলা</option><option value="es">Español</option><option value="fr">Français</option><option value="de">Deutsch</option><option value="tr">Türkçe</option><option value="pt">Português</option><option value="ru">Русский</option><option value="zh">中文</option><option value="id">Bahasa Indonesia</option><option value="fa">فارسی</option></select>
       <h1>Forex Trading Pro</h1>
       <p class="tagline" data-i18n="tagline">Gold, Bitcoin aur Forex ke live signals</p>
       <div id="publicPrices" class="price-grid" style="margin-bottom:12px"></div>
@@ -62,7 +62,7 @@
     <header>
       <div class="brand">Forex Trading Pro</div>
       <div class="userbox">
-      <select class="lang-select" id="langSelect" onchange="setLang(this.value)"><option value="ur" selected>اردو</option><option value="en">English</option><option value="ar">العربية</option><option value="hi">हिन्दी</option><option value="bn">বাংলা</option><option value="es">Español</option><option value="fr">Français</option><option value="de">Deutsch</option><option value="tr">Türkçe</option><option value="pt">Português</option><option value="ru">Русский</option><option value="zh">中文</option><option value="id">Bahasa Indonesia</option><option value="fa">فارسی</option></select>
+      <select class="lang-select" id="langSelect" onchange="setLang(this.value)"><option value="ur" selected>Urdu</option><option value="en">English</option><option value="ar">العربية</option><option value="hi">हिन्दी</option><option value="bn">বাংলা</option><option value="es">Español</option><option value="fr">Français</option><option value="de">Deutsch</option><option value="tr">Türkçe</option><option value="pt">Português</option><option value="ru">Русский</option><option value="zh">中文</option><option value="id">Bahasa Indonesia</option><option value="fa">فارسی</option></select>
       <button class="btn small" id="soundBtn" onclick="toggleSound()" title="Sound">🔊</button>
       <button class="btn small" id="notifBtn" onclick="toggleNotif()" title="Notifications">🔔</button>
       <span id="helloUser"></span> <span id="roleBadge" class="badge"></span>
@@ -319,6 +319,27 @@
       <button class="btn-sig" data-i18n="copyFormattedText" onclick="copyShareCardText()">📋 Copy Formatted Text</button>
       <button class="btn-sig" data-i18n="close" onclick="closeShareModal()">Band karein</button>
     </div>
+  </div>
+</div>
+<!-- v10.8: Customer Service side panel — floating button (har screen par) + side panel -->
+<button id="csFab" class="cs-fab" onclick="toggleSupportPanel()" title="Customer Service">💬 <span data-i18n="csBtn">Customer Service</span></button>
+<div id="supportPanel" class="cs-panel" aria-hidden="true">
+  <div class="cs-head">
+    <h3 data-i18n="csTitle">Customer Service</h3>
+    <button class="cs-x" onclick="closeSupportPanel()" title="Close">✕</button>
+  </div>
+  <p class="fine" data-i18n="csSub">Sawal poochein ya hum se rabta karein</p>
+  <div class="cs-ai">
+    <h4 data-i18n="csAiTitle">AI Helper — foran jawab</h4>
+    <p class="fine" id="csAnswer" data-i18n="csAiHint">Neeche sawal dabayein ya apna sawal likhein:</p>
+    <div id="csFaqList" class="cs-faq"></div>
+    <input id="csInput" data-i18n-ph="csAiPh" placeholder="Apna sawal likhein…" oninput="csAskInput()" autocomplete="off">
+  </div>
+  <div class="cs-contact">
+    <p><span data-i18n="csTgLabel">Telegram par rabta karein:</span><br>
+    <span class="fine">Customer service: <a href="https://t.me/forextradingpro001" target="_blank" rel="noopener">@forextradingpro001</a></span></p>
+    <p><span data-i18n="csEmailLabel">Email karein:</span><br>
+    <a href="mailto:support@forextradingprosignals.com">support@forextradingprosignals.com</a></p>
   </div>
 </div>
 <script src="app.js"></script>
