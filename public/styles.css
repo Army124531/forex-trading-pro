@@ -323,3 +323,22 @@ body.light .at-key,body.light .at-steps code,body.light #atSiteUrl{background:#e
 .lab-table{font-size:11px}
 .lab-table th,.lab-table td{padding:4px 5px;white-space:nowrap}
 .lab-table td.lab-name{white-space:normal;min-width:120px;max-width:190px}
+/* v10.8: Customer Service floating button + side panel (dark navy + gold, phone-friendly) */
+.cs-fab{position:fixed;right:16px;bottom:16px;z-index:900;background:#f5c542;color:#111;border:none;border-radius:24px;padding:12px 18px;font-size:15px;font-weight:700;cursor:pointer;box-shadow:0 4px 18px rgba(0,0,0,.45)}
+.cs-fab:hover{background:#ffd75e}
+.cs-panel{position:fixed;top:0;right:0;height:100%;width:min(360px,92vw);z-index:1000;background:#111a30;border-left:1px solid rgba(245,197,66,.45);box-shadow:-8px 0 28px rgba(0,0,0,.5);padding:18px;overflow-y:auto;transform:translateX(105%);transition:transform .28s ease;box-sizing:border-box}
+.cs-panel.open{transform:translateX(0)}
+.cs-head{display:flex;justify-content:space-between;align-items:center}
+.cs-head h3{color:#f5c542;margin:0}
+.cs-x{background:#22304d;color:#fff;border:1px solid rgba(245,197,66,.4);border-radius:8px;width:36px;height:36px;font-size:16px;cursor:pointer}
+.cs-ai{margin-top:12px}
+.cs-ai h4{color:#f5c542;margin:0 0 6px}
+.cs-faq{display:flex;flex-direction:column;gap:6px;margin:10px 0}
+.cs-q{text-align:left;white-space:normal;line-height:1.4}
+#csInput{width:100%;box-sizing:border-box;min-height:44px;font-size:15px;background:#0a0f1e;color:#e8ecf5;border:1px solid #22304d;border-radius:8px;padding:10px}
+.cs-contact{margin-top:14px;border-top:1px solid #22304d;padding-top:10px}
+.cs-contact a{color:#f5c542;word-break:break-all}
+body.light .cs-panel{background:#fff;border-left-color:#d5dce8}
+body.light .cs-x{background:#eef2f9;color:#1a2333}
+body.light #csInput{background:#fff;color:#1a2333;border-color:#d5dce8}
+@media (max-width:640px){.cs-fab{right:12px;bottom:12px;padding:10px 14px;font-size:14px}}
