@@ -2672,6 +2672,13 @@ app.get('/api/terminal/backtest/gold-shadow', requireAdmin, async (req, res) => 
   try { res.json(await strategyLab.goldShadow()); }
   catch (e) { res.status(502).json({ error: 'gold_shadow_failed', message: 'Gold khamosh mode ka data nahi aa saka. Thori der baad dobara dekhein.' }); }
 });
+// v12: Gold SMT V5 khamosh mode. Sirf admin. Buyers ko kuch nahi jata, live engine nahi badalta.
+const goldSmtShadow = require('./goldsmt_shadow').createGoldSmtShadow({ fetchJson, getDb: () => db, saveDb });
+goldSmtShadow.start();
+app.get('/api/terminal/backtest/gold-smt-shadow', requireAdmin, async (req, res) => {
+  try { res.json(await goldSmtShadow.status(req.query.fresh === '1')); }
+  catch (e) { res.status(502).json({ error: 'gold_smt_shadow_failed', message: 'Gold SMT khamosh mode ka data nahi aa saka. Thori der baad dobara dekhein.' }); }
+});
 app.get('/api/terminal/backtest/shadow', requireAdmin, async (req, res) => {
   try { res.json(await strategyLab.shadow(req.query.fresh === '1')); }
   catch (e) { res.status(502).json({ error: 'shadow_failed', message: 'Khamosh mode ka data nahi aa saka. Thori der baad dobara dekhein.' }); }

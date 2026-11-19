@@ -181,7 +181,7 @@
       d.trades.map(t => '<tr><td>' + esc(t.pair) + '</td><td class="' + (t.dir === 'BUY' ? 'buy' : 'sell') + '">' + esc(t.dir) + '</td><td>' + dt(t.entryAt) + '</td><td>' + px(t.entry) + '</td><td>' + px(t.sl) + '</td><td>' + px(t.tp) + '</td><td>' +
         (t.status === 'Open' ? '<span class="wait">khula</span>' : t.status === 'Win' ? '<span class="buy">Win</span>' : '<span class="sell">Loss</span>') + (t.exit ? ' <span class="fine">' + esc(t.exit) + '</span>' : '') + '</td><td class="' + rCls(t.status === 'Open' ? t.runningR : t.r) + '">' +
         (t.status === 'Open' ? rTxt(t.runningR) + ' <span class="fine">chalta</span>' : rTxt(t.r)) + '</td><td>' + (t.exitAt ? dt(t.exitAt) : '—') + '</td></tr>').join('') + '</table></div>'
-      : '<p>Abhi tak koi signal nahi bana. Ye tareeqa har pair par taqreeban hafte me aik signal deta hai.</p>';
+      : '<p>' + esc(d.emptyText || 'Abhi tak koi signal nahi bana. Ye tareeqa har pair par taqreeban hafte me aik signal deta hai.') + '</p>';
     const bad = d.pairs.filter(p => !p.used);
     if (bad.length) h += '<p class="fine">Data nahi mila: ' + bad.map(p => esc(p.pair)).join(', ') + '</p>';
     h += d.notes.map(n => '<p class="fine">' + esc(n) + '</p>').join('');
@@ -193,6 +193,28 @@
     el('shadowBody').innerHTML = '<p>Gold ka data aa raha hai… thori der lag sakti hai.</p>';
     try { renderShadow(await api('/api/terminal/backtest/gold-shadow')); }
     catch (e) { el('shadowBody').innerHTML = '<p class="sell">' + esc(e.message) + '</p>'; }
+  };
+  // v12: Gold SMT V5 khamosh mode. Wohi panel, alag endpoint, aur neeche pichle 7 din ki jaanch.
+  window.labGoldSmtShadow = async function (fresh) {
+    if (!isAdmin() || !el('shadowBody')) return;
+    el('shadowBody').innerHTML = '<p>Gold aur Silver ka 1-minute data aa raha hai… thori der lag sakti hai.</p>';
+    try {
+      const d = await api('/api/terminal/backtest/gold-smt-shadow' + (fresh ? '?fresh=1' : ''));
+      d.emptyText = 'Khamosh mode shuru hone ke baad abhi tak koi trade nahi bani. Ye strategy mahine me taqreeban 1 trade deti hai, is liye sabr chahiye.';
+      renderShadow(d);
+      let h = '';
+      if (d.lastError) h += '<p class="fine sell">Aakhri check me masla: ' + esc(d.lastError) + '</p>';
+      h += '<p class="fine">Data: ' + (d.bars || 0) + ' one-minute candles, aakhri candle ' + dt(d.dataTo) + '.</p>';
+      if (d.funnel) {
+        const f = d.funnel;
+        h += '<p class="fine"><b>Pichle 7 din ki jaanch:</b> ' + f.zones + ' H4 gap bane, ' + f.tapped + ' par price aayi, ' + f.smt + ' dafa SMT mila, ' + f.csd + ' dafa CSD bana, ' + f.outOfSession + ' waqt se bahar, ' + f.rrSkip + ' RR ki wajah se chhodi.</p>';
+      }
+      if (d.recent && d.recent.length) {
+        h += '<p class="fine"><b>Khamosh mode se pehle ki trades (pichle 7 din, ginti me nahi):</b></p>' + TBL + '<tr><th>Taraf</th><th>Entry ka waqt</th><th>Entry</th><th>SL</th><th>TP</th><th>Halat</th><th>R</th></tr>' +
+          d.recent.map(t => '<tr><td class="' + (t.dir === 'BUY' ? 'buy' : 'sell') + '">' + esc(t.dir) + '</td><td>' + dt(t.entryAt) + '</td><td>' + px(t.entry) + '</td><td>' + px(t.sl) + '</td><td>' + px(t.tp) + '</td><td>' + esc(t.status === 'Open' ? 'khula' : t.status) + '</td><td class="' + rCls(t.status === 'Open' ? t.runningR : t.r) + '">' + rTxt(t.status === 'Open' ? t.runningR : t.r) + '</td></tr>').join('') + '</table></div>';
+      }
+      el('shadowBody').insertAdjacentHTML('beforeend', h);
+    } catch (e) { el('shadowBody').innerHTML = '<p class="sell">' + esc(e.message) + '</p>'; }
   };
   window.labShadow = async function (fresh) {
     if (!isAdmin() || !el('shadowBody')) return;
