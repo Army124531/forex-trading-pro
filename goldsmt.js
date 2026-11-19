@@ -36,6 +36,11 @@ const DEFAULTS = {
   sessionEndUTC: 17,
   closeUTC: 20,
   maxPerDay: 2,
+  keyTypes: 'all',      // 'all' | 'fvg' (sirf FVG) | 'pd' (sirf PDH/PDL)
+  trend: 'none',        // 'none' | 'h4' (sirf H4 structure ki simt me)
+  csdBody: 0,           // CSD candle ki body, range ka kam az kam itna hissa (0–1)
+  be: false,            // 1R par SL entry par (break-even)
+  maxRiskAtr: 3,        // SL zyada se zyada itne M30 ATR
   balance: 10000,
   riskPct: 1,
 };
@@ -131,9 +136,8 @@ function findSignals(D, P, dirName) {
       if (b[j - 2].h < b[j].l) zones.push({ kind: tf + ' FVG', top: b[j].l, bottom: b[j - 2].h, availT: b[j].end, expT: b[j].end + life });
     }
   };
-  addFvg(h1, 'H1', 3 * 24 * HOUR);
-  addFvg(h4, 'H4', 10 * 24 * HOUR);
-  { // PDL — UTC din ke hisaab se, H1 candles se
+  if (P.keyTypes !== 'pd') { addFvg(h1, 'H1', 3 * 24 * HOUR); addFvg(h4, 'H4', 10 * 24 * HOUR); }
+  if (P.keyTypes !== 'fvg') { // PDL — UTC din ke hisaab se, H1 candles se
     let day = null, lo = Infinity, lastJ = -1;
     for (let j = 0; j < h1.length; j++) {
       const d = Math.floor(h1[j].t / (24 * HOUR));
@@ -154,7 +158,7 @@ function findSignals(D, P, dirName) {
   let rangeH = null, rangeL = null;
   let active = [];
   let st = null; // armed setup
-  let mIdx = 0, mAtr = null, h1Idx = 0;
+  let mIdx = 0, mAtr = null, h1Idx = 0, h4Idx = 0, bias = 0;
   const lastConfirmed = (list, now, upto) => { // aakhri do pakke swings (index list se)
     let k = upto;
     while (k < list.length && list[k].confirmT <= now) k++;
@@ -169,6 +173,10 @@ function findSignals(D, P, dirName) {
     while (lpI < h4P.lows.length && h4P.lows[lpI].confirmT <= now) { rangeL = h4P.lows[lpI].p; lpI++; }
     while (mIdx < m.length && m[mIdx].end <= now) { mAtr = atrM[mIdx] != null ? atrM[mIdx] : mAtr; mIdx++; }
     while (h1Idx < h1.length && h1[h1Idx].end <= now) h1Idx++;
+    while (h4Idx < h4.length && h4[h4Idx].end <= now) {
+      if (rangeH != null && h4[h4Idx].c > rangeH) bias = 1; else if (rangeL != null && h4[h4Idx].c < rangeL) bias = -1;
+      h4Idx++;
+    }
     mLowK = lastConfirmed(mP.lows, now, mLowK);
     mHighK = lastConfirmed(mP.highs, now, mHighK);
     eLowK = lastConfirmed(eP.lows, now, eLowK);
@@ -188,6 +196,7 @@ function findSignals(D, P, dirName) {
 
     // 3. Tap — sirf discount me
     if (!st) {
+      if (P.trend === 'h4' && bias !== 1) continue;
       for (const z of active) {
         if (z.top > eq || z.top < rangeL - mAtr * 2) continue;
         if (e[i].l <= z.top && e[i].h >= z.bottom) {
@@ -226,6 +235,7 @@ function findSignals(D, P, dirName) {
       while (s - 1 >= 0 && e[s - 1].c < e[s - 1].o) s--;
       const level = e[s].o;
       if (!(e[i].c > level && e[i].c > e[i].o)) continue;
+      if (P.csdBody > 0 && (e[i].c - e[i].o) < P.csdBody * (e[i].h - e[i].l)) continue;
 
       const nb = e[i + 1];
       const hr = new Date(nb.t).getUTCHours();
@@ -234,7 +244,7 @@ function findSignals(D, P, dirName) {
       const entry = nb.o;
       const sl = setup.prot - 0.25 * atrE[i];
       const risk = entry - sl;
-      if (risk < 1.0 || risk > 3 * mAtr) { funnel.badRisk++; continue; }
+      if (risk < 1.0 || risk > P.maxRiskAtr * mAtr) { funnel.badRisk++; continue; }
 
       let tp;
       if (P.tp === 'eod') tp = Infinity;
@@ -247,12 +257,13 @@ function findSignals(D, P, dirName) {
       // Trade chalana
       const d0 = new Date(nb.t); d0.setUTCHours(P.closeUTC, 0, 0, 0);
       const closeT = d0.getTime();
-      let exitP = null, exitT = null, reason = null;
+      let exitP = null, exitT = null, reason = null, stop = sl;
       for (let k = i + 1; k < e.length; k++) {
         const b = e[k];
         if (b.t >= closeT) { exitP = b.o; exitT = b.t; reason = 'Din band'; break; }
-        if (b.l <= sl) { exitP = k > i + 1 && b.o < sl ? b.o : sl; exitT = b.end; reason = 'SL'; break; }
+        if (b.l <= stop) { exitP = k > i + 1 && b.o < stop ? b.o : stop; exitT = b.end; reason = stop === sl ? 'SL' : 'BE'; break; }
         if (b.h >= tp) { exitP = k > i + 1 && b.o > tp ? b.o : tp; exitT = b.end; reason = 'TP'; break; }
+        if (P.be && b.h >= entry + risk) stop = Math.max(stop, entry + COST);
         if (k === e.length - 1) { exitP = b.c; exitT = b.end; reason = 'Data khatam'; }
       }
       if (exitP == null) continue;
@@ -273,12 +284,16 @@ function runGoldSmt(raw, opts) {
   const baseG = P.entryMin === 5 ? raw.gold5 : raw.gold1, baseS = P.entryMin === 5 ? raw.silver5 : raw.silver1;
   const [g0, s0] = align(baseG, baseS);
   const e = ivE === 5 ? g0 : resample(g0, ivE), es = ivE === 5 ? s0 : resample(s0, ivE);
-  const [eA, esA] = align(e, es);
+  let [eA, esA] = align(e, es);
+  if (P.from || P.to) {
+    const keep = eA.map((x, k) => (!P.from || x.t >= P.from) && (!P.to || x.t < P.to));
+    eA = eA.filter((x, k) => keep[k]); esA = esA.filter((x, k) => keep[k]);
+  }
   const m = resample(g0, 30), ms = resample(s0, 30);
   const [mA, msA] = align(m, ms);
   // H1/H4 lambi history se; sirf woh hissa jo entry data se pehle 30 din tak ho
   const from = eA.length ? eA[0].t - 30 * 24 * HOUR : 0;
-  const h1 = raw.gold60.filter(x => x.t >= from);
+  const h1 = (raw.gold60 || resample(raw.gold5, 60)).filter(x => x.t >= from);
   const h4 = resample(h1, 240);
 
   const fix = (sig) => {
@@ -333,7 +348,7 @@ function runGoldSmt(raw, opts) {
     bySession: { London: stats(trades.filter(t => sess(t) === 'London').map(t => t.R)), 'New York': stats(trades.filter(t => sess(t) === 'New York').map(t => t.R)) },
     byHalf: { pehla: stats(Rs.slice(0, half)), doosra: stats(Rs.slice(half)) },
     byMonth: Object.keys(byMonth).sort().map(k => ({ month: k, ...stats(byMonth[k]) })),
-    byExit: ['TP', 'SL', 'Din band', 'Data khatam'].map(r => ({ reason: r, n: trades.filter(t => t.reason === r).length })),
+    byExit: ['TP', 'SL', 'BE', 'Din band', 'Data khatam'].map(r => ({ reason: r, n: trades.filter(t => t.reason === r).length })),
     signalsFound: all.length,
     funnel,
     trades,
