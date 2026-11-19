@@ -37,7 +37,12 @@ const V3_DEFAULTS = {
   rangeTol: 1.0,       // range level ke dono taraf kitne H1 ATR tak 'qareeb'
   rangeCtx: true,      // range level tabhi objective jab doosri taraf sweep + H4 close wapas range me (SSL sweep + CSD)
   maxTries: 2,         // aik zone par zyada se zyada itni trades
-  eq: true,            // E.Q invalidation zaroori
+  eq: true,            // E.Q invalidation har trade par zaroori
+  eqMode: null,        // 'hrlr' = E.Q sirf jab aakhri leg choppy (HRLR) ho; null = 'eq' wali setting
+  hrlrEff: 0.3,        // leg ki seedhi chaal / candles ki kul range — is se kam = HRLR
+  smtWith: 'p1',       // 'p1' (sirf pehla partner) | 'both' (Silver + DXY dono) | 'either'
+  smtMinPct: 0,        // strength SMT: Gold aur partner ki chaal me kam az kam itna % farq
+  fvgMinAtr: 0,        // H4 gap ka size kam az kam itne H4 ATR
   tpMode: 'h1swing',   // 'h1swing' (taaza H1 swing) | 'between' (V2: dono lows ke beech ka high)
   partner: 'silver',   // 'silver' | 'dxy'
   keyFilter: 'bos',    // 'bos' | 'any'
@@ -80,7 +85,8 @@ function resampleNY(c, ivMin) {
 }
 
 function findV3(D, P, dirName) {
-  const { e, ep, h1, h1p, h4 } = D;
+  const { e, ep, h1, h1p, h4, ep2, h1p2 } = D;
+  const atrH4 = g.atrArr(h4, 14);
   const atrH1 = g.atrArr(h1, 14);
   const h4P = g.pivots(h4, 2);
   const h1Piv = g.pivots(h1, 1);
@@ -97,6 +103,7 @@ function findV3(D, P, dirName) {
     while (spl < h4P.lows.length && h4P.lows[spl].confirmT <= h4[j - 1].t) { lastSL = h4P.lows[spl].p; spl++; }
     if (P.keyTypes === 'range') continue;
     if (!(h4[j - 2].h < h4[j].l)) continue;
+    if (P.fvgMinAtr > 0 && !(atrH4[j - 1] != null && h4[j].l - h4[j - 2].h >= P.fvgMinAtr * atrH4[j - 1])) continue;
     if (P.keyFilter === 'bos' && !(lastSH != null && (h4[j - 1].c > lastSH || h4[j].c > lastSH))) continue;
     if (P.discount && lastSH != null && lastSL != null && h4[j].l > (lastSH + lastSL) / 2) continue;
     zones.push({ kind: 'H4 FVG', top: h4[j].l, bottom: h4[j - 2].h, dispT: h4[j - 1].t, availT: h4[j].end, expT: h4[j].end + P.zoneLifeH * HOUR, tapT: null, used: false, tries: 0 });
@@ -175,11 +182,20 @@ function findV3(D, P, dirName) {
       // 3. SMT
       const li = h1Idx.get(L1.t);
       if (li == null) continue;
-      let p1 = Infinity;
-      for (let k = Math.max(0, li - 1); k <= Math.min(h1p.length - 1, li + 1); k++) p1 = Math.min(p1, h1p[k].l);
-      let p2 = Infinity;
-      for (let k = hI; k <= i; k++) p2 = Math.min(p2, ep[k].l);
-      if ((L2 > L1.p) === (p2 > p1)) continue;
+      const smt = (pe, ph) => {
+        let p1 = Infinity, p2 = Infinity;
+        for (let k = Math.max(0, li - 1); k <= Math.min(ph.length - 1, li + 1); k++) p1 = Math.min(p1, ph[k].l);
+        for (let k = hI; k <= i; k++) p2 = Math.min(p2, pe[k].l);
+        return { div: (L2 > L1.p) !== (p2 > p1), str: Math.abs((L2 - L1.p) / Math.abs(L1.p) - (p2 - p1) / Math.abs(p1)) * 100 };
+      };
+      const s1 = smt(ep, h1p);
+      let ok = s1.div, str = s1.div ? s1.str : 0;
+      if (P.smtWith !== 'p1') {
+        const s2 = smt(ep2, h1p2);
+        ok = P.smtWith === 'both' ? s1.div && s2.div : s1.div || s2.div;
+        str = Math.max(s1.div ? s1.str : 0, s2.div ? s2.str : 0);
+      }
+      if (!ok || str < P.smtMinPct) continue;
       funnel.smt++;
       // 4. CSD
       let j = i - 1;
@@ -190,10 +206,17 @@ function findV3(D, P, dirName) {
       const level = e[s].o;
       if (!(e[i].c > level && e[i].c > e[i].o)) continue;
       // E.Q invalidation: aakhri leg (L2 se pehle ka entry-TF swing high → L2) ka 50% bhi paar ho
-      if (P.eq) {
+      const eqMode = P.eqMode || (P.eq ? 'always' : 'off');
+      if (eqMode !== 'off') {
         let k = eHK - 1;
         while (k >= 0 && eHighs[k].i >= l2I) k--;
-        if (k < 0 || !(e[i].c > (eHighs[k].p + L2) / 2)) continue;
+        let need = true;
+        if (eqMode === 'hrlr' && k >= 0) { // HRLR: leg choppy ho tab hi E.Q chahiye
+          let path = 0;
+          for (let x = eHighs[k].i; x <= l2I; x++) path += e[x].h - e[x].l;
+          need = path > 0 && (eHighs[k].p - L2) / path < P.hrlrEff;
+        }
+        if (need && (k < 0 || !(e[i].c > (eHighs[k].p + L2) / 2))) continue;
       }
       funnel.csd++;
       z.tries++; z.lastL2T = e[l2I].t; if (z.tries >= P.maxTries) z.used = true;
@@ -235,14 +258,24 @@ function runV3(raw, opts) {
   const P = { ...V3_DEFAULTS, ...(opts || {}) };
   let [e, ep] = g.align(g.resample(raw.gold1, P.entryMin), g.resample(raw.partner1, P.entryMin));
   if (P.partner === 'dxy') ep = g.mirror(ep); // DXY ulta chalta hai — ulta kar ke wahi SMT
+  let ep2 = null;
+  if (P.smtWith !== 'p1') { // doosra partner (DXY, ulta) — teeno ki common candles
+    const m2 = new Map(g.resample(raw.partner2, P.entryMin).map(x => [x.t, x]));
+    const keep2 = e.map(x => m2.has(x.t));
+    e = e.filter((x, k) => keep2[k]); ep = ep.filter((x, k) => keep2[k]);
+    ep2 = g.mirror(e.map(x => m2.get(x.t)));
+  }
   const h1 = g.resample(e, 60), h1p = g.resample(ep, 60);
-  const [h1A, h1pA] = g.align(h1, h1p);
+  let [h1A, h1pA] = g.align(h1, h1p);
+  let h1p2A = null;
+  if (ep2) { const m = new Map(g.resample(ep2, 60).map(x => [x.t, x])); const kp = h1A.map(x => m.has(x.t)); h1A = h1A.filter((x, k) => kp[k]); h1pA = h1pA.filter((x, k) => kp[k]); h1p2A = h1A.map(x => m.get(x.t)); }
   const h4 = resampleNY(raw.gold1, 240);
   const cut = (arr) => arr.filter(x => (!P.from || x.t >= P.from) && (!P.to || x.t < P.to));
   const keep = e.map(x => (!P.from || x.t >= P.from) && (!P.to || x.t < P.to));
   const eC = e.filter((x, k) => keep[k]), epC = ep.filter((x, k) => keep[k]);
-  const buys = findV3({ e: eC, ep: epC, h1: h1A, h1p: h1pA, h4 }, P, 'BUY');
-  const sells = findV3({ e: g.mirror(eC), ep: g.mirror(epC), h1: g.mirror(h1A), h1p: g.mirror(h1pA), h4: g.mirror(h4) }, P, 'SELL');
+  const ep2C = ep2 ? ep2.filter((x, k) => keep[k]) : null;
+  const buys = findV3({ e: eC, ep: epC, h1: h1A, h1p: h1pA, h4, ep2: ep2C, h1p2: h1p2A }, P, 'BUY');
+  const sells = findV3({ e: g.mirror(eC), ep: g.mirror(epC), h1: g.mirror(h1A), h1p: g.mirror(h1pA), h4: g.mirror(h4), ep2: ep2C && g.mirror(ep2C), h1p2: h1p2A && g.mirror(h1p2A) }, P, 'SELL');
   for (const s of sells) for (const k of ['entry', 'sl', 'tp', 'exit', 'zoneTop', 'zoneBottom', 'L1', 'L2', 'H']) s[k] = -s[k];
   const funnel = {}; for (const k of Object.keys(buys.funnel)) funnel[k] = buys.funnel[k] + sells.funnel[k];
   const all = buys.concat(sells).sort((a, b) => a.entryT - b.entryT);

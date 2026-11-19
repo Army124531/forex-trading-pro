@@ -18,3 +18,9 @@ Strategy ka code `goldsmt.js` (repo root) me hai. Ye folder sirf backtest/resear
 - Data: 1-minute gold + silver se M3 entry. `node v3run.js '{...}'`, `node v3single.js BASEJSON out.json`, `node v3final.js out.json`
 - Sab se behtar (abhi tak): `{"entryMin":3,"keyTypes":"fvg","eq":false,"tpMode":"h1swing","maxTries":1,"maxRR":4,"minRR":1.5}`
 - `trades_v3_best.csv` = us setting ki trades
+
+## Version 4 (wahi `goldsmt_v3.js`, nayi settings)
+- `v4single.js` (naye filters: HRLR E.Q, strength SMT, Silver+DXY, bara H4 gap) — koi dono hisson me behtar nahi
+- `v4sens.js` (settings oopar neeche) — har padosi setting musbat: strategy mazboot hai
+- Mashwara (demo ke liye): `{"entryMin":3,"keyTypes":"fvg","eq":false,"tpMode":"h1swing","maxTries":1,"maxRR":4,"minRR":1.5,"zoneLifeH":72}` → `trades_v4_m3.csv`
+- Tajurbati: wahi + `"entryMin":2` → `trades_v4_m2_experimental.csv`
