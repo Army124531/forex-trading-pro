@@ -24,3 +24,8 @@ Strategy ka code `goldsmt.js` (repo root) me hai. Ye folder sirf backtest/resear
 - `v4sens.js` (settings oopar neeche) — har padosi setting musbat: strategy mazboot hai
 - Mashwara (demo ke liye): `{"entryMin":3,"keyTypes":"fvg","eq":false,"tpMode":"h1swing","maxTries":1,"maxRR":4,"minRR":1.5,"zoneLifeH":72}` → `trades_v4_m3.csv`
 - Tajurbati: wahi + `"entryMin":2` → `trades_v4_m2_experimental.csv`
+
+## Version 5 — malik ki HRLR definition (tez + bari expansion)
+- HRLR = aakhri leg >= 1 H1 ATR aur 30 minute ke andar → tab hi E.Q invalidation zaroori (`eqMode: 'fast'`)
+- Mashwara: V4 M3 + `{"eqMode":"fast","hrlrAtr":1.0,"hrlrMaxMin":30}` → `trades_v5_hrlr.csv`
+- SMT Silver *ya* DXY (`smtWith: 'either'`) aazmaya: trades barhe magar quality giri

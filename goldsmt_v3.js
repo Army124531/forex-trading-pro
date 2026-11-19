@@ -39,7 +39,9 @@ const V3_DEFAULTS = {
   maxTries: 2,         // aik zone par zyada se zyada itni trades
   eq: true,            // E.Q invalidation har trade par zaroori
   eqMode: null,        // 'hrlr' = E.Q sirf jab aakhri leg choppy (HRLR) ho; null = 'eq' wali setting
-  hrlrEff: 0.3,        // leg ki seedhi chaal / candles ki kul range — is se kam = HRLR
+  hrlrEff: 0.3,        // (purana 'hrlr') leg ki seedhi chaal / candles ki kul range — is se kam
+  hrlrAtr: 1.0,        // 'fast': malik ki definition — HRLR = tez + bari expansion: leg >= itne H1 ATR...
+  hrlrMaxMin: 60,      // ...aur itne minute ke andar bani ho
   smtWith: 'p1',       // 'p1' (sirf pehla partner) | 'both' (Silver + DXY dono) | 'either'
   smtMinPct: 0,        // strength SMT: Gold aur partner ki chaal me kam az kam itna % farq
   fvgMinAtr: 0,        // H4 gap ka size kam az kam itne H4 ATR
@@ -211,10 +213,13 @@ function findV3(D, P, dirName) {
         let k = eHK - 1;
         while (k >= 0 && eHighs[k].i >= l2I) k--;
         let need = true;
-        if (eqMode === 'hrlr' && k >= 0) { // HRLR: leg choppy ho tab hi E.Q chahiye
+        if (eqMode === 'hrlr' && k >= 0) { // purana tajurba: leg choppy ho tab E.Q
           let path = 0;
           for (let x = eHighs[k].i; x <= l2I; x++) path += e[x].h - e[x].l;
           need = path > 0 && (eHighs[k].p - L2) / path < P.hrlrEff;
+        }
+        if (eqMode === 'fast' && k >= 0) { // HRLR = tez + bari expansion (malik ki definition): tab hi E.Q chahiye
+          need = (eHighs[k].p - L2) >= P.hrlrAtr * atr && (e[l2I].t - e[eHighs[k].i].t) <= P.hrlrMaxMin * MIN;
         }
         if (need && (k < 0 || !(e[i].c > (eHighs[k].p + L2) / 2))) continue;
       }
