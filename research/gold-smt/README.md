@@ -13,3 +13,8 @@ Strategy ka code `goldsmt.js` (repo root) me hai. Ye folder sirf backtest/resear
 - DXY: `python3 dxy_build.py FXDIR DXY.csv` (HistData ke 6 FX pairs se, ICE formula)
 - `node v2single.js XAGUSD.csv silver out.json` / `node v2final.js out.json` (scratchpad paths: `hist/*.csv`)
 - `trades_v2_best.csv` = Silver SMT, RR 1.5–4 wali trades (Jan 2024 – Nov 2026)
+
+## Version 3 (`goldsmt_v3.js`) — dono misaalon (5 Jan BUY, 2 Jan SELL) ke mutabiq
+- Data: 1-minute gold + silver se M3 entry. `node v3run.js '{...}'`, `node v3single.js BASEJSON out.json`, `node v3final.js out.json`
+- Sab se behtar (abhi tak): `{"entryMin":3,"keyTypes":"fvg","eq":false,"tpMode":"h1swing","maxTries":1,"maxRR":4,"minRR":1.5}`
+- `trades_v3_best.csv` = us setting ki trades
