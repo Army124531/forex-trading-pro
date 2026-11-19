@@ -245,33 +245,25 @@
 
     <!-- AUTO TRADE (v10): MT4/MT5 EA + license key -->
     <section id="tab-autotrade" class="tab" dir="ltr" style="display:none">
-      <div class="card"><div class="tab-banner">AUTO TRADE — signal aate hi aapke MT4/MT5 account par trade khud lagti hai</div>
+      <div class="card"><div class="tab-banner" data-i18n="atBanner">AUTO TRADE — signal aate hi aapke MT4/MT5 account par trade khud lagti hai</div>
         <h3>🤖 Auto Trade (MT4 / MT5)</h3>
-        <p class="notice-banner">Koi signal 100% profitable nahi hota. Pehle DEMO account par chalayein. Auto trade se nuqsan bhi ho sakta hai — risk aapka apna hai.</p>
+        <p class="notice-banner" data-i18n="atNotice">Koi signal 100% profitable nahi hota. Pehle DEMO account par chalayein. Auto trade se nuqsan bhi ho sakta hai — risk aapka apna hai.</p>
         <div id="atStatus"></div>
       </div>
-      <div class="card"><h3>1. Aapki License Key</h3>
-        <p class="fine">Ye key sirf aapki hai — kisi ko na dein. Pehli dafa jis MT account par chale gi, usi se jud jaye gi.</p>
+      <div class="card"><h3 data-i18n="atKeyTitle">1. Aapki License Key</h3>
+        <p class="fine" data-i18n="atKeyHint">Ye key sirf aapki hai — kisi ko na dein. Pehli dafa jis MT account par chale gi, usi se jud jaye gi.</p>
         <div id="atKeyBox"></div>
       </div>
-      <div class="card"><h3>2. EA Download Karein</h3>
+      <div class="card"><h3 data-i18n="atEaTitle">2. EA Download Karein</h3>
         <p><a class="btn gold" href="ea/ForexTradingPro_AutoTrade.mq5" download>⬇️ MT5 EA (.mq5)</a>
            <a class="btn gold" href="ea/ForexTradingPro_AutoTrade.mq4" download>⬇️ MT4 EA (.mq4)</a></p>
-        <p class="fine">EA sirf computer / VPS wale MetaTrader par chalta hai — mobile app par nahi. 24 ghante chalane ke liye VPS chahiye.</p>
+        <p class="fine" data-i18n="atEaHint">EA sirf computer / VPS wale MetaTrader par chalta hai — mobile app par nahi. 24 ghante chalane ke liye VPS chahiye.</p>
       </div>
-      <div class="card"><h3>3. Lagane ka Tareeqa</h3>
-        <ol class="at-steps">
-          <li>MetaTrader kholein: <b>File → Open Data Folder → MQL5 (ya MQL4) → Experts</b>. Download ki hui file yahan rakh dein.</li>
-          <li>MetaTrader me <b>Navigator</b> par right-click → <b>Refresh</b>. File par double-click karke MetaEditor me <b>Compile</b> dabayein.</li>
-          <li><b>Tools → Options → Expert Advisors</b>: "Allow WebRequest for listed URL" par tick karein aur ye address add karein: <code id="atSiteUrl"></code></li>
-          <li>EA ko kisi bhi <b>ek chart</b> par drag karein. <b>InpLicenseKey</b> me apni key paste karein.</li>
-          <li>Apna risk set karein: <b>InpRiskPercent</b> (har trade ka risk %), <b>InpDailyLossLimitPct</b> (din ki nuqsan limit), <b>InpMaxOpenTrades</b>.</li>
-          <li>Agar broker ke symbol ke aage kuch laga hai (jaise <code>XAUUSDm</code>), to <b>InpSymbolSuffix</b> me <code>m</code> likhein.</li>
-          <li>Upar <b>Algo Trading / AutoTrading</b> button ON karein. Chart ke kone me "Chal raha hai" likha aaye ga.</li>
-        </ol>
-        <p class="fine">Real account par EA tab tak trade nahi lagata jab tak aap khud <b>InpAllowRealAccount = true</b> na karein.</p>
+      <div class="card"><h3 data-i18n="atStepsTitle">3. Lagane ka Tareeqa</h3>
+        <ol class="at-steps" id="atSteps"></ol>
+        <p class="fine" id="atRealNote"></p>
       </div>
-      <div class="card" id="atAdminCard" style="display:none"><h3>Admin — Auto Trade Control</h3>
+      <div class="card" id="atAdminCard" style="display:none"><h3 data-i18n="atAdminTitle">Admin — Auto Trade Control</h3>
         <div id="atAdminGlobal"></div>
         <div id="atAdminUsers"></div>
       </div>
