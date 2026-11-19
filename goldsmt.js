@@ -381,4 +381,4 @@ async function loadYahoo(fetchJson) {
   return { gold5, silver5, gold60, gold1, silver1 };
 }
 
-module.exports = { runGoldSmt, fullReport, loadYahoo, fromYahoo, DEFAULTS, pivots, resample, stats };
+module.exports = { runGoldSmt, fullReport, loadYahoo, fromYahoo, DEFAULTS, pivots, resample, stats, align, atrArr, mirror, COST };
