@@ -9320,6 +9320,8 @@ function signalToShare(sig) {
     entry: sig.entry, sl: sig.sl, tp1: sig.tp1, tp2: sig.tp2, tp3: sig.tp3,
     score: sig.score, rr: rr, time: sig.time || sig.createdAt || Date.now(),
     outcome: sig.outcome || null, // v9.7: honest status rows ke liye (live vs recorded outcome)
+    exitLevel: sig.exitLevel || null, // v10.10: TP3 tracking — card par TP1/TP2/TP3 HIT isi se banta hai
+    hitTp1: !!sig.hitTp1, hitTp2: !!sig.hitTp2, hitTp3: !!sig.hitTp3,
   };
 }
 // v9.6.2: Live TP / Break-Even / DCA / Monitoring rows — sirf live price se (koi value banayi nahi jati).
@@ -9377,11 +9379,12 @@ function buildSignalText(sig) {
     'TP1: ' + fmtPx(s.pair, s.tp1) + ' | TP2: ' + fmtPx(s.pair, s.tp2) + ' | TP3: ' + fmtPx(s.pair, s.tp3),
   ];
   if (s.score != null) lines.push('Score: ' + s.score + '%' + (s.rr ? ' · R:R ' + s.rr : ''));
-  // v9.6.2: card wali chaar rows — wahi values, live price se (price na mile to Pending/Not yet — HIT kabhi claim nahi hota).
+  // v10.10: TP status hamesha shareLevelStatus se — recorded signal par outcome + hit flags
+  // se (live price wapas chala jaye to bhi HIT rehta hai), khule signal par live price se.
   const livePrice = livePriceFor(s.pair);
   const age = priceAgeSec();
-  lines.push(t('tpStatusLbl') + ': TP1 ' + tpStatusText(s.direction, livePrice, s.tp1) + ' · TP2 ' + tpStatusText(s.direction, livePrice, s.tp2) + ' · TP3 ' + tpStatusText(s.direction, livePrice, s.tp3));
-  lines.push(t('beLbl') + ': ' + beStatusText(s.direction, livePrice, s.tp1));
+  lines.push(t('tpStatusLbl') + ': TP1 ' + shareLevelStatus('tp1', s.tp1, s) + ' · TP2 ' + shareLevelStatus('tp2', s.tp2, s) + ' · TP3 ' + shareLevelStatus('tp3', s.tp3, s));
+  lines.push(t('beLbl') + ': ' + shareBeStatus(s));
   lines.push(t('dcaLbl') + ': ' + t('dcaNotActive'));
   lines.push(t('monLbl') + ': ' + (livePrice == null ? '—' : fmtPx(s.pair, livePrice) + ' · ' + (age == null ? '—' : age + ' ' + t('secAgo'))));
   lines.push('Forex Trading Pro · ' + fmtPktTime(s.time) + ' PKT');
@@ -9509,23 +9512,45 @@ function copyPopupSignal() { if (popupSignal) copySignal(popupSignal); }
 function downloadPopupSignal() { if (popupSignal) downloadSignalImage(popupSignal); }
 
 // ---------------- v7: Branded Share Card modal ----------------
-// Portrait card (HTML preview + 1080x1350 canvas PNG). Status sirf recorded outcome se:
-// Win -> TP1 HIT, Loss -> SL HIT, Break-Even -> TP1 HIT + trade band, baaki sab PENDING.
+// Portrait card (HTML preview + 1080x1350 canvas PNG). Status sirf recorded outcome +
+// persistent hit flags se (v10.10) — live price se kabhi nahi, is liye TP3 Win ka card
+// price wapas jaane ke baad bhi TP1 HIT · TP2 HIT · TP3 HIT dikhata hai:
+// Win TP3 -> teeno HIT; Win TP1 (purani rows) -> sirf TP1 HIT; Break-Even + TP2 hit -> TP1+TP2 HIT, TP3 PENDING.
+// Loss -> sirf SL HIT.
 function shareStatusOf(level, s) {
-  if (s.outcome === 'Win') return level === 'tp1' ? t('hit') : t('pending');
+  if (s.outcome === 'Win') {
+    if (level === 'tp1') return t('hit');
+    if (level === 'tp2') return (s.exitLevel === 'TP2' || s.exitLevel === 'TP3' || s.hitTp2) ? t('hit') : t('pending');
+    if (level === 'tp3') return (s.exitLevel === 'TP3' || s.hitTp3) ? t('hit') : t('pending');
+    return t('pending');
+  }
   if (s.outcome === 'Loss') return level === 'sl' ? t('hit') : t('pending');
-  if (s.outcome === 'Break-Even') return level === 'tp1' ? t('hit') : t('pending');
+  if (s.outcome === 'Break-Even') {
+    if (level === 'tp1') return t('hit');
+    if (level === 'tp2') return s.hitTp2 ? t('hit') : t('pending');
+    if (level === 'tp3') return s.hitTp3 ? t('hit') : t('pending');
+    return t('pending');
+  }
   return t('pending');
 }
 function timelineDone(s) {
   const done = [true, true, false, false, false, false];
   if (s.outcome === 'Win' || s.outcome === 'Break-Even') done[2] = true;
+  if (s.outcome === 'Win' && (s.exitLevel === 'TP2' || s.exitLevel === 'TP3' || s.hitTp2)) done[3] = true;
+  if (s.outcome === 'Win' && (s.exitLevel === 'TP3' || s.hitTp3)) done[4] = true;
+  if (s.outcome === 'Break-Even' && s.hitTp2) done[3] = true;
+  if (s.outcome === 'Break-Even' && s.hitTp3) done[4] = true;
   if (s.outcome === 'Loss' || s.outcome === 'Break-Even') done[5] = true;
   return done;
 }
 // v9.7: Share card ki honest status — live signal (In-Flight) par live price se, recorded
 // outcome par outcome se. DCA engine me nahi hai → hamesha "Not Activated" (koi fake DCA nahi).
+// v10.10: khule signal par bhi pehle persistent hit flag dekho — TP hit ho kar price
+// wapas aa jaye to bhi HIT dikhe, sirf live price par bharosa nahi.
 function shareLiveLevelStatus(level, val, s) {
+  if (level === 'tp1' && s.hitTp1) return '✓ ' + t('hit');
+  if (level === 'tp2' && s.hitTp2) return '✓ ' + t('hit');
+  if (level === 'tp3' && s.hitTp3) return '✓ ' + t('hit');
   const livePrice = livePriceFor(s.pair);
   if (livePrice == null) return t('pending');
   if (level === 'sl') return s.direction === 'BUY' ? (livePrice <= val ? '✓ ' + t('hit') : t('pending')) : (livePrice >= val ? '✓ ' + t('hit') : t('pending'));
