@@ -818,7 +818,72 @@ const I18N = {
     noSweeps: "Aakhri 40 5M candles me koi sweep nahi hua.",
     microNote: "5M Micro sirf entry ki tafseel hai — signal Terminal se banta hai.",
     exportIndBtn: "Indicator Report Download Karein",
-    gateTfNote: "Gate 15M par chalta hai — ye indicators 1H ke hain (Terminal, Live Indicators aur Indicators tab — sab eik source)."
+    gateTfNote: "Gate 15M par chalta hai — ye indicators 1H ke hain (Terminal, Live Indicators aur Indicators tab — sab eik source).",
+    // Auto Trade (v10.9): Auto Trade tab ke saare strings — ur = asal Roman Urdu, en = tarjuma.
+    atBanner: "AUTO TRADE — signal aate hi aapke MT4/MT5 account par trade khud lagti hai",
+    atNotice: "Koi signal 100% profitable nahi hota. Pehle DEMO account par chalayein. Auto trade se nuqsan bhi ho sakta hai — risk aapka apna hai.",
+    atKeyTitle: "1. Aapki License Key",
+    atKeyHint: "Ye key sirf aapki hai — kisi ko na dein. Pehli dafa jis MT account par chale gi, usi se jud jaye gi.",
+    atEaTitle: "2. EA Download Karein",
+    atEaHint: "EA sirf computer / VPS wale MetaTrader par chalta hai — mobile app par nahi. 24 ghante chalane ke liye VPS chahiye.",
+    atStepsTitle: "3. Lagane ka Tareeqa",
+    atRealNote: "Real account par EA tab tak trade nahi lagata jab tak aap khud {b}InpAllowRealAccount = true{/b} na karein.",
+    atAdminTitle: "Admin — Auto Trade Control",
+    atStep1: "MetaTrader kholein: {b}File → Open Data Folder → MQL5 (ya MQL4) → Experts{/b}. Download ki hui file yahan rakh dein.",
+    atStep2: "MetaTrader me {b}Navigator{/b} par right-click → {b}Refresh{/b}. File par double-click karke MetaEditor me {b}Compile{/b} dabayein.",
+    atStep3: "{b}Tools → Options → Expert Advisors{/b}: \"Allow WebRequest for listed URL\" par tick karein aur ye address add karein:",
+    atStep4: "EA ko kisi bhi {b}ek chart{/b} par drag karein. {b}InpLicenseKey{/b} me apni key paste karein.",
+    atStep5: "Apna risk set karein: {b}InpRiskPercent{/b} (har trade ka risk %), {b}InpDailyLossLimitPct{/b} (din ki nuqsan limit), {b}InpMaxOpenTrades{/b}.",
+    atStep6: "Agar broker ke symbol ke aage kuch laga hai (jaise {c}XAUUSDm{/c}), to {b}InpSymbolSuffix{/b} me {c}m{/c} likhein.",
+    atStep7: "Upar {b}Algo Trading / AutoTrading{/b} button ON karein. Chart ke kone me \"Chal raha hai\" likha aaye ga.",
+    atAgoNever: "kabhi nahi",
+    atAgoNow: "abhi abhi",
+    atAgoMin: "{n} minute pehle",
+    atAgoHour: "{n} ghante pehle",
+    atAgoDay: "{n} din pehle",
+    atStateGlobalOff: "Auto Trade admin ne band kiya hua hai",
+    atStateUserOff: "Aapka Auto Trade admin ne band kiya hai",
+    atStateNoPlan: "Plan khatam ya account band — key kaam nahi kare gi",
+    atStateLive: "EA juda hua hai aur chal raha hai",
+    atStateReady: "Key tayyar hai — EA abhi juda nahi",
+    atStatusLbl: "Halat:",
+    atDemoOnly: "Abhi Auto Trade {b}sirf DEMO account{/b} par chalta hai. Real account wale EA ko signal nahi milta, kyunke signals ka munafa abhi saabit nahi hua.",
+    atMtAccount: "MT account:",
+    atNoAccount: "abhi koi nahi",
+    atLastSeen: "EA aakhri dafa:",
+    atFreshNote: "EA ko sirf Terminal ke taaza signals milte hain ({n} minute se purane nahi).",
+    atFreshNow: "Abhi taaza signals:",
+    atShowKey: "Dikhayein",
+    atHideKey: "Chhupayein",
+    atCopyKey: "📋 Key Copy Karein",
+    atResetKey: "Nayi Key Banayein",
+    atCopied: "Key copy ho gayi.",
+    atCopyFail: "Copy nahi ho saki — key upar dikha di hai, khud copy kar lein.",
+    atResetConfirm: "Nayi key banane se purani key foran band ho jaye gi aur EA me nayi key dalni pare gi. Jaari rakhein?",
+    atGlobalLbl: "Sab ke liye Auto Trade:",
+    atGlobalOffAll: "Sab ke liye band karein",
+    atGlobalOnAll: "Chalu karein",
+    atGlobalOffNote: "Band karne par kisi bhi EA ko naya signal nahi milta. Pehle se khuli trades apne SL/TP par chalti rehti hain.",
+    atDemoOnlyLbl: "Sirf DEMO accounts:",
+    atDemoOn: "ON (real accounts band)",
+    atDemoOff: "OFF (real accounts ki ijazat hai)",
+    atDemoAllowReal: "Real accounts ki ijazat dein",
+    atDemoRestrict: "Sirf demo tak mehdood karein",
+    atDemoNote: "Jab tak Strategy Lab me koi version saaf na jeete, isay ON rakhein. Ye lock ghalti se real paisa lagne se rokta hai.",
+    atMaxAgeLbl: "Signal kitne minute tak EA ko jaye:",
+    atSave: "Save",
+    atUserOff: "Auto Trade band",
+    atUserAllowed: "ijazat hai",
+    atUserNoPlan: "plan khatam / band",
+    atUserEaRunning: "chal raha hai",
+    atUserEnable: "Auto Trade chalu",
+    atUserDisable: "Auto Trade band",
+    atUserUnbind: "MT account hatayein",
+    atUserReset: "Key reset",
+    atNoUsers: "Koi user nahi.",
+    atConfirmGlobalOff: "Sab users ka Auto Trade band karein?",
+    atConfirmDemoReal: "Real accounts ko Auto Trade ki ijazat dein? Strategy Lab me abhi tak koi version nahi jeeta — buyers ka asal paisa lag sakta hai.",
+    atConfirmUserReset: "{u} ki key reset karein? Purani key band ho jaye gi."
   },
   en: {
     tagline: "Live signals for Gold, Bitcoin and Forex",
@@ -1563,7 +1628,72 @@ const I18N = {
     noSweeps: "No sweep in the last 40 5M candles.",
     microNote: "5M Micro is only entry detail — the signal comes from the Terminal.",
     exportIndBtn: "Download Indicator Report",
-    gateTfNote: "The gate runs on 15M — these indicators are 1H (Terminal, Live Indicators and Indicators tab — all one source)."
+    gateTfNote: "The gate runs on 15M — these indicators are 1H (Terminal, Live Indicators and Indicators tab — all one source).",
+    // Auto Trade (v10.9)
+    atBanner: "AUTO TRADE — as soon as a signal arrives, the trade is placed automatically on your MT4/MT5 account",
+    atNotice: "No signal is 100% profitable. Run it on a DEMO account first. Auto trading can also lose money — the risk is yours.",
+    atKeyTitle: "1. Your License Key",
+    atKeyHint: "This key is only yours — do not share it with anyone. It will bind to the first MT account it runs on.",
+    atEaTitle: "2. Download the EA",
+    atEaHint: "The EA only runs on MetaTrader on a computer / VPS — not on the mobile app. You need a VPS to run it 24 hours.",
+    atStepsTitle: "3. How to Install It",
+    atRealNote: "The EA will not trade on a real account until you set {b}InpAllowRealAccount = true{/b} yourself.",
+    atAdminTitle: "Admin — Auto Trade Control",
+    atStep1: "Open MetaTrader: {b}File → Open Data Folder → MQL5 (or MQL4) → Experts{/b}. Put the downloaded file here.",
+    atStep2: "In MetaTrader, right-click {b}Navigator{/b} → {b}Refresh{/b}. Double-click the file and press {b}Compile{/b} in MetaEditor.",
+    atStep3: "{b}Tools → Options → Expert Advisors{/b}: tick \"Allow WebRequest for listed URL\" and add this address:",
+    atStep4: "Drag the EA onto any {b}one chart{/b}. Paste your key in {b}InpLicenseKey{/b}.",
+    atStep5: "Set your risk: {b}InpRiskPercent{/b} (risk % per trade), {b}InpDailyLossLimitPct{/b} (daily loss limit), {b}InpMaxOpenTrades{/b}.",
+    atStep6: "If your broker adds something after the symbol (like {c}XAUUSDm{/c}), write {c}m{/c} in {b}InpSymbolSuffix{/b}.",
+    atStep7: "Turn the {b}Algo Trading / AutoTrading{/b} button ON at the top. \"Chal raha hai\" will appear in the corner of the chart.",
+    atAgoNever: "never",
+    atAgoNow: "just now",
+    atAgoMin: "{n} minutes ago",
+    atAgoHour: "{n} hours ago",
+    atAgoDay: "{n} days ago",
+    atStateGlobalOff: "Auto Trade is switched off by the admin",
+    atStateUserOff: "Your Auto Trade has been switched off by the admin",
+    atStateNoPlan: "Plan expired or account closed — the key will not work",
+    atStateLive: "EA is connected and running",
+    atStateReady: "Key is ready — EA is not connected yet",
+    atStatusLbl: "Status:",
+    atDemoOnly: "Auto Trade currently runs on {b}DEMO accounts only{/b}. EAs on real accounts receive no signals, because the signals' profitability is not proven yet.",
+    atMtAccount: "MT account:",
+    atNoAccount: "none yet",
+    atLastSeen: "EA last seen:",
+    atFreshNote: "The EA only receives fresh Terminal signals (not older than {n} minutes).",
+    atFreshNow: "Fresh signals now:",
+    atShowKey: "Show",
+    atHideKey: "Hide",
+    atCopyKey: "📋 Copy Key",
+    atResetKey: "Create New Key",
+    atCopied: "Key copied.",
+    atCopyFail: "Copy failed — the key is shown above, please copy it yourself.",
+    atResetConfirm: "Creating a new key will immediately disable the old key, and you will need to enter the new key in the EA. Continue?",
+    atGlobalLbl: "Auto Trade for everyone:",
+    atGlobalOffAll: "Switch off for everyone",
+    atGlobalOnAll: "Switch on",
+    atGlobalOffNote: "When switched off, no EA receives new signals. Already open trades keep running to their SL/TP.",
+    atDemoOnlyLbl: "DEMO accounts only:",
+    atDemoOn: "ON (real accounts blocked)",
+    atDemoOff: "OFF (real accounts allowed)",
+    atDemoAllowReal: "Allow real accounts",
+    atDemoRestrict: "Restrict to demo only",
+    atDemoNote: "Keep this ON until a version clearly wins in the Strategy Lab. This lock stops real money being risked by mistake.",
+    atMaxAgeLbl: "For how many minutes should a signal go to the EA:",
+    atSave: "Save",
+    atUserOff: "Auto Trade off",
+    atUserAllowed: "allowed",
+    atUserNoPlan: "plan expired / closed",
+    atUserEaRunning: "running",
+    atUserEnable: "Switch Auto Trade on",
+    atUserDisable: "Switch Auto Trade off",
+    atUserUnbind: "Remove MT account",
+    atUserReset: "Reset key",
+    atNoUsers: "No users.",
+    atConfirmGlobalOff: "Switch off Auto Trade for all users?",
+    atConfirmDemoReal: "Allow real accounts to use Auto Trade? No version has won in the Strategy Lab yet — buyers' real money could be at risk.",
+    atConfirmUserReset: "Reset {u}'s key? The old key will be disabled."
   },
   ar: {
     tagline: "إشارات مباشرة للذهب والبيتكوين والفوركس",
@@ -9190,6 +9320,8 @@ function signalToShare(sig) {
     entry: sig.entry, sl: sig.sl, tp1: sig.tp1, tp2: sig.tp2, tp3: sig.tp3,
     score: sig.score, rr: rr, time: sig.time || sig.createdAt || Date.now(),
     outcome: sig.outcome || null, // v9.7: honest status rows ke liye (live vs recorded outcome)
+    exitLevel: sig.exitLevel || null, // v10.10: TP3 tracking — card par TP1/TP2/TP3 HIT isi se banta hai
+    hitTp1: !!sig.hitTp1, hitTp2: !!sig.hitTp2, hitTp3: !!sig.hitTp3,
   };
 }
 // v9.6.2: Live TP / Break-Even / DCA / Monitoring rows — sirf live price se (koi value banayi nahi jati).
@@ -9247,11 +9379,12 @@ function buildSignalText(sig) {
     'TP1: ' + fmtPx(s.pair, s.tp1) + ' | TP2: ' + fmtPx(s.pair, s.tp2) + ' | TP3: ' + fmtPx(s.pair, s.tp3),
   ];
   if (s.score != null) lines.push('Score: ' + s.score + '%' + (s.rr ? ' · R:R ' + s.rr : ''));
-  // v9.6.2: card wali chaar rows — wahi values, live price se (price na mile to Pending/Not yet — HIT kabhi claim nahi hota).
+  // v10.10: TP status hamesha shareLevelStatus se — recorded signal par outcome + hit flags
+  // se (live price wapas chala jaye to bhi HIT rehta hai), khule signal par live price se.
   const livePrice = livePriceFor(s.pair);
   const age = priceAgeSec();
-  lines.push(t('tpStatusLbl') + ': TP1 ' + tpStatusText(s.direction, livePrice, s.tp1) + ' · TP2 ' + tpStatusText(s.direction, livePrice, s.tp2) + ' · TP3 ' + tpStatusText(s.direction, livePrice, s.tp3));
-  lines.push(t('beLbl') + ': ' + beStatusText(s.direction, livePrice, s.tp1));
+  lines.push(t('tpStatusLbl') + ': TP1 ' + shareLevelStatus('tp1', s.tp1, s) + ' · TP2 ' + shareLevelStatus('tp2', s.tp2, s) + ' · TP3 ' + shareLevelStatus('tp3', s.tp3, s));
+  lines.push(t('beLbl') + ': ' + shareBeStatus(s));
   lines.push(t('dcaLbl') + ': ' + t('dcaNotActive'));
   lines.push(t('monLbl') + ': ' + (livePrice == null ? '—' : fmtPx(s.pair, livePrice) + ' · ' + (age == null ? '—' : age + ' ' + t('secAgo'))));
   lines.push('Forex Trading Pro · ' + fmtPktTime(s.time) + ' PKT');
@@ -9379,23 +9512,45 @@ function copyPopupSignal() { if (popupSignal) copySignal(popupSignal); }
 function downloadPopupSignal() { if (popupSignal) downloadSignalImage(popupSignal); }
 
 // ---------------- v7: Branded Share Card modal ----------------
-// Portrait card (HTML preview + 1080x1350 canvas PNG). Status sirf recorded outcome se:
-// Win -> TP1 HIT, Loss -> SL HIT, Break-Even -> TP1 HIT + trade band, baaki sab PENDING.
+// Portrait card (HTML preview + 1080x1350 canvas PNG). Status sirf recorded outcome +
+// persistent hit flags se (v10.10) — live price se kabhi nahi, is liye TP3 Win ka card
+// price wapas jaane ke baad bhi TP1 HIT · TP2 HIT · TP3 HIT dikhata hai:
+// Win TP3 -> teeno HIT; Win TP1 (purani rows) -> sirf TP1 HIT; Break-Even + TP2 hit -> TP1+TP2 HIT, TP3 PENDING.
+// Loss -> sirf SL HIT.
 function shareStatusOf(level, s) {
-  if (s.outcome === 'Win') return level === 'tp1' ? t('hit') : t('pending');
+  if (s.outcome === 'Win') {
+    if (level === 'tp1') return t('hit');
+    if (level === 'tp2') return (s.exitLevel === 'TP2' || s.exitLevel === 'TP3' || s.hitTp2) ? t('hit') : t('pending');
+    if (level === 'tp3') return (s.exitLevel === 'TP3' || s.hitTp3) ? t('hit') : t('pending');
+    return t('pending');
+  }
   if (s.outcome === 'Loss') return level === 'sl' ? t('hit') : t('pending');
-  if (s.outcome === 'Break-Even') return level === 'tp1' ? t('hit') : t('pending');
+  if (s.outcome === 'Break-Even') {
+    if (level === 'tp1') return t('hit');
+    if (level === 'tp2') return s.hitTp2 ? t('hit') : t('pending');
+    if (level === 'tp3') return s.hitTp3 ? t('hit') : t('pending');
+    return t('pending');
+  }
   return t('pending');
 }
 function timelineDone(s) {
   const done = [true, true, false, false, false, false];
   if (s.outcome === 'Win' || s.outcome === 'Break-Even') done[2] = true;
+  if (s.outcome === 'Win' && (s.exitLevel === 'TP2' || s.exitLevel === 'TP3' || s.hitTp2)) done[3] = true;
+  if (s.outcome === 'Win' && (s.exitLevel === 'TP3' || s.hitTp3)) done[4] = true;
+  if (s.outcome === 'Break-Even' && s.hitTp2) done[3] = true;
+  if (s.outcome === 'Break-Even' && s.hitTp3) done[4] = true;
   if (s.outcome === 'Loss' || s.outcome === 'Break-Even') done[5] = true;
   return done;
 }
 // v9.7: Share card ki honest status — live signal (In-Flight) par live price se, recorded
 // outcome par outcome se. DCA engine me nahi hai → hamesha "Not Activated" (koi fake DCA nahi).
+// v10.10: khule signal par bhi pehle persistent hit flag dekho — TP hit ho kar price
+// wapas aa jaye to bhi HIT dikhe, sirf live price par bharosa nahi.
 function shareLiveLevelStatus(level, val, s) {
+  if (level === 'tp1' && s.hitTp1) return '✓ ' + t('hit');
+  if (level === 'tp2' && s.hitTp2) return '✓ ' + t('hit');
+  if (level === 'tp3' && s.hitTp3) return '✓ ' + t('hit');
   const livePrice = livePriceFor(s.pair);
   if (livePrice == null) return t('pending');
   if (level === 'sl') return s.direction === 'BUY' ? (livePrice <= val ? '✓ ' + t('hit') : t('pending')) : (livePrice >= val ? '✓ ' + t('hit') : t('pending'));
