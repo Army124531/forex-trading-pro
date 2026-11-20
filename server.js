@@ -33,7 +33,7 @@ function defaultDb() {
   return {
     users: [],          // {username, passHash, salt, role:'admin'|'buyer', plan, createdAt, expiresAt, suspended, tgCode, tgChatId, pushSubscriptions:[], notifyPairs:null|[]|['XAUUSD',...]}
     sessions: [],       // {token, username, createdAt}
-    signals: [],        // {id, pair, direction, entry, sl, tp1, tp2, tp3, score, gate, engine, createdAt, outcome, outcomeAt, pips, exitLevel}
+    signals: [],        // {id, pair, direction, entry, sl, tp1, tp2, tp3, score, gate, engine, createdAt, outcome, outcomeAt, pips, exitLevel, hitTp1, hitTp2, hitTp3}
     logs: [],           // {at, text}
     newsBlocks: [],     // {at, pair, wouldBe, wouldBeScore, events:[titles]} — news window me roke gaye signals (aakhri 50)
     newsAlertsSent: [], // {key, title, country, timeMs, at} — High-impact news alerts jo bhej diye gaye (cap 100, dedupe)
@@ -178,18 +178,23 @@ const PAIRS = [
 //   Silver (XAGUSD): 0.01 = 1 pip
 //   Crypto ka koi standard pip nahi — $1 = 1 pip (BTC/ETH/SOL/BNB), 0.0001 (XRP/DOGE/ADA).
 //     Is se pips parhne layak rehte hain (BTC ka $1000 move = 1000 pips, 100,000 nahi).
-// Pips SIRF asal entry/SL/TP1 aur outcome se bante hain — kabhi banaye nahi jate.
+// Pips SIRF asal entry/SL/TP1/TP2/TP3 aur outcome se bante hain — kabhi banaye nahi jate.
 const PIP_SIZE = { XAUUSD: 0.1, XAGUSD: 0.01, BTCUSD: 1, ETHUSD: 1, SOLUSD: 1, BNBUSD: 1, XRPUSD: 0.0001, DOGEUSD: 0.0001, ADAUSD: 0.0001, EURUSD: 0.0001, GBPUSD: 0.0001, USDJPY: 0.01, AUDUSD: 0.0001, USDCAD: 0.0001, USDCHF: 0.0001 };
 function pipSize(pairId) { return PIP_SIZE[(pairId || '').toUpperCase()] || 0.0001; }
-// outcome se pips + exit: Win = +|TP1-entry| (exit TP1), Loss = -|entry-SL| (exit SL),
-// Break-Even = 0 (exit BE). In-flight (outcome nahi) = pips null.
+// outcome se pips + exit (v10.10: Win TP3 tak gina jata hai) — Win = +|exitTP-entry|
+// (exit TP3/TP2/TP1), Loss = -|entry-SL| (exit SL), Break-Even = 0 (exit BE).
+// Purani Win rows me exitLevel nahi hota — woh TP1 hi rehta hai (backward compatible).
+// In-flight (outcome nahi) = pips null.
 function computePips(sig) {
   if (!sig || !sig.outcome) return { pips: null, exitLevel: null };
   const ps = pipSize(sig.pair);
   if (sig.outcome === 'Break-Even') return { pips: 0, exitLevel: 'BE' };
   if (sig.outcome === 'Win') {
-    const d = sig.direction === 'BUY' ? sig.tp1 - sig.entry : sig.entry - sig.tp1;
-    return { pips: +(Math.abs(d) / ps).toFixed(1), exitLevel: 'TP1' };
+    const lvl = sig.exitLevel === 'TP3' ? 'TP3' : sig.exitLevel === 'TP2' ? 'TP2' : 'TP1';
+    const target = lvl === 'TP3' ? sig.tp3 : lvl === 'TP2' ? sig.tp2 : sig.tp1;
+    const tp = (typeof target === 'number' && isFinite(target)) ? target : sig.tp1;
+    const d = sig.direction === 'BUY' ? tp - sig.entry : sig.entry - tp;
+    return { pips: +(Math.abs(d) / ps).toFixed(1), exitLevel: lvl };
   }
   if (sig.outcome === 'Loss') {
     const d = sig.direction === 'BUY' ? sig.entry - sig.sl : sig.sl - sig.entry;
@@ -1062,10 +1067,23 @@ function gateScore(candles, ind, livePrice, side, opts) {
   return { gates, total };
 }
 // v10.1: sirf LABEL — levels/SL/TP wahi hain. Pehle sirf "1:2" likha tha, jo TP3 ka R:R hai;
-// Win TP1 par gina jata hai jahan R:R 1:0.67 hai (risk 1.5, munafa 1). Ab teeno saaf likhe hain.
+// Win TP1 par R:R 1:0.67 hai (risk 1.5, munafa 1); v10.10 se Win TP3 tak gina jata hai.
+// Ab teeno saaf likhe hain.
 const PLAN_RR_LABEL = 'TP1 1:0.67 · TP2 1:1.33 · TP3 1:2';
-function buildPlan(livePrice, atr, side) {
-  const R = Math.max(atr || livePrice * 0.002, livePrice * 0.0005);
+// v10.11: SAB 15 pairs ka SL FIXED 100 pips (Sheza ka faisla, 20 Nov 2026 — Gold-only scope superseded).
+// R = 100 pips / 1.5 = 66.7 pips, is liye TP1 66.7 / TP2 133.3 / TP3 200.0 pips (har pair apne pip size se).
+// v10.12 (20 Nov 2026): SOLUSD EXCLUDED (Sheza ka faisla — "SOL ko chhor kar baaki deploy karo").
+// SOL ka pip $1 hai, is liye 100 pips = $100 — price (~$72) se bara; SL 172 / TP1 5.33 / TP2-TP3
+// negative ho jate, SOL ke signals kabhi band nahi hote. SOL purana ATR-based SL rakhta hai.
+// pairId na ho ya unknown ho to purana ATR-based fallback rehta hai (buildPlan bina pair ke waisa hi).
+const FIXED_SL_PIPS = 100;
+function planRForPair(pairId, livePrice, atr) {
+  const key = (pairId || '').toUpperCase();
+  if (key && key !== 'SOLUSD' && Object.prototype.hasOwnProperty.call(PIP_SIZE, key)) return FIXED_SL_PIPS * PIP_SIZE[key] / 1.5;
+  return Math.max(atr || livePrice * 0.002, livePrice * 0.0005);
+}
+function buildPlan(livePrice, atr, side, pairId) {
+  const R = planRForPair(pairId, livePrice, atr);
   if (side === 'buy') {
     const entry = livePrice;
     const sl = entry - 1.5 * R; // BUY ka SL HAMESHA entry se neeche
@@ -1134,8 +1152,8 @@ async function computeSignal(pairId, lang, force) {
   const swing1h = findSwings(candles1h);
   let direction = buy.total >= gate ? 'BUY' : sell.total >= gate ? 'SELL' : 'WAIT'; // Gate kabhi 85 se neeche nahi
   const confluence = Math.max(buy.total, sell.total);
-  const buyPlan = buildPlan(live, ind.atr14, 'buy');
-  const sellPlan = buildPlan(live, ind.atr14, 'sell');
+  const buyPlan = buildPlan(live, ind.atr14, 'buy', pairId);
+  const sellPlan = buildPlan(live, ind.atr14, 'sell', pairId);
   buyPlan.status = planStatus(buy.total, gate);
   sellPlan.status = planStatus(sell.total, gate);
   // Sentiment: aakhri 24 candles
@@ -1369,7 +1387,7 @@ async function computeScanner() {
     let plan = null;
     if (score != null && score >= 80 && candles.length) {
       const ind = computeIndicators(candles);
-      plan = buildPlan(price != null ? price : candles[candles.length - 1].c, ind.atr14, dir);
+      plan = buildPlan(price != null ? price : candles[candles.length - 1].c, ind.atr14, dir, id);
     }
     rows.push({ pair: id, price, smcScore: score, direction: dir, plan,
       bosDir: smc ? smc.bosDir : null, sweepCode: smc ? smc.sweepCode : null,
@@ -1399,38 +1417,50 @@ async function fetchYahooPrice(sym) {
 }
 
 // ---------------- History outcomes (baad ki candles se) ----------------
+// v10.10: TP3 tak tracking — pure function (koi network/db nahi), is liye unit-testable.
+// candlesAfter: signal ke createdAt ke baad ki 15m candles, time order me.
+// Rules (candle order me):
+// - TP1 se pehle SL hit => Loss (exit SL). TP1 hit => hitTp1; usi candle me TP3 bhi
+//   hit ho to Win (exit TP3); sirf TP2 hit ho to hitTp2, signal khula rehta hai.
+// - TP1 ke baad: TP3 hit => Win (exit TP3). TP2 hit => hitTp2, khula rehta hai.
+//   Entry par wapas aana (BUY low<=entry, SELL high>=entry) TP3 se pehle => Break-Even
+//   (exit BE; TP2 pehle hit hua ho to hitTp2 rehta hai). TP1 ke baad SL hit => Break-Even
+//   (entry pehle cross hoti hai; ye safety net hai). Kuch na ho => abhi In-Flight (outcome null).
+// - Aik candle ke andar order: TP3 pehle, phir TP2, phir entry-return, phir SL.
+function walkTp3Exit(dir, entry, sl, tp1, tp2, tp3, candlesAfter) {
+  const isBuy = dir === 'BUY';
+  const hitSL = (c) => isBuy ? c.l <= sl : c.h >= sl;
+  const hitTP = (c, tp) => isBuy ? c.h >= tp : c.l <= tp;
+  const hitEntry = (c) => isBuy ? c.l <= entry : c.h >= entry;
+  let hitTp1 = false, hitTp2 = false, hitTp3 = false;
+  for (const c of candlesAfter || []) {
+    if (!hitTp1) {
+      if (hitSL(c)) return { outcome: 'Loss', exitLevel: 'SL', hitTp1, hitTp2, hitTp3 };
+      if (hitTP(c, tp1)) {
+        hitTp1 = true;
+        if (hitTP(c, tp3)) { hitTp2 = true; hitTp3 = true; return { outcome: 'Win', exitLevel: 'TP3', hitTp1, hitTp2, hitTp3 }; }
+        if (hitTP(c, tp2)) hitTp2 = true;
+      }
+      continue;
+    }
+    // TP1 ke baad — TP3, phir TP2, phir entry-return, phir SL.
+    if (hitTP(c, tp3)) { hitTp2 = true; hitTp3 = true; return { outcome: 'Win', exitLevel: 'TP3', hitTp1, hitTp2, hitTp3 }; }
+    if (hitTP(c, tp2)) hitTp2 = true;
+    if (hitEntry(c)) return { outcome: 'Break-Even', exitLevel: 'BE', hitTp1, hitTp2, hitTp3 };
+    if (hitSL(c)) return { outcome: 'Break-Even', exitLevel: 'BE', hitTp1, hitTp2, hitTp3 };
+  }
+  return { outcome: null, exitLevel: null, hitTp1, hitTp2, hitTp3 };
+}
 async function checkOutcome(sig) {
   if (sig.outcome) return sig;
   const candles = await getCandles(sig.pair, '15m');
   if (!candles.length) return sig;
   const after = candles.filter(c => c.t > sig.createdAt);
   if (!after.length) return sig;
-  let outcome = null;
-  for (const c of after) {
-    if (sig.direction === 'BUY') {
-      if (c.l <= sig.sl) { outcome = 'Loss'; break; }
-      if (c.h >= sig.tp1) {
-        // TP1 ke baad entry par wapas aaya to Break-Even
-        let be = false;
-        for (const c2 of after.slice(after.indexOf(c) + 1)) {
-          if (c2.l <= sig.entry) { be = true; break; }
-          if (c2.h >= sig.tp2) break;
-        }
-        outcome = be ? 'Break-Even' : 'Win'; break;
-      }
-    } else {
-      if (c.h >= sig.sl) { outcome = 'Loss'; break; }
-      if (c.l <= sig.tp1) {
-        let be = false;
-        for (const c2 of after.slice(after.indexOf(c) + 1)) {
-          if (c2.h >= sig.entry) { be = true; break; }
-          if (c2.l <= sig.tp2) break;
-        }
-        outcome = be ? 'Break-Even' : 'Win'; break;
-      }
-    }
-  }
-  if (outcome) { sig.outcome = outcome; sig.outcomeAt = Date.now(); const cp = computePips(sig); sig.pips = cp.pips; sig.exitLevel = cp.exitLevel; saveDb(); }
+  const w = walkTp3Exit(sig.direction, sig.entry, sig.sl, sig.tp1, sig.tp2, sig.tp3, after);
+  // Partial hits bhi save karein — TP hit ho kar price wapas aa jaye to bhi card par HIT dikhe.
+  sig.hitTp1 = w.hitTp1; sig.hitTp2 = w.hitTp2; sig.hitTp3 = w.hitTp3;
+  if (w.outcome) { sig.outcome = w.outcome; sig.outcomeAt = Date.now(); sig.exitLevel = w.exitLevel; const cp = computePips(sig); sig.pips = cp.pips; sig.exitLevel = cp.exitLevel; saveDb(); }
   return sig;
 }
 async function enrichHistory(signals) {
@@ -1441,11 +1471,17 @@ async function enrichHistory(signals) {
   for (const s of out) {
     const row = db.signals.find(x => x.id === s.id);
     if (row) {
-      if (s.outcome && !row.outcome) { row.outcome = s.outcome; row.outcomeAt = s.outcomeAt; }
+      // v10.10: checkOutcome copy par chalta hai — outcome + exitLevel + pips + hit flags
+      // yahan wapas row me likhne hote hain (khule signals ke partial hits bhi).
+      if (s.outcome && !row.outcome) { row.outcome = s.outcome; row.outcomeAt = s.outcomeAt; row.exitLevel = s.exitLevel; row.pips = s.pips; }
       if (row.outcome && (row.pips == null || row.exitLevel == null)) {
         const cp = computePips(row);
         row.pips = cp.pips; row.exitLevel = cp.exitLevel;
       }
+      // Purani Win rows ki exitLevel TP1 hi rehti hai (computePips default) — unke pips nahi badalte.
+      if (s.hitTp1 != null && row.hitTp1 !== s.hitTp1) row.hitTp1 = s.hitTp1;
+      if (s.hitTp2 != null && row.hitTp2 !== s.hitTp2) row.hitTp2 = s.hitTp2;
+      if (s.hitTp3 != null && row.hitTp3 !== s.hitTp3) row.hitTp3 = s.hitTp3;
     }
   }
   saveDb();
@@ -1973,7 +2009,7 @@ app.get('/api/smc', requireAuth, async (req, res) => {
       const q = prices.pairs.find(p => p.id === pair);
       const live = q ? q.price : c15[c15.length - 1].c;
       const ind = computeIndicators(c15);
-      const plan = buildPlan(live, ind.atr14, dir === 'SELL' ? 'sell' : 'buy');
+      const plan = buildPlan(live, ind.atr14, dir === 'SELL' ? 'sell' : 'buy', pair);
       db.signals.unshift({ id: 'SIG-' + Date.now().toString(36).toUpperCase(), pair, direction: dir, entry: plan.entry, sl: plan.sl, tp1: plan.tp1, tp2: plan.tp2, tp3: plan.tp3, score: smc.score, gate: 80, engine: 'smc', createdAt: Date.now(), outcome: null, outcomeAt: null, gates: smc.parts.map(p => ({ name: p.name, points: p.score, max: p.max })) });
       if (db.signals.length > 500) db.signals.length = 500;
       logEvent('SMC signal: ' + pair + ' ' + dir + ' (' + smc.score + '%)');
@@ -2007,7 +2043,7 @@ app.get('/api/sessions', requireAuth, async (req, res) => {
       const q = sessionQuality(ind, candles);
       const live = (prices.pairs.find(p => p.id === id) || {}).price || candles[candles.length - 1].c;
       const dir = q.score >= 85 ? (ind.ema20 && live > ind.ema20 ? 'BUY' : 'SELL') : 'WAIT';
-      const plan = buildPlan(live, ind.atr14, dir === 'SELL' ? 'sell' : 'buy');
+      const plan = buildPlan(live, ind.atr14, dir === 'SELL' ? 'sell' : 'buy', id);
       if (dir !== 'WAIT') {
         const recentSame = db.signals.find(s => s.pair === id && s.direction === dir && s.engine === 'session' && Date.now() - s.createdAt < 3600000);
         if (!recentSame) {
@@ -2123,7 +2159,7 @@ async function runBacktest({ engine, pairs, days, balance, riskPct, tp, session 
       }
       while (openExits.length && openExits[0] <= i) openExits.shift();
       if (openExits.length >= maxConc) continue;
-      const plan = buildPlan(entry, atr, dir);
+      const plan = buildPlan(entry, atr, dir, id);
       const forward = slice.slice(i + 1, Math.min(slice.length, i + 1 + fwdBars));
       const ev = walkExit(dir, entry, plan.sl, plan.tp1, plan.tp2, plan.tp3, forward);
       const R = Math.abs(entry - plan.sl) || 1;
@@ -3011,5 +3047,5 @@ app.listen(PORT, () => console.log('Forex Trading Pro chal raha hai: http://loca
 
 // Test ke liye (NODE_ENV=test) — production me kuch nahi badalta.
 if (process.env.NODE_ENV === 'test') {
-  module.exports = { recordTerminalSignal, sendSignalAlert, sendPushAlert, buildPushPayload, notifyPairOn, buildTelegramMessage, parseTelegramUpdates, applyTelegramUpdates, telegramPollUpdates, recorderTick, backgroundTick, ensureTgCode, buyerActive, gateScore, isMarketClosed, computeZones, computeTrendPanel, getDb: () => db, telegramDryRunSent, pushDryRunSent, webpush, engineSettings, priceByMode, walkExit, rForRule, runBacktest, computeSmc, computeScanner, GROUP_PAIRS, computePips, pipSize, PIP_SIZE, runningPips, freshEaSignals, autoTradeSettings, eaAllowedUser, makeEaKey, parseFFCalendar, pairsForCurrency, isNewsBlocked, getFFCalendar, newsBlackoutInfo, logNewsBlock, checkNewsAlerts, sendNewsAlert, buildNewsTelegramMessage, buildNewsPushPayload, newsAlertKey, newsAlertTargets };
+  module.exports = { recordTerminalSignal, sendSignalAlert, sendPushAlert, buildPushPayload, notifyPairOn, buildTelegramMessage, parseTelegramUpdates, applyTelegramUpdates, telegramPollUpdates, recorderTick, backgroundTick, ensureTgCode, buyerActive, gateScore, isMarketClosed, computeZones, computeTrendPanel, getDb: () => db, telegramDryRunSent, pushDryRunSent, webpush, engineSettings, priceByMode, walkExit, rForRule, runBacktest, computeSmc, computeScanner, GROUP_PAIRS, computePips, pipSize, PIP_SIZE, runningPips, freshEaSignals, autoTradeSettings, eaAllowedUser, makeEaKey, parseFFCalendar, pairsForCurrency, isNewsBlocked, getFFCalendar, newsBlackoutInfo, logNewsBlock, checkNewsAlerts, sendNewsAlert, buildNewsTelegramMessage, buildNewsPushPayload, newsAlertKey, newsAlertTargets, buildPlan, walkTp3Exit };
 }
