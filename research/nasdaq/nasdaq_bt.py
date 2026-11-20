@@ -1,5 +1,5 @@
 # NASDAQ (QQQ / Nasdaq-100) — 3 mashhoor tareeqe, pehle se pakke rules, daily data par backtest.
-# SIRF research. Usage: python3 nasdaq_bt.py YAHOO_CHART.json [label]
+# SIRF research. Usage: python3 nasdaq_bt.py YAHOO_CHART.json [label] [imtihan_shuru_saal]
 #   A. Buy & hold (muqable ke liye)
 #   B. Trend: close > SMA200 ho to agle din ke open par kharidein; neeche band ho to agle open par bech dein.
 #   C. RSI-2 pullback: close > SMA200 aur RSI(2) < 10 → agle open par kharidein; close > SMA5 → agle open par bech dein.
@@ -17,7 +17,7 @@ for i, t in enumerate(raw['timestamp']):
     o, c = q['open'][i], q['close'][i]
     if o is None or c is None or o <= 0 or c <= 0: continue
     f = (adj[i] / c) if adj and adj[i] else 1.0  # dividend adjust (QQQ)
-    D.append((datetime.datetime.utcfromtimestamp(t).date(), o * f, c * f))
+    D.append((datetime.datetime.fromtimestamp(t, datetime.timezone.utc).date(), o * f, c * f))
 dates = [d[0] for d in D]; O = [d[1] for d in D]; C = [d[2] for d in D]
 n = len(D)
 
@@ -84,8 +84,8 @@ eqA, trA, ipA = run(ruleA); eqB, trB, ipB = run(ruleB); eqC, trC, ipC = run(rule
 eqD = [1.0]
 for i in range(1, n): eqD.append(eqD[-1] * (0.5 * eqB[i] / eqB[i - 1] + 0.5 * eqC[i] / eqC[i - 1]))
 start = dates[200]; end = dates[-1]
-split = datetime.date(2010, 1, 1)
-print('%s: %s se %s tak, %d din | seekhna: %s–2009, imtihan: 2010–%s' % (label, start, end, n, start.year, end.year))
+split = datetime.date(int(sys.argv[3]) if len(sys.argv) > 3 else 2010, 1, 1)
+print('%s: %s se %s tak, %d din | seekhna: %s–%s, imtihan: %s–%s' % (label, start, end, n, start.year, split.year - 1, split.year, end.year))
 S = [('A. Buy & hold', eqA, None, None), ('B. Trend (SMA200)', eqB, trB, ipB), ('C. RSI-2 pullback', eqC, trC, ipC), ('D. B + C aadha aadha', eqD, None, None)]
 for name, eq, tr, ip in S:
     al, a1, a2 = stats(eq, start, end, tr, ip), stats(eq, start, split, tr, ip), stats(eq, split, end, tr, ip)
