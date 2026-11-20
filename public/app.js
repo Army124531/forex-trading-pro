@@ -10463,7 +10463,7 @@ async function loadSession() {
   } catch (e) { el.innerHTML = '<p>' + t('sessionLoadFail') + ' ' + esc(e.message) + '</p>'; }
 }
 // v9.2: Terminal-only counts — /api/performance sab engines gin-ta hai (server.js), is liye
-// Terminal history (/api/history?engine=terminal, max 100 — History display ki bhi yahi had hai) se khud gin lein.
+// Terminal history (/api/history?engine=terminal, max 500 — History display ki bhi yahi had hai) se khud gin lein.
 async function loadTerminalPerf() {
   try {
     const d = await api('/api/history?engine=terminal');

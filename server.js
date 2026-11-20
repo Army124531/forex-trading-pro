@@ -2233,7 +2233,9 @@ app.get('/api/history', requireAuth, async (req, res) => {
   const { outcome, engine, symbol } = req.query;
   if (engine) list = list.filter(s => s.engine === engine);
   if (symbol) list = list.filter(s => s.pair === symbol.toUpperCase());
-  list = await enrichHistory(list.slice(0, 100));
+  // v10.13: History tab me sab stored signals — had 500 hai (db.signals bhi 500 tak rakhta hai),
+  // pehle 100 thi is liye tab sirf 100 dikhata tha jab ke CSV me 404 the.
+  list = await enrichHistory(list.slice(0, 500));
   if (outcome) list = list.filter(s => (s.outcome || 'In-Flight') === outcome);
   res.json({ signals: list, total: list.length, note: 'Sirf asal record kiye gaye signals dikhaye jate hain — koi purani history banayi nahi gayi.' });
 });
