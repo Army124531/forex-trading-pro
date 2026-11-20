@@ -45,6 +45,9 @@ const V3_DEFAULTS = {
   smtWith: 'p1',       // 'p1' (sirf pehla partner) | 'both' (Silver + DXY dono) | 'either'
   smtMinPct: 0,        // strength SMT: Gold aur partner ki chaal me kam az kam itna % farq
   fvgMinAtr: 0,        // H4 gap ka size kam az kam itne H4 ATR
+  keyMin: 240,         // key level (FVG) ka timeframe minute me: 240 = H4, 60 = H1, 15 = M15
+  smtMin: 60,          // SMT / swings / TP ka timeframe minute me: 60 = H1, 15 = M15, 5 = M5
+  liqTol: 0.5,         // PDH/PDL aur Asia high/low ke dono taraf kitne SMT-TF ATR tak 'qareeb'
   tpMode: 'h1swing',   // 'h1swing' (taaza H1 swing) | 'between' (V2: dono lows ke beech ka high)
   partner: 'silver',   // 'silver' | 'dxy'
   keyFilter: 'bos',    // 'bos' | 'any'
@@ -97,21 +100,23 @@ function findV3(D, P, dirName) {
   const atrAt = (t) => { let lo = 0, hi = h1.length - 1, k = -1; while (lo <= hi) { const m = (lo + hi) >> 1; if (h1[m].end <= t) { k = m; lo = m + 1; } else hi = m - 1; } return k >= 0 ? atrH1[k] : null; };
   const h1Idx = new Map(h1.map((b, k) => [b.t, k]));
 
-  // 1. Key levels (H4 FVG)
+  // 1. Key levels. keyTypes: 'fvg' | 'range' | 'both' | 'pdl' (pichle din ka low/high) | 'asia' (Asia session low/high)
+  const useFvg = P.keyTypes === 'fvg' || P.keyTypes === 'both';
+  const useRange = P.keyTypes === 'range' || P.keyTypes === 'both';
   const zones = [];
   let sp = 0, lastSH = null, lastSL = null, spl = 0;
   for (let j = 2; j < h4.length; j++) {
     while (sp < h4P.highs.length && h4P.highs[sp].confirmT <= h4[j - 1].t) { lastSH = h4P.highs[sp].p; sp++; }
     while (spl < h4P.lows.length && h4P.lows[spl].confirmT <= h4[j - 1].t) { lastSL = h4P.lows[spl].p; spl++; }
-    if (P.keyTypes === 'range') continue;
+    if (!useFvg) continue;
     if (!(h4[j - 2].h < h4[j].l)) continue;
     if (P.fvgMinAtr > 0 && !(atrH4[j - 1] != null && h4[j].l - h4[j - 2].h >= P.fvgMinAtr * atrH4[j - 1])) continue;
     if (P.keyFilter === 'bos' && !(lastSH != null && (h4[j - 1].c > lastSH || h4[j].c > lastSH))) continue;
     if (P.discount && lastSH != null && lastSL != null && h4[j].l > (lastSH + lastSL) / 2) continue;
-    zones.push({ kind: 'H4 FVG', top: h4[j].l, bottom: h4[j - 2].h, dispT: h4[j - 1].t, availT: h4[j].end, expT: h4[j].end + P.zoneLifeH * HOUR, tapT: null, used: false, tries: 0 });
+    zones.push({ kind: (P.keyMin === 240 ? 'H4' : P.keyMin === 60 ? 'H1' : 'M' + P.keyMin) + ' FVG', top: h4[j].l, bottom: h4[j - 2].h, dispT: h4[j - 1].t, availT: h4[j].end, expT: h4[j].end + P.zoneLifeH * HOUR, tapT: null, used: false, tries: 0 });
   }
   // Key level ki doosri qism: H4 range low (pakka H4 swing low) — agla swing low pakka hone tak
-  if (P.keyTypes !== 'fvg') {
+  if (useRange) {
     const L = h4P.lows;
     const Hs = h4P.highs;
     for (let k = 0; k < L.length; k++) {
@@ -140,6 +145,17 @@ function findV3(D, P, dirName) {
     }
     zones.sort((x, y) => x.availT - y.availT);
   }
+  // Liquidity levels: pichle (NY) din ka low, ya aaj ke Asia session (00:00–07:00 UTC) ka low. Sweep ke baad palatna.
+  if (P.keyTypes === 'pdl') {
+    const d1 = resampleNY(e, 1440);
+    for (const d of d1) { const a = atrAt(d.end); if (a == null) continue; zones.push({ kind: 'PDL', top: d.l + P.liqTol * a, bottom: d.l - P.liqTol * a, level: d.l, dispT: d.end, availT: d.end, expT: d.end + 24 * HOUR, tapT: null, used: false, tries: 0 }); }
+  }
+  if (P.keyTypes === 'asia') {
+    const byDay = new Map();
+    for (const b of e) { const t0 = Math.floor(b.t / (24 * HOUR)) * 24 * HOUR; if (b.t - t0 >= 7 * HOUR) continue; const cur = byDay.get(t0); if (!cur) byDay.set(t0, { l: b.l, n: 1 }); else { cur.l = Math.min(cur.l, b.l); cur.n++; } }
+    for (const [t0, v] of byDay) { if (v.n < 20) continue; const at = t0 + 7 * HOUR, a = atrAt(at); if (a == null) continue; zones.push({ kind: 'Asia low', top: v.l + P.liqTol * a, bottom: v.l - P.liqTol * a, level: v.l, dispT: at, availT: at, expT: t0 + 17 * HOUR, tapT: null, used: false, tries: 0 }); }
+  }
+  zones.sort((x, y) => x.availT - y.availT);
 
   const signals = [];
   const funnel = { zones: zones.length, tapped: 0, smt: 0, csd: 0, rrSkip: 0, outOfSession: 0 };
@@ -170,7 +186,7 @@ function findV3(D, P, dirName) {
       if (!L1) continue;
       // L1 ke baad ka high (H) aur us ke baad pullback ka low (L2), M5 par
       let a = i;
-      while (a > 0 && e[a - 1].t >= L1.t + HOUR) a--;
+      while (a > 0 && e[a - 1].t >= L1.t + P.smtMin * MIN) a--;
       if (a >= i) continue;
       let hI = a;
       for (let k = a; k <= i; k++) if (e[k].h > e[hI].h) hI = k;
@@ -270,11 +286,11 @@ function runV3(raw, opts) {
     e = e.filter((x, k) => keep2[k]); ep = ep.filter((x, k) => keep2[k]);
     ep2 = g.mirror(e.map(x => m2.get(x.t)));
   }
-  const h1 = g.resample(e, 60), h1p = g.resample(ep, 60);
+  const h1 = g.resample(e, P.smtMin), h1p = g.resample(ep, P.smtMin);
   let [h1A, h1pA] = g.align(h1, h1p);
   let h1p2A = null;
-  if (ep2) { const m = new Map(g.resample(ep2, 60).map(x => [x.t, x])); const kp = h1A.map(x => m.has(x.t)); h1A = h1A.filter((x, k) => kp[k]); h1pA = h1pA.filter((x, k) => kp[k]); h1p2A = h1A.map(x => m.get(x.t)); }
-  const h4 = resampleNY(raw.gold1, 240);
+  if (ep2) { const m = new Map(g.resample(ep2, P.smtMin).map(x => [x.t, x])); const kp = h1A.map(x => m.has(x.t)); h1A = h1A.filter((x, k) => kp[k]); h1pA = h1pA.filter((x, k) => kp[k]); h1p2A = h1A.map(x => m.get(x.t)); }
+  const h4 = resampleNY(raw.gold1, P.keyMin);
   const cut = (arr) => arr.filter(x => (!P.from || x.t >= P.from) && (!P.to || x.t < P.to));
   const keep = e.map(x => (!P.from || x.t >= P.from) && (!P.to || x.t < P.to));
   const eC = e.filter((x, k) => keep[k]), epC = ep.filter((x, k) => keep[k]);
