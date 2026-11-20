@@ -10611,7 +10611,8 @@ async function runBacktestCenter() {
 async function saveEngineSettings() {
   const msg = document.getElementById('esMsg');
   try {
-    const body = { engine: { minQuality: +document.getElementById('esMinQ').value, slBufferPct: +document.getElementById('esSlBuf').value, tp1R: +document.getElementById('esTp1').value, tp2R: +document.getElementById('esTp2').value, tp3R: +document.getElementById('esTp3').value, maxConcurrent: +document.getElementById('esMaxC').value }, priceMode: document.getElementById('esPriceMode').value };
+    const slModeEl = document.getElementById('esSlMode');
+    const body = { engine: { minQuality: +document.getElementById('esMinQ').value, ...(slModeEl ? { slMode: slModeEl.value } : {}), slBufferPct: +document.getElementById('esSlBuf').value, tp1R: +document.getElementById('esTp1').value, tp2R: +document.getElementById('esTp2').value, tp3R: +document.getElementById('esTp3').value, maxConcurrent: +document.getElementById('esMaxC').value }, priceMode: document.getElementById('esPriceMode').value };
     await api('/api/settings', { method: 'POST', body: JSON.stringify(body) });
     if (msg) msg.textContent = t('saved');
     loadAcct();
@@ -10846,6 +10847,8 @@ async function loadAcct() {
       el.innerHTML = `<p>${esc(t('engSetText'))}</p>
       <p class="fine">${esc(t('engSetGateNote'))}</p>
       <div class="gate"><span>${t('engMinQuality')} (85–98)</span><span><input id="esMinQ" type="number" min="85" max="98" value="${e.minQuality ?? 85}" ${dis} style="width:70px"> %</span></div>
+      <div class="gate"><span>Stop Loss</span><span><select id="esSlMode" ${dis}><option value="fixed" ${e.slMode !== 'atr' ? 'selected' : ''}>Fixed 100 pips (har pair)</option><option value="atr" ${e.slMode === 'atr' ? 'selected' : ''}>ATR ke hisaab se (har pair ki apni chaal)</option></select></span></div>
+      <p class="fine">Fixed 100 pips har pair par alag khatra hai: BTC par ~0.1% (bohat tight), EUR/USD par ~1%, ETH par ~3% (bohat khula). ATR wala SL har pair ki chaal ke mutabiq hota hai (1.5 × ATR). Tabdeeli sirf naye signals par lagti hai.</p>
       <div class="gate"><span>${t('engSlBuffer')} %</span><span><input id="esSlBuf" type="number" min="0" max="2" step="0.1" value="${e.slBufferPct ?? 0.3}" ${dis} style="width:70px"></span></div>
       <div class="gate"><span>TP1 (R)</span><span><input id="esTp1" type="number" min="0.5" max="5" step="0.1" value="${e.tp1R ?? 1}" ${dis} style="width:70px"></span></div>
       <div class="gate"><span>TP2 (R)</span><span><input id="esTp2" type="number" min="0.5" max="5" step="0.1" value="${e.tp2R ?? 2}" ${dis} style="width:70px"></span></div>

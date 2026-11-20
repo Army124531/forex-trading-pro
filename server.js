@@ -1077,9 +1077,12 @@ const PLAN_RR_LABEL = 'TP1 1:0.67 · TP2 1:1.33 · TP3 1:2';
 // negative ho jate, SOL ke signals kabhi band nahi hote. SOL purana ATR-based SL rakhta hai.
 // pairId na ho ya unknown ho to purana ATR-based fallback rehta hai (buildPlan bina pair ke waisa hi).
 const FIXED_SL_PIPS = 100;
+// v12.1: admin setting slMode — 'fixed' (default, upar wala 100 pips faisla) ya 'atr' (har pair ki apni chaal:
+// SL = 1.5 × ATR). 100 pips har pair par bohat alag hai (BTC $100 ≈ 0.1%, EURUSD ≈ 1%, ETH $100 ≈ 3%).
 function planRForPair(pairId, livePrice, atr) {
   const key = (pairId || '').toUpperCase();
-  if (key && key !== 'SOLUSD' && Object.prototype.hasOwnProperty.call(PIP_SIZE, key)) return FIXED_SL_PIPS * PIP_SIZE[key] / 1.5;
+  const fixed = engineSettings().slMode !== 'atr';
+  if (fixed && key && key !== 'SOLUSD' && Object.prototype.hasOwnProperty.call(PIP_SIZE, key)) return FIXED_SL_PIPS * PIP_SIZE[key] / 1.5;
   return Math.max(atr || livePrice * 0.002, livePrice * 0.0005);
 }
 function buildPlan(livePrice, atr, side, pairId) {
@@ -1540,7 +1543,7 @@ function sessionQuality(ind, candles) {
 
 // ---------------- v9.8: Engine settings + price mode + notification groups ----------------
 // Purane db.json me ye fields na hon to defaults se merge hota hai (koi crash nahi).
-const ENGINE_DEFAULTS = { minQuality: 85, slBufferPct: 0.3, tp1R: 1, tp2R: 2, tp3R: 3, maxConcurrent: 3, sessions: { sydney: true, tokyo: true, london: true, newyork: true } };
+const ENGINE_DEFAULTS = { minQuality: 85, slMode: 'fixed', slBufferPct: 0.3, tp1R: 1, tp2R: 2, tp3R: 3, maxConcurrent: 3, sessions: { sydney: true, tokyo: true, london: true, newyork: true } };
 function engineSettings() {
   const s = (db.settings && db.settings.engine) || {};
   return { ...ENGINE_DEFAULTS, ...s, sessions: { ...ENGINE_DEFAULTS.sessions, ...(s.sessions || {}) } };
@@ -2733,6 +2736,7 @@ app.post('/api/settings', requireAdmin, (req, res) => {
     const next = { ...cur };
     if (engine.minQuality != null) next.minQuality = Math.round(cl(engine.minQuality, 85, 98, 85)); // Gate kabhi 85 se neeche nahi
     if (engine.slBufferPct != null) next.slBufferPct = +cl(engine.slBufferPct, 0, 2, 0.3).toFixed(2);
+    if (engine.slMode === 'fixed' || engine.slMode === 'atr') { if (engine.slMode !== cur.slMode) signalCache.clear(); next.slMode = engine.slMode; }
     if (engine.tp1R != null) next.tp1R = +cl(engine.tp1R, 0.5, 5, 1).toFixed(1);
     if (engine.tp2R != null) next.tp2R = +cl(engine.tp2R, 0.5, 5, 2).toFixed(1);
     if (engine.tp3R != null) next.tp3R = +cl(engine.tp3R, 0.5, 5, 3).toFixed(1);
